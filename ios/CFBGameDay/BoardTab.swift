@@ -23,7 +23,8 @@ enum BoardTab: String, CaseIterable, Identifiable {
     /// URL fragment app.js reads to set its filters.
     var fragment: String? {
         switch self {
-        case .board: "all"
+        // `-fragment lines` at launch (screenshots, debugging) opens the board on that view.
+        case .board: UserDefaults.standard.string(forKey: "fragment") ?? "all"
         case .live: "live"
         case .starred: "starred"
         case .about: nil
