@@ -16,17 +16,14 @@ promises wagering, picks, or "locks". Keep it that way through Review.
 - The app has been run on a physical iPhone (Review checks this, 2.1).
 - Vercel project stays deployed during Review. A dead backend is a 2.1 rejection.
 
-## Build
+## Build and upload
 
 ```
-cd ios
-xcodegen generate
-open CFBGameDay.xcodeproj
+scripts/release_ios.sh --bump 1.0.1   # from the repo root; see CONTEXT.md for the API key setup
 ```
 
-Xcode: select "Any iOS Device (arm64)", Product > Archive, Distribute App >
-App Store Connect > Upload. Bump `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`
-in `project.yml` for each upload and regenerate.
+Fallback by hand: `scripts/release_ios.sh --no-upload`, then
+`open ios/build/CFBGameDay.xcarchive`, Distribute App, App Store Connect, Upload.
 
 ## App Store Connect: app record
 

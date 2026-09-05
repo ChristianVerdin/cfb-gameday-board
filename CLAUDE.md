@@ -18,6 +18,7 @@ python3 server.py                 # http://127.0.0.1:8765/  (live mode needs thi
 python3 scripts/refresh_week.py   # rebuild games.json/games.js for the next Thu..Mon
 python3 scripts/check.py          # offline smoke test, run after touching rules or liveMath
 scripts/tunnel.sh                 # gameday Cloudflare quick tunnel, prints the https URL
+scripts/release_ios.sh --bump X.Y.Z   # archive, export, upload the iOS app via the ASC API (see CONTEXT.md)
 ```
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
 
