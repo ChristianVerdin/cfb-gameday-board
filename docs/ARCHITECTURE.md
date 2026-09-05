@@ -201,7 +201,8 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
 - Stars persist in `localStorage` under `cfb_gameday_stars_v1`.
 - The gold implied score is only rendered on pre-game cards, labelled `proj`.
   Once a game is live or final the real score column replaces it.
-- `board.html` is the first single-file build and is not loaded by anything.
+- `python3 scripts/check.py` runs the offline smoke test; run it after touching
+  `impact()`, `kick_ct()`, or `liveMath()`.
 
 ## Hosting (not done)
 
