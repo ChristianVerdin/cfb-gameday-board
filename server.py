@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Local CFB GameDay live server. Proxies ESPN scoreboard for live scores."""
+from __future__ import annotations
+
+import json
+import time
+import urllib.error
+import urllib.request
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+PORT = 8765
+DATES = ["20260904", "20260905", "20260906", "20260907"]
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.espn.com/college-football/scoreboard",
+    "Origin": "https://www.espn.com",
+}
+
+
+def fetch_json(url: str) -> dict:
+    req = urllib.request.Request(url, headers=HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", "ignore")[:300]
+        raise RuntimeError(f"ESPN {exc.code} {exc.reason} :: {body}") from exc
+
+
+def endpoints(date: str) -> list[str]:
+    return [
+        (
+            "https://site.web.api.espn.com/apis/site/v2/sports/football/"
+            f"college-football/scoreboard?dates={date}&limit=300&groups=80"
+        ),
+        (
+            "https://site.api.espn.com/apis/site/v2/sports/football/"
+            f"college-football/scoreboard?dates={date}&limit=300&groups=80"
+        ),
+        (
+            "https://cdn.espn.com/core/college-football/scoreboard?xhr=1"
+            f"&render=true&device=desktop&country=us&lang=en&region=us"
+            f"&site=espn&dates={date}&limit=300&groups=80"
+        ),
+        (
+            "https://site.api.espn.com/apis/site/v2/sports/football/"
+            f"college-football/scoreboard?dates={date}&limit=300"
+        ),
+    ]
+
+
+def events_from(payload: dict) -> list:
+    if isinstance(payload.get("events"), list):
+        return payload["events"]
+    content = payload.get("content") or {}
+    sb = content.get("sbData") or {}
+    if isinstance(sb.get("events"), list):
+        return sb["events"]
+    return []
+
+
+def pull_date(date: str) -> list:
+    last = None
+    for url in endpoints(date):
+        try:
+            data = fetch_json(url)
+            events = events_from(data)
+            print(f"  {date} {url.split('/')[2]} -> {len(events)} events")
+            return events
+        except Exception as exc:
+            last = exc
+            print(f"  {date} fail {url.split('/')[2]}: {exc}")
+    raise RuntimeError(str(last) if last else f"no source for {date}")
+
+
+def parse_odds(comp: dict) -> dict | None:
+    odds = (comp.get("odds") or [None])[0]
+    if not odds:
+        return None
+    out = {
+        "provider": ((odds.get("provider") or {}).get("displayName")
+                     or (odds.get("provider") or {}).get("name")),
+        "details": odds.get("details"),
+        "spread": odds.get("spread"),
+        "total": odds.get("overUnder"),
+    }
+    ps = odds.get("pointSpread") or {}
+    tot = odds.get("total") or {}
+    ml = odds.get("moneyline") or {}
+
+    def close(block, who):
+        node = (block.get(who) or {}).get("close") or {}
+        opn = (block.get(who) or {}).get("open") or {}
+        return {
+            "line": node.get("line"),
+            "odds": node.get("odds"),
+            "open": opn.get("line"),
+            "open_odds": opn.get("odds"),
+        }
+
+    out["home_spread"] = close(ps, "home")
+    out["away_spread"] = close(ps, "away")
+    if tot:
+        out["over"] = close(tot, "over")
+        out["under"] = close(tot, "under")
+    out["home_ml"] = ((ml.get("home") or {}).get("close") or {}).get("odds")
+    out["away_ml"] = ((ml.get("away") or {}).get("close") or {}).get("odds")
+    return out
+
+
+def snapshot() -> dict:
+    events = []
+    seen = set()
+    errors = []
+    for date in DATES:
+        try:
+            batch = pull_date(date)
+        except Exception as exc:
+            errors.append(f"{date}: {exc}")
+            continue
+        for event in batch:
+            eid = event.get("id")
+            if not eid or eid in seen:
+                continue
+            seen.add(eid)
+            events.append(event)
+    if not events:
+        raise RuntimeError(" | ".join(errors) or "ESPN returned no games")
+
+    live = []
+    for event in events:
+        comp = (event.get("competitions") or [{}])[0]
+        status = (event.get("status") or {}).get("type") or {}
+        situation = comp.get("situation") or {}
+        teams = {}
+        for team in comp.get("competitors") or []:
+            side = team.get("homeAway")
+            recs = team.get("records") or []
+            overall = next((r.get("summary") for r in recs if r.get("type") == "total"), None)
+            teams[side] = {
+                "id": (team.get("team") or {}).get("id"),
+                "abbr": (team.get("team") or {}).get("abbreviation"),
+                "score": int(team.get("score") or 0),
+                "record": overall,
+                "winner": bool(team.get("winner")),
+            }
+        live.append({
+            "id": event.get("id"),
+            "state": status.get("state"),
+            "status": status.get("name"),
+            "statusDetail": status.get("detail"),
+            "statusShort": status.get("shortDetail"),
+            "period": (event.get("status") or {}).get("period"),
+            "clock": (event.get("status") or {}).get("displayClock"),
+            "completed": bool(status.get("completed")),
+            "home": teams.get("home"),
+            "away": teams.get("away"),
+            "odds": parse_odds(comp),
+            "situation": {
+                "text": situation.get("downDistanceText") or situation.get("possessionText"),
+                "lastPlay": ((situation.get("lastPlay") or {}).get("text")),
+                "possession": situation.get("possession"),
+                "isRedZone": bool(situation.get("isRedZone")),
+            } if situation else None,
+        })
+    return {
+        "ok": True,
+        "count": len(live),
+        "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "warnings": errors,
+        "games": live,
+    }
+
+
+class Handler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=str(ROOT), **kwargs)
+
+    def log_message(self, fmt, *args):
+        print("[%s] %s" % (self.log_date_time_string(), fmt % args))
+
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+    def send_json(self, code: int, payload: dict):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        path = self.path.split("?", 1)[0]
+        if path in ("/", "/index.html", "/board.html"):
+            self.path = "/index.html"
+            return super().do_GET()
+        if path == "/api/live":
+            try:
+                self.send_json(200, snapshot())
+            except Exception as exc:
+                print("LIVE ERROR:", exc)
+                self.send_json(502, {"ok": False, "error": str(exc)})
+            return
+        return super().do_GET()
+
+
+if __name__ == "__main__":
+    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    print(f"CFB GameDay live board: http://127.0.0.1:{PORT}/")
+    print("Leave this terminal open. Do not open board.html as a file.")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nstopped")
