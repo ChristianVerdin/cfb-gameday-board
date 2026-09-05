@@ -30,7 +30,8 @@ python3 server.py                                   # terminal 1
 cloudflared tunnel --url http://127.0.0.1:8765      # terminal 2
 ```
 
-Use the printed `https://<random>.trycloudflare.com` on the phone. HTTPS, so
+`scripts/tunnel.sh` does both and prints the URL. Use the printed
+`https://<random>.trycloudflare.com` on the phone. HTTPS, so
 Add to Home Screen and the service worker both work. The URL changes on every
 restart and the Mac must stay awake. Ctrl+C both when the slate ends.
 

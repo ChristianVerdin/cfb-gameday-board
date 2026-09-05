@@ -16,6 +16,7 @@ ESPN, implied scores, TV, then live cover/total state. Owner: cv
 python3 server.py                 # http://127.0.0.1:8765/  (live mode needs this)
 python3 scripts/refresh_week.py   # rebuild games.json/games.js for the next Thu..Mon
 python3 scripts/check.py          # offline smoke test, run after touching rules or liveMath
+scripts/tunnel.sh                 # gameday Cloudflare quick tunnel, prints the https URL
 ```
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
 
