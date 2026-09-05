@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
-from refresh_week import CHICAGO, compass, default_dates, impact, kick_ct  # noqa: E402
+from refresh_week import CHICAGO, compass, default_dates, has_line, impact, kick_ct  # noqa: E402
 
 FAILS = []
 
@@ -103,6 +103,8 @@ def test_time():
     check("compass nw", compass(307), "NW")
     check("compass wrap", compass(359), "N")
     check("compass none", compass(None), None)
+    check("has_line", [has_line(None), has_line({"spread": None, "total": None}), has_line({"spread": -3, "total": None})],
+          [False, False, True])
 
 
 def test_live_math():
@@ -112,7 +114,7 @@ def test_live_math():
         return
     src = (ROOT / "app.js").read_text("utf-8")
     fns = []
-    for name in ("num", "liveMath", "betterRecord", "chooseOdds"):
+    for name in ("num", "liveMath", "betterRecord", "chooseOdds", "hashFilters"):
         m = re.search(rf"\n  function {name}\(.*?\n  }}\n", src, re.S)
         if not m:
             FAILS.append(f"could not extract {name} from app.js")
@@ -143,6 +145,7 @@ out.push([
   chooseOdds(undefined, null, "post", snap) === snap,      // never seen live: snapshot line
   chooseOdds(undefined, {{ spread: null, total: null }}, "pre", null) === null,
 ]);
+out.push(["#live", "#starred", "#all", "", "#LIVE", "#bogus"].map(h => {{ const f = hashFilters(h); return [f.liveOnly, f.starredOnly, f.known]; }}));
 console.log(JSON.stringify(out));
 """
     res = subprocess.run([node, "-e", script], capture_output=True, text=True)
@@ -152,8 +155,10 @@ console.log(JSON.stringify(out));
     got = json.loads(res.stdout)
     for c, g in zip(cases, got):
         check(f"liveMath {c['a']}-{c['h']} {c['s']}/{c['t']}", g, c["want"])
-    check("betterRecord", got[-2], ["1-0", "1-1", "", "2-1"])
-    check("chooseOdds", got[-1], [True] * 6)
+    check("betterRecord", got[-3], ["1-0", "1-1", "", "2-1"])
+    check("chooseOdds", got[-2], [True] * 6)
+    check("hashFilters", got[-1], [[True, False, True], [False, True, True], [False, False, True],
+                                   [False, False, True], [True, False, True], [False, False, False]])
     src_dates = re.search(r"\n  function liveDatesFor\(.*?\n  }\n", src, re.S)
     check("liveDatesFor present", bool(src_dates), True)
 
