@@ -358,6 +358,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path in ("/", "/index.html"):
             self.path = "/index.html"
             return super().do_GET()
+        if path in ("/privacy", "/support"):   # cleanUrls parity with Vercel
+            self.path = path + ".html"
+            return super().do_GET()
         if path == "/api/live":
             try:
                 self.send_json(200, snapshot(parse_dates(query)))

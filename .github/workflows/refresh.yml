@@ -1,0 +1,65 @@
+name: Refresh slate snapshot
+
+# Thu 9 PM CT (02:00 UTC Fri) builds the coming Thu..Mon slate.
+# Sat 9 AM CT (14:00 UTC) refreshes lines and same-day weather.
+# Commits games.json/games.js when they change; Vercel deploys the push.
+on:
+  schedule:
+    - cron: "0 2 * * 5"
+    - cron: "0 14 * * 6"
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First ESPN date YYYYMMDD (blank = auto Thu..Mon)"
+        required: false
+      end:
+        description: "Last ESPN date YYYYMMDD"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-slate
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build snapshot
+        id: build
+        run: |
+          set +e
+          if [ -n "${{ github.event.inputs.start }}" ]; then
+            python3 scripts/refresh_week.py --start "${{ github.event.inputs.start }}" --end "${{ github.event.inputs.end || github.event.inputs.start }}"
+          else
+            python3 scripts/refresh_week.py
+          fi
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "refresh exited $code (no games: offseason or ESPN down); nothing committed"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 scripts/check.py
+          if git diff --quiet -- games.json games.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Commit and push
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          label=$(python3 -c "import json;print(json.load(open('games.json')).get('week_label') or 'slate')")
+          git config user.name "gameday-bot"
+          git config user.email "gameday-bot@users.noreply.github.com"
+          git add games.json games.js
+          git commit -m "Snapshot: $label ($(date -u +%Y-%m-%dT%H:%MZ))"
+          git push
