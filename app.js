@@ -104,6 +104,11 @@
     const known = (dates && dates.length) ? dates.map(String) : Object.keys(byDate).sort();
     return known.filter(k => !byDate[k] || byDate[k].some(g => !isFinal(g)));
   }
+  // #live / #starred / #all in the URL set the filters (native app tabs and shareable links).
+  function hashFilters(hash) {
+    const h = String(hash || "").replace(/^#/, "").toLowerCase();
+    return { liveOnly: h === "live", starredOnly: h === "starred", known: ["", "all", "live", "starred"].includes(h) };
+  }
   // ESPN sometimes serves "0-0" on the live scoreboard after games were played; keep the real one.
   function betterRecord(current, incoming) {
     if (!incoming) return current || "";
@@ -464,10 +469,19 @@
   const A2HS_KEY = "cfb_gameday_a2hs_dismissed";
   const iosSafari = /iphone|ipad|ipod/i.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
   const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-  if (iosSafari && !standalone && !localStorage.getItem(A2HS_KEY) && $("a2hs")) {
+  if (iosSafari && !standalone && !window.cfbNative && !localStorage.getItem(A2HS_KEY) && $("a2hs")) {
     $("a2hs").hidden = false;
     $("a2hs-x").onclick = () => { localStorage.setItem(A2HS_KEY, "1"); $("a2hs").hidden = true; };
   }
+  function applyHash() {
+    const f = hashFilters(location.hash);
+    if (!f.known) return;
+    liveOnly = f.liveOnly; starredOnly = f.starredOnly;
+    pills(); render();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
   pills(); render();
   pollLive();
   setInterval(pollLive, 30000);
