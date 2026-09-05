@@ -107,7 +107,9 @@
   // #live / #starred / #all in the URL set the filters (native app tabs and shareable links).
   function hashFilters(hash) {
     const h = String(hash || "").replace(/^#/, "").toLowerCase();
-    return { liveOnly: h === "live", starredOnly: h === "starred", known: ["", "all", "live", "starred"].includes(h) };
+    const views = ["lines", "tv", "blowouts"];
+    return { liveOnly: h === "live", starredOnly: h === "starred", view: views.includes(h) ? h : "cards",
+             known: ["", "all", "live", "starred", ...views].includes(h) };
   }
   // ESPN sometimes serves "0-0" on the live scoreboard after games were played; keep the real one.
   function betterRecord(current, incoming) {
@@ -476,7 +478,7 @@
   function applyHash() {
     const f = hashFilters(location.hash);
     if (!f.known) return;
-    liveOnly = f.liveOnly; starredOnly = f.starredOnly;
+    liveOnly = f.liveOnly; starredOnly = f.starredOnly; view = f.view;
     pills(); render();
     window.scrollTo(0, 0);
   }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var container = WebContainer()
-    @State private var tab: BoardTab = .board
+    @State private var tab: BoardTab = BoardTab(rawValue: UserDefaults.standard.string(forKey: "tab") ?? "") ?? .board
 
     var body: some View {
         TabView(selection: $tab) {

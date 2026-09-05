@@ -145,7 +145,7 @@ out.push([
   chooseOdds(undefined, null, "post", snap) === snap,      // never seen live: snapshot line
   chooseOdds(undefined, {{ spread: null, total: null }}, "pre", null) === null,
 ]);
-out.push(["#live", "#starred", "#all", "", "#LIVE", "#bogus"].map(h => {{ const f = hashFilters(h); return [f.liveOnly, f.starredOnly, f.known]; }}));
+out.push(["#live", "#starred", "#all", "", "#LIVE", "#bogus", "#lines"].map(h => {{ const f = hashFilters(h); return [f.liveOnly, f.starredOnly, f.known, f.view]; }}));
 console.log(JSON.stringify(out));
 """
     res = subprocess.run([node, "-e", script], capture_output=True, text=True)
@@ -157,8 +157,9 @@ console.log(JSON.stringify(out));
         check(f"liveMath {c['a']}-{c['h']} {c['s']}/{c['t']}", g, c["want"])
     check("betterRecord", got[-3], ["1-0", "1-1", "", "2-1"])
     check("chooseOdds", got[-2], [True] * 6)
-    check("hashFilters", got[-1], [[True, False, True], [False, True, True], [False, False, True],
-                                   [False, False, True], [True, False, True], [False, False, False]])
+    check("hashFilters", got[-1], [[True, False, True, "cards"], [False, True, True, "cards"], [False, False, True, "cards"],
+                                   [False, False, True, "cards"], [True, False, True, "cards"], [False, False, False, "cards"],
+                                   [False, False, True, "lines"]])
     src_dates = re.search(r"\n  function liveDatesFor\(.*?\n  }\n", src, re.S)
     check("liveDatesFor present", bool(src_dates), True)
 

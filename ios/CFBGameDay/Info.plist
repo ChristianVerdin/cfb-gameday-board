@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>BoardHost</key>
-	<string>cfb-gameday-board.vercel.app</string>
+	<string>cfbgameday.app</string>
 	<key>BoardURL</key>
-	<string>https://cfb-gameday-board.vercel.app</string>
+	<string>https://cfbgameday.app</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
