@@ -13,8 +13,7 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
-    # DEVELOPMENT_TEAM: fill in Xcode > Signing & Capabilities (Hoyne Labs LLC), or export TEAM_ID and run
-    #   xcodegen generate  after adding  DEVELOPMENT_TEAM: ${TEAM_ID}  here.
+    DEVELOPMENT_TEAM: 3V73W9NUZ6   # Hoyne Labs LLC; keeps signing across xcodegen regenerations
     TARGETED_DEVICE_FAMILY: "1"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     ENABLE_USER_SCRIPT_SANDBOXING: YES

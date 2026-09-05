@@ -8,8 +8,8 @@ promises wagering, picks, or "locks". Keep it that way through Review.
 - https://cfbgameday.app serves the board, `/privacy`, and `/support` (until the
   domain is live, `BoardURL` in `ios/project.yml` points at the vercel.app alias;
   switch it and regenerate before the App Store build).
-- `ios/project.yml` `DEVELOPMENT_TEAM` set to the Hoyne Labs LLC team, or pick the
-  team in Xcode > Signing & Capabilities after `xcodegen generate`.
+- `ios/project.yml` carries `DEVELOPMENT_TEAM: 3V73W9NUZ6` (Hoyne Labs LLC), so
+  automatic signing survives `xcodegen generate`.
 - The app has been run on a physical iPhone (Review checks this, 2.1).
 - Vercel project stays deployed during Review. A dead backend is a 2.1 rejection.
 
