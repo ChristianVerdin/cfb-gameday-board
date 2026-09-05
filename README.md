@@ -9,6 +9,8 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 Live site: https://cfbgameday.app. Deploys from `main` on every push. The
 snapshot rebuilds itself Thursday night and Saturday morning via GitHub Actions.
+iPhone app: SwiftUI shell around the same board, in `ios/`, submitted to the
+App Store on 2026-09-05 (App Store link will be added on approval).
 
 ## No keys, no accounts
 
@@ -51,7 +53,8 @@ needs the server because the browser cannot call ESPN directly.
 | `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
-| `ios/` | SwiftUI iPhone app (XcodeGen spec, sources, listing copy in `ios/APP_STORE.md`) |
+| `ios/` | SwiftUI iPhone app (XcodeGen spec, sources, listing copy in `ios/APP_STORE.md`, paste sheet `ios/PASTE_ME.md`) |
+| `CONTEXT.md`, `AGENTS.md` | Live project state and open items; map of everything that runs unattended |
 | `docs/DEPLOY.md`, `deploy/` | Hosting: Vercel (live), tunnels, and self-host drafts |
 
 ## Install on iPhone (PWA)
@@ -144,10 +147,10 @@ posted line, not a live steam feed.
 
 ## Snapshot note
 
-The committed `games.json` / `games.js` is the Week 1 2026 slate
-(Fri Sep 4 to Mon Sep 7, 2026), generated 2026-09-04 21:10 UTC. Lines and
-weather in that file are as of that moment. Run the refresh script for any
-later week.
+The committed `games.json` / `games.js` is whatever the refresh Action last
+wrote; its `generated_at` and `week_label` say which slate. Lines and weather
+are as of that moment, with the last posted line carried forward once ESPN
+drops odds at kickoff.
 
 ## Secrets policy
 
