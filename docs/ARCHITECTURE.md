@@ -220,8 +220,5 @@ iOS Safari when not already running standalone.
 ## Hosting (not done)
 
 The proxy binds `127.0.0.1` on purpose: it is an unauthenticated ESPN
-fetch-amplifier and must not sit on `0.0.0.0` without auth. Off-LAN options in
-cost order: PWA shell (UI only, live data still needs the server), Cloudflare
-Tunnel or Tailscale Serve from this Mac on gameday, then a small VPS with nginx
-or Caddy in front of the same `server.py` under systemd. Deploy files are not
-in the repo yet.
+fetch-amplifier and must not sit on `0.0.0.0` without auth. Options, cost
+order, with the draft config files, are in `docs/DEPLOY.md` and `deploy/`.

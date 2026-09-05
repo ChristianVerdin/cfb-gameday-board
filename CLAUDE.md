@@ -42,7 +42,10 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - If a "known issues" list is given with a task, fix those before new work.
 - Commit after each completed step. Run `scripts/check.py` before committing rule changes.
 - Public repo: never commit `.env`, keys, cookies, tokens. Scan the tree before `git add`.
-- Hosting (PWA, Cloudflare Tunnel / Tailscale, VPS draft files) and iPhone work
-  only when cv asks. Never deploy to EC2 without "deploy to EC2" and a host.
+- Hosting drafts live in `docs/DEPLOY.md` + `deploy/`; nothing is deployed. Do
+  not create an Xcode project or provision anything until cv pastes a live
+  https URL and says so. Never deploy to EC2 without "deploy to EC2" and a host.
+- No sportsbook deep links, affiliate params, accounts, or push. Keep copy as
+  scores / venue / weather / posted lines, never a wagering tool.
   The live proxy stays on 127.0.0.1 or behind auth; it is an ESPN fetch-amplifier.
 - Telegram: this project has no chat ID declared. Ask before sending anything.

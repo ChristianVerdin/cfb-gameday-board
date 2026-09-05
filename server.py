@@ -342,7 +342,11 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    # Bind stays on loopback. Behind Caddy/nginx that is required (docs/DEPLOY.md).
+    # For a same-Wi-Fi phone test only, change BIND to "0.0.0.0" and change it
+    # back: /api/live is an unauthenticated ESPN proxy and must not face the internet.
+    BIND = "127.0.0.1"
+    httpd = ThreadingHTTPServer((BIND, PORT), Handler)
     print(f"CFB GameDay live board: http://127.0.0.1:{PORT}/")
     print(f"Polling ESPN dates: {', '.join(DATES)}")
     print("Leave this terminal open. Live scores need this server, not a file:// open.")

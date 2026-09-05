@@ -1,0 +1,15 @@
+# Caddy in front of server.py. Replace the host. Caddy fetches Let's Encrypt itself.
+gameday.example.com {
+    encode gzip
+    reverse_proxy 127.0.0.1:8765
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+    # Private desk instead of a public page: uncomment and generate the hash with
+    #   caddy hash-password
+    # basicauth {
+    #     you $2a$14$REPLACE_WITH_HASH
+    # }
+}

@@ -1,0 +1,19 @@
+[Unit]
+Description=CFB GameDay Board
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/cfb-gameday
+ExecStart=/usr/bin/python3 /opt/cfb-gameday/server.py
+Restart=on-failure
+RestartSec=5
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/cfb-gameday
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

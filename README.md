@@ -45,6 +45,7 @@ needs the server because the browser cannot call ESPN directly.
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
+| `docs/DEPLOY.md`, `deploy/` | Hosting notes plus Caddyfile, nginx.conf, systemd unit drafts. Nothing deployed |
 
 ## Install on iPhone (PWA)
 
@@ -63,6 +64,31 @@ service worker that caches only the UI shell. Live scores are never cached.
 
 The page shows a one-time Add-to-Home-Screen hint in Safari on iOS; dismiss
 with the ×. Ship a new shell by bumping `VERSION` in `sw.js`.
+
+Fastest way to get the phone on it from anywhere, on gameday only:
+
+```
+brew install cloudflared
+python3 server.py                                  # terminal 1
+cloudflared tunnel --url http://127.0.0.1:8765     # terminal 2, open the printed https URL
+```
+
+Stable hostnames, Tailscale, and an always-on box are in `docs/DEPLOY.md`.
+
+### iPhone QA checklist
+
+Test portrait on a 390 to 430 wide phone (iPhone 13 through 16 Pro Max).
+
+- No horizontal page scroll. Chip rows scroll; the page must not.
+- Dynamic Island / notch does not cover the week label or the LIVE timestamp.
+- Tapping the search field does not zoom the page (input is 16px).
+- Chips, star, Copy, Maps, ESPN all hit on the first tap (44pt targets).
+- Live cover line wraps; the white score never collides with the dim `proj`
+  number.
+- Add to Home Screen opens standalone with no Safari chrome and a dark
+  status bar.
+- Airplane mode: the shell and last snapshot load, the header shows a live
+  error, no fake scores.
 
 ## Weekly refresh
 
@@ -106,7 +132,7 @@ posted line, not a live steam feed.
   geocoder, so it is the city's elevation, not the field's.
 - Odds come only from what ESPN exposes (DraftKings). No sportsbook scraping.
 - Times display in America/Chicago regardless of venue.
-- Localhost only. See `docs/ARCHITECTURE.md` for hosting notes.
+- Localhost only. See `docs/DEPLOY.md` for tunnels and hosting.
 
 ## Snapshot note
 

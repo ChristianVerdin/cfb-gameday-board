@@ -14,3 +14,9 @@ credentials
 **/secrets*
 lines.json
 lines.tmp
+*.p8
+AuthKey_*.p8
+*.mobileprovision
+.cloudflared/
+*.crt
+*.key
