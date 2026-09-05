@@ -5,10 +5,19 @@
   const $ = (id) => document.getElementById(id);
   const STAR_KEY = "cfb_gameday_stars_v1";
   const stars = new Set(JSON.parse(localStorage.getItem(STAR_KEY) || "[]"));
-  const days = [
-    { id:"all", label:"All" }, { id:"2026-09-04", label:"Fri" },
-    { id:"2026-09-05", label:"Sat" }, { id:"2026-09-06", label:"Sun" }, { id:"2026-09-07", label:"Mon" }
-  ];
+  const CT = "America/Chicago";
+  const ctDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: CT, year:"numeric", month:"2-digit", day:"2-digit" });
+  const ctTimeFmt = new Intl.DateTimeFormat("en-US", { timeZone: CT, hour:"2-digit", minute:"2-digit", hourCycle:"h23" });
+  const ctDayFmt = new Intl.DateTimeFormat("en-US", { timeZone: CT, weekday:"short" });
+  function kickDate(g) { const d = new Date(g.date || ""); return isNaN(d) ? null : d; }
+  function slateDay(g) { const d = kickDate(g); return d ? ctDateFmt.format(d) : (g.date || "").slice(0,10); }
+  const slateDays = [...new Set(games.map(slateDay))].filter(Boolean).sort();
+  const days = [{ id:"all", label:"All" }, ...slateDays.map(id => {
+    const g = games.find(x => slateDay(x) === id);
+    return { id, label: g && kickDate(g) ? ctDayFmt.format(kickDate(g)) : id.slice(5) };
+  })];
+  const todayCT = ctDateFmt.format(new Date());
+  const busiestDay = slateDays.slice().sort((a,b) => games.filter(g=>slateDay(g)===b).length - games.filter(g=>slateDay(g)===a).length)[0];
   const windows = [
     { id:"all", label:"All times" }, { id:"early", label:"Noon" },
     { id:"aft", label:"Afternoon" }, { id:"night", label:"Primetime+" }
@@ -17,33 +26,22 @@
     { id:"cards", label:"Cards" }, { id:"lines", label:"Lines sheet" },
     { id:"tv", label:"By TV" }, { id:"blowouts", label:"Blowouts" }
   ];
-  let day="2026-09-05", win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, group="all", q="", sort="time";
+  let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, group="all", q="", sort="time";
   let liveStatus = { ok:false, fromFile: location.protocol === "file:", last:null, error:null };
 
-  function slateDay(g) {
-    const s = g.statusShort || "";
-    if (s.includes("9/4")) return "2026-09-04";
-    if (s.includes("9/5")) return "2026-09-05";
-    if (s.includes("9/6")) return "2026-09-06";
-    if (s.includes("9/7")) return "2026-09-07";
-    return (g.wx && g.wx.kick_local ? g.wx.kick_local : g.date).slice(0,10);
-  }
   function kickMinutes(g) {
-    const s = g.statusShort || "";
-    const m = s.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (!m) return 0;
-    let h = parseInt(m[1],10); const min = parseInt(m[2],10);
-    if (/PM/i.test(m[3]) && h !== 12) h += 12;
-    if (/AM/i.test(m[3]) && h === 12) h = 0;
-    return h*60+min;
+    const d = kickDate(g);
+    if (!d) return 0;
+    const parts = Object.fromEntries(ctTimeFmt.formatToParts(d).map(p => [p.type, p.value]));
+    return (parseInt(parts.hour,10) % 24) * 60 + parseInt(parts.minute,10);
   }
   function windowOf(g) {
-    const m = kickMinutes(g);
-    if (m < 14*60+30) return "early";
-    if (m < 19*60) return "aft";
+    const m = kickMinutes(g);          // CT minutes
+    if (m < 13*60+30) return "early";  // through 1:30 PM CT kicks
+    if (m < 18*60) return "aft";       // through 5:59 PM CT
     return "night";
   }
-  function fmtKick(g) { return g.kick_ct || (g.statusShort || "").replace(/9\/\d+\s+-\s+/, ""); }
+  function fmtKick(g) { return g.kick_ct || (g.statusShort || "").replace(/^\d{1,2}\/\d{1,2}\s+-\s+/, ""); }
   function rank(t) { return (t && t.rank && t.rank < 30) ? `<span class="rank">#${t.rank}</span>` : ""; }
   function flagClass(f) {
     if (["EXTREME HEAT","HOT","COLD","FREEZING"].includes(f)) return "hot";
@@ -58,7 +56,7 @@
   function isFinal(g) { return g.gameState === "post" || g.completed || (g.status || "").includes("FINAL"); }
   function clockLabel(g) {
     if (isFinal(g)) return "FINAL";
-    if (isLive(g)) return [g.statusShort || g.statusDetail || "LIVE", g.clock].filter(Boolean).join(" · ");
+    if (isLive(g)) { const st = g.statusShort || g.statusDetail || "LIVE"; return (g.clock && !st.includes(g.clock)) ? `${st} · ${g.clock}` : st; }
     return fmtKick(g);
   }
   function liveMath(g) {
@@ -81,6 +79,12 @@
     }
     return out;
   }
+  // ESPN sometimes serves "0-0" on the live scoreboard after games were played; keep the real one.
+  function betterRecord(current, incoming) {
+    if (!incoming) return current || "";
+    if (incoming === "0-0" && current && current !== "0-0") return current;
+    return incoming;
+  }
   function applyLive(g, live) {
     g.gameState = live.state || g.gameState;
     g.status = live.status || g.status;
@@ -92,11 +96,11 @@
     g.situation = live.situation;
     if (live.home && g.home) {
       g.home.score = String(live.home.score ?? g.home.score ?? "");
-      if (live.home.record) g.home.record = live.home.record;
+      g.home.record = betterRecord(g.home.record, live.home.record);
     }
     if (live.away && g.away) {
       g.away.score = String(live.away.score ?? g.away.score ?? "");
-      if (live.away.record) g.away.record = live.away.record;
+      g.away.record = betterRecord(g.away.record, live.away.record);
     }
     if (live.odds) {
       g.odds = Object.assign({}, g.odds || {}, live.odds);
@@ -187,6 +191,15 @@
     });
     return list;
   }
+  // Gold implied score only pre-game; once live/final the real score column takes over.
+  function implCell(v, started) {
+    if (started || v == null) return `<div class="impl"></div>`;
+    return `<div class="impl" title="Implied score from spread + total (ESPN/DK snapshot)">${v}<span class="proj">proj</span></div>`;
+  }
+  function liveStatusText(g, live) {
+    const st = g.statusDetail || g.statusShort || "";
+    return (live && g.clock && !st.includes(g.clock)) ? `${st} · ${g.clock}` : st;
+  }
   function card(g) {
     const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
     const tv=(g.networks||g.broadcasts||[]).join(" / ") || "TBD";
@@ -210,7 +223,7 @@
       const coverCls = math.coverState==="HOME COVER" ? "cover-home" : math.coverState==="AWAY COVER" ? "cover-away" : "cover-push";
       const totCls = math.totalState==="OVER" ? "cover-home" : math.totalState==="UNDER" ? "cover-away" : "cover-push";
       liveRow = `<div class="liverow">
-        <div><span class="livepill ${done?"final":"on"}">${done?"FINAL":"LIVE"}</span> ${g.statusDetail||g.statusShort||""}${g.clock && live ? " · "+g.clock : ""}</div>
+        <div><span class="livepill ${done?"final":"on"}">${done?"FINAL":"LIVE"}</span> ${liveStatusText(g, live)}</div>
         <div class="livemath">
           ${math.coverState?`<span class="${coverCls}">${math.coverState}${math.coverBy!=null?` ${math.coverBy>0?"+":""}${math.coverBy}`:""}</span>`:""}
           ${math.total!=null?`<span class="${totCls}">${math.combined} / ${math.total} · need ${math.overNeed} for OVER</span>`:""}
@@ -228,13 +241,13 @@
         <div class="trow">
           <img src="${a.logo||""}" alt="" onerror="this.style.opacity=0" />
           <div class="name">${rank(a)}${a.name||"TBD"}<span class="rec">${a.record||""}</span></div>
-          <div class="impl">${impl.away!=null?impl.away:""}</div>
+          ${implCell(impl.away, live || done)}
           <div class="score">${showScore ? (a.score||"0") : ""}</div>
         </div>
         <div class="trow">
           <img src="${h.logo||""}" alt="" onerror="this.style.opacity=0" />
           <div class="name">${rank(h)}${h.name||"TBD"}<span class="rec">${h.record||""}</span></div>
-          <div class="impl">${impl.home!=null?impl.home:""}</div>
+          ${implCell(impl.home, live || done)}
           <div class="score">${showScore ? (h.score||"0") : ""}</div>
         </div>
       </div>
@@ -318,7 +331,7 @@
         const math = liveMath(g);
         const sit = g.situation || {};
         html += `<div class="deskcard"><div class="t"><span class="tag heat">LIVE</span>${g.shortName} ${g.away&&g.away.score||0}–${g.home&&g.home.score||0}</div>
-          <div class="d">${g.statusDetail||""} ${g.clock||""} · ${math.coverState||""} ${math.coverBy!=null?math.coverBy:""} · ${math.combined}/${math.total??"—"} total · ${sit.text||sit.lastPlay||""}</div></div>`;
+          <div class="d">${liveStatusText(g, true)} · ${math.coverState||""} ${math.coverBy!=null?math.coverBy:""} · ${math.combined}/${math.total??"—"} total · ${sit.text||sit.lastPlay||""}</div></div>`;
       });
       html += `</div>`;
     }
@@ -345,7 +358,7 @@
     });
     const blob = new Blob([[headers.join(","),...rows].join("\n")], {type:"text/csv"});
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href=url; a.download="cfb-gameday-week1.csv"; a.click();
+    const a = document.createElement("a"); a.href=url; a.download=`cfb-gameday-${(DATA.week_label||"slate").toLowerCase().replace(/[^a-z0-9]+/g,"-")}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
   function render() {
@@ -413,7 +426,8 @@
     const s=e.target.closest("[data-star]"); if(s){ toggleStar(s.dataset.star); return; }
     const c=e.target.closest("[data-copy]"); if(c){ const g=games.find(x=>x.id===c.dataset.copy); if(g) copyText(blurb(g), c); }
   });
+  if (DATA.week_label && $("kicker")) $("kicker").textContent = DATA.week_label;
   pills(); render();
   pollLive();
-  setInterval(pollLive, 15000);
+  setInterval(pollLive, 30000);
 })();

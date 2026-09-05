@@ -85,6 +85,7 @@
   
     .trow { display:grid; grid-template-columns:28px 1fr auto auto; gap:8px; align-items:center; }
     .impl { color:var(--gold2); font-size:12px; font-weight:700; }
+    .impl .proj { color:var(--dim); font-size:9px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-left:3px; }
     .section { padding:0 12px 20px; }
     .netblock { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
     .netgame b { font-weight:800; font-size:14px; }
@@ -111,7 +112,7 @@
 <body>
   <div class="wrap">
     <header>
-      <div class="kicker">Week 1 · 2026</div>
+      <div class="kicker" id="kicker">Week 1 · 2026</div>
       <h1>CFB GameDay Board</h1>
       <div class="sub" id="updated">Venue, weather, implied score, CT kickoff</div>
     </header>
@@ -123,7 +124,7 @@
     <div class="stats" id="stats"></div>
     <div class="desk" id="desk"></div>
     <div id="main"></div>
-    <footer>Run python3 server.py and open http://127.0.0.1:8765/ for live ESPN scores every 15s. Cover math uses the posted home spread vs current margin. Not betting advice.</footer>
+    <footer>Run python3 server.py and open http://127.0.0.1:8765/ for live ESPN scores every 30s. Cover math uses the posted home spread (ESPN/DK snapshot, not live steam) vs current margin. Gold numbers on pre-game cards are implied scores, not points. Not betting advice.</footer>
   </div>
   <script src="games.js"></script>
   <script src="app.js"></script>
