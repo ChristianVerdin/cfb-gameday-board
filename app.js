@@ -480,7 +480,8 @@
     if (!f.known) return;
     liveOnly = f.liveOnly; starredOnly = f.starredOnly; view = f.view;
     pills(); render();
-    window.scrollTo(0, 0);
+    if (f.view !== "cards") { const m = $("main"); if (m) m.scrollIntoView({ block: "start" }); }
+    else window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", applyHash);
   applyHash();

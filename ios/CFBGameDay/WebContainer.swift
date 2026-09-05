@@ -36,9 +36,9 @@ final class WebContainer: NSObject, ObservableObject {
         webView.scrollView.refreshControl = refresh
     }
 
-    func loadIfNeeded() {
+    func loadIfNeeded(fragment: String = "all") {
         guard webView.url == nil else { return }
-        load(fragment: "all")
+        load(fragment: fragment)
     }
 
     func load(fragment: String) {
@@ -51,6 +51,7 @@ final class WebContainer: NSObject, ObservableObject {
     /// Native tabs drive the site's filters through the URL hash; app.js listens for hashchange.
     func show(fragment: String) {
         guard webView.url != nil, failure == nil else { load(fragment: fragment); return }
+        if webView.isLoading { load(fragment: fragment); return }   // hash set before app.js exists would be lost
         webView.evaluateJavaScript("location.hash = '#\(fragment)';", completionHandler: nil)
     }
 

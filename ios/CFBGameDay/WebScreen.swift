@@ -26,8 +26,8 @@ struct WebScreen: View {
             }
         }
         .onAppear {
-            container.loadIfNeeded()
-            container.show(fragment: fragment)
+            if container.webView.url == nil { container.loadIfNeeded(fragment: fragment) }
+            else { container.show(fragment: fragment) }
         }
     }
 }
