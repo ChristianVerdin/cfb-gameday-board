@@ -117,6 +117,10 @@ def load_conferences() -> tuple[dict, set]:
     return dict(FALLBACK_CONFS), set(FALLBACK_CONFS)
 
 
+def has_line(odds: dict | None) -> bool:
+    return bool(odds) and (odds.get("spread") is not None or odds.get("total") is not None)
+
+
 class Geocoder:
     def __init__(self, existing: dict, sleep: float):
         self.cache = {}
@@ -281,7 +285,8 @@ def team_block(comp_team: dict, conf_names: dict) -> dict:
     }
 
 
-def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, sleep: float) -> dict:
+def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, sleep: float,
+               prior_odds: dict | None = None) -> dict:
     comp = (event.get("competitions") or [{}])[0]
     status = event.get("status") or {}
     stype = status.get("type") or {}
@@ -319,6 +324,8 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     temp = wx.get("temp") if wx and wx.get("temp") is not None else (espn_weather or {}).get("temp")
 
     odds = parse_odds(comp)
+    if not has_line(odds) and has_line(prior_odds):
+        odds = prior_odds          # ESPN drops odds at kickoff; keep the last posted line as the close
     spread = odds.get("spread") if odds else None
     total = odds.get("total") if odds else None
     if spread is not None and total is not None:
@@ -445,11 +452,12 @@ def main() -> int:
 
     conf_names, fbs_ids = load_conferences()
     geocoder = Geocoder(existing, args.sleep)
+    prior = {g["id"]: g.get("odds") for g in existing.get("games") or [] if g.get("id")}
     games = []
     print(f"Building {len(events)} games (geocode + kickoff-hour forecast)")
     for i, event in enumerate(events, 1):
         try:
-            game = build_game(event, conf_names, fbs_ids, geocoder, args.sleep)
+            game = build_game(event, conf_names, fbs_ids, geocoder, args.sleep, prior.get(event.get("id")))
         except Exception as exc:
             print(f"  skip {event.get('shortName')} ({event.get('id')}): {exc}")
             continue
