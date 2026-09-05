@@ -69,8 +69,7 @@ Fastest way to get the phone on it from anywhere, on gameday only:
 
 ```
 brew install cloudflared
-python3 server.py                                  # terminal 1
-cloudflared tunnel --url http://127.0.0.1:8765     # terminal 2, open the printed https URL
+scripts/tunnel.sh        # starts server.py if needed, prints the https URL, Ctrl+C ends both
 ```
 
 Stable hostnames, Tailscale, and an always-on box are in `docs/DEPLOY.md`.
