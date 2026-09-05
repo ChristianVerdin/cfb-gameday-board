@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import json
+import os
+import threading
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
-PORT = 8765
-DATES = ["20260904", "20260905", "20260906", "20260907"]
+PORT = int(os.environ.get("PORT", "8765"))
+FALLBACK_DATES = ["20260904", "20260905", "20260906", "20260907"]
+EASTERN = ZoneInfo("America/New_York")
+CACHE_TTL = 20          # seconds between ESPN pulls for a date with action
+IDLE_TTL = 300          # seconds when nothing is live and no kick is near
+NEAR_KICK = 90 * 60     # seconds before kickoff to switch to CACHE_TTL
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -32,6 +40,28 @@ def fetch_json(url: str) -> dict:
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "ignore")[:300]
         raise RuntimeError(f"ESPN {exc.code} {exc.reason} :: {body}") from exc
+
+
+def load_dates() -> list[str]:
+    """ESPN (Eastern) dates to poll, from the snapshot payload."""
+    try:
+        data = json.loads((ROOT / "games.json").read_text("utf-8"))
+    except Exception as exc:
+        print(f"games.json unreadable ({exc}); using fallback dates")
+        return FALLBACK_DATES
+    if isinstance(data.get("dates"), list) and data["dates"]:
+        return [str(d) for d in data["dates"]]
+    found = set()
+    for game in data.get("games") or []:
+        try:
+            utc = datetime.strptime(game["date"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+        except (KeyError, ValueError):
+            continue
+        found.add(utc.astimezone(EASTERN).strftime("%Y%m%d"))
+    return sorted(found) or FALLBACK_DATES
+
+
+DATES = load_dates()
 
 
 def endpoints(date: str) -> list[str]:
@@ -115,16 +145,63 @@ def parse_odds(comp: dict) -> dict | None:
     return out
 
 
+class DateCache:
+    """Per-date ESPN cache. Frozen once every game on that date is final."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.entries = {}   # date -> {events, fetched, done, error}
+
+    @staticmethod
+    def _ttl(events: list) -> int:
+        now = time.time()
+        soon = False
+        for event in events:
+            state = ((event.get("status") or {}).get("type") or {}).get("state")
+            if state == "in":
+                return CACHE_TTL
+            if state == "pre":
+                try:
+                    kick = datetime.strptime(event["date"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+                    if kick.timestamp() - now <= NEAR_KICK:
+                        soon = True
+                except (KeyError, ValueError):
+                    soon = True
+        return CACHE_TTL if soon else IDLE_TTL
+
+    def get(self, date: str) -> tuple[list, str | None, bool]:
+        with self.lock:
+            entry = self.entries.get(date)
+            if entry:
+                if entry["done"]:
+                    return entry["events"], None, True
+                if time.time() - entry["fetched"] < self._ttl(entry["events"]):
+                    return entry["events"], entry.get("error"), True
+            try:
+                events = pull_date(date)
+                error = None
+            except Exception as exc:
+                events = entry["events"] if entry else []
+                error = str(exc)
+            states = [((e.get("status") or {}).get("type") or {}).get("state") for e in events]
+            done = bool(events) and error is None and all(st == "post" for st in states)
+            if done:
+                print(f"  {date} all final; frozen")
+            self.entries[date] = {"events": events, "fetched": time.time(), "done": done, "error": error}
+            return events, error, False
+
+
+CACHE = DateCache()
+
+
 def snapshot() -> dict:
     events = []
     seen = set()
     errors = []
     for date in DATES:
-        try:
-            batch = pull_date(date)
-        except Exception as exc:
-            errors.append(f"{date}: {exc}")
-            continue
+        batch, error, _cached = CACHE.get(date)
+        if error:
+            errors.append(f"{date}: {error}")
         for event in batch:
             eid = event.get("id")
             if not eid or eid in seen:
@@ -143,7 +220,8 @@ def snapshot() -> dict:
         for team in comp.get("competitors") or []:
             side = team.get("homeAway")
             recs = team.get("records") or []
-            overall = next((r.get("summary") for r in recs if r.get("type") == "total"), None)
+            overall = next((r.get("summary") for r in recs
+                            if r.get("type") == "total" or r.get("name") == "overall"), None)
             teams[side] = {
                 "id": (team.get("team") or {}).get("id"),
                 "abbr": (team.get("team") or {}).get("abbreviation"),
@@ -175,6 +253,7 @@ def snapshot() -> dict:
         "count": len(live),
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "warnings": errors,
+        "dates": DATES,
         "games": live,
     }
 
@@ -217,6 +296,7 @@ class Handler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"CFB GameDay live board: http://127.0.0.1:{PORT}/")
+    print(f"Polling ESPN dates: {', '.join(DATES)}")
     print("Leave this terminal open. Do not open board.html as a file.")
     try:
         httpd.serve_forever()
