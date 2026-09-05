@@ -76,8 +76,9 @@ git add ios/project.yml && git commit -m "iOS 1.0.1 (3)" && git push
 The script regenerates the project, archives, exports an App Store IPA
 (`ios/ExportOptions.plist`), validates, and uploads through the App Store
 Connect API using `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`
-and the `.p8` in `~/.appstoreconnect/private_keys/`. Verified through export on
-2026-09-05; the upload step is untested until the API key exists.
+and the `.p8` in `~/.appstoreconnect/private_keys/`. Verified end to end on 2026-09-05:
+export plus `altool --validate-app` passed with the API key (key id FQRRWFFM28,
+App Manager role; the `.p8` is in `~/.appstoreconnect/private_keys/`, never in git).
 `--no-upload` stops at the IPA, then `open ios/build/CFBGameDay.xcarchive` and
 upload from Organizer as a fallback. After upload: App Store Connect, add a new
 version, What's New, attach the build, submit.
