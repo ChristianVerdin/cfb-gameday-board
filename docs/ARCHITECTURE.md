@@ -204,6 +204,19 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
 - `python3 scripts/check.py` runs the offline smoke test; run it after touching
   `impact()`, `kick_ct()`, or `liveMath()`.
 
+## PWA
+
+`manifest.webmanifest` + `icons/` (SVG source, PNGs rendered with `qlmanage`
+and `sips`) + `sw.js`. The service worker precaches the shell (`/`,
+`index.html`, `app.js`, `games.js`, manifest, icons) and answers every
+same-origin GET network-first with cache fallback, so a fresh deploy is picked
+up on the next online load and the last snapshot still renders offline. It
+never intercepts `/api/*`: live data is network-only and the header shows the
+`LIVE ERR` state when the server is unreachable. Bump `VERSION` in `sw.js`
+to drop old caches. `app.js` registers the worker on any non-`file:` origin
+(localhost counts as secure) and shows a one-time Add-to-Home-Screen hint in
+iOS Safari when not already running standalone.
+
 ## Hosting (not done)
 
 The proxy binds `127.0.0.1` on purpose: it is an unauthenticated ESPN

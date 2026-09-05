@@ -44,6 +44,25 @@ needs the server because the browser cannot call ESPN directly.
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math |
+| `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
+
+## Install on iPhone (PWA)
+
+The board is a Progressive Web App: a manifest, home-screen icons, and a
+service worker that caches only the UI shell. Live scores are never cached.
+
+1. Serve it somewhere Safari on the phone can reach. On the same Wi-Fi that is
+   `http://<your-mac-ip>:8765/` only if you change the bind address in
+   `server.py`; off-LAN needs a tunnel (Cloudflare Tunnel or Tailscale Serve).
+   The default `127.0.0.1` bind is deliberate, see Limitations.
+2. Open the URL in Safari (not Chrome; iOS only installs PWAs from Safari).
+3. Tap Share, then **Add to Home Screen**, then Add.
+4. Launch it from the icon. It opens full-screen with the dark status bar,
+   remembers stars, and shows the last snapshot if the server is unreachable
+   (the header says so instead of LIVE).
+
+The page shows a one-time Add-to-Home-Screen hint in Safari on iOS; dismiss
+with the ×. Ship a new shell by bumping `VERSION` in `sw.js`.
 
 ## Weekly refresh
 

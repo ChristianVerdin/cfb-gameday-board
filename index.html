@@ -3,8 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GameDay" />
   <meta name="theme-color" content="#0b1220" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <title>CFB GameDay Board</title>
   <style>
     :root {
@@ -77,6 +83,9 @@
     .flag.indoor { background: #24183a; color: var(--purple); }
     .empty { text-align: center; color: var(--muted); padding: 40px 16px; }
     footer { color: var(--dim); font-size: 11px; text-align: center; padding: 4px 16px 28px; line-height: 1.4; }
+    .a2hs { margin: 0 14px 10px; background: #10192b; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .a2hs b { color: var(--text); }
+    .a2hs button { background: none; border: 0; color: var(--dim); font-size: 16px; padding: 0 4px; }
     @media (min-width: 900px) {
       .wrap { max-width: 1120px; margin: 0 auto; }
       .list { display: grid; grid-template-columns: 1fr 1fr; }
@@ -124,6 +133,7 @@
     <div class="stats" id="stats"></div>
     <div class="desk" id="desk"></div>
     <div id="main"></div>
+    <div class="a2hs" id="a2hs" hidden><span><b>Add to Home Screen:</b> Share → Add to Home Screen. Opens full-screen like an app.</span><button id="a2hs-x" aria-label="Dismiss">×</button></div>
     <footer>Run python3 server.py and open http://127.0.0.1:8765/ for live ESPN scores every 30s. Cover math uses the posted home spread (ESPN/DK snapshot, not live steam) vs current margin. Gold numbers on pre-game cards are implied scores, not points. Not betting advice.</footer>
   </div>
   <script src="games.js"></script>

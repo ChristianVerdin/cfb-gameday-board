@@ -427,6 +427,17 @@
     const c=e.target.closest("[data-copy]"); if(c){ const g=games.find(x=>x.id===c.dataset.copy); if(g) copyText(blurb(g), c); }
   });
   if (DATA.week_label && $("kicker")) $("kicker").textContent = DATA.week_label;
+  // PWA: UI shell cached by sw.js; live data is never served from cache.
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+  const A2HS_KEY = "cfb_gameday_a2hs_dismissed";
+  const iosSafari = /iphone|ipad|ipod/i.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (iosSafari && !standalone && !localStorage.getItem(A2HS_KEY) && $("a2hs")) {
+    $("a2hs").hidden = false;
+    $("a2hs-x").onclick = () => { localStorage.setItem(A2HS_KEY, "1"); $("a2hs").hidden = true; };
+  }
   pills(); render();
   pollLive();
   setInterval(pollLive, 30000);
