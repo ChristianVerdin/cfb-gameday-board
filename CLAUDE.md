@@ -24,6 +24,7 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - `games.js` / `games.json` snapshot payload (`window.CFB_DATA`). Committed per week.
 - `server.py` static server + `/api/live` ESPN proxy, per-date cache, closing-line book (`lines.json`, gitignored).
 - `scripts/refresh_week.py` weekly snapshot builder. `scripts/check.py` smoke test.
+- `manifest.webmanifest`, `sw.js`, `icons/` PWA. Shell-only cache; `/api/*` never cached. Bump `VERSION` in `sw.js` when the shell changes.
 
 ## Product rules
 - Times in America/Chicago everywhere.

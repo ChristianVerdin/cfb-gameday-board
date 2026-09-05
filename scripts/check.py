@@ -162,8 +162,26 @@ def test_snapshot_shape():
     check("games.js prefix", js.startswith("window.CFB_DATA = {"), True)
 
 
+def test_pwa():
+    try:
+        m = json.loads((ROOT / "manifest.webmanifest").read_text("utf-8"))
+    except Exception as exc:
+        FAILS.append(f"manifest unreadable: {exc}")
+        return
+    check("manifest display", m.get("display"), "standalone")
+    check("manifest start_url", m.get("start_url"), "/")
+    for icon in m.get("icons") or []:
+        check(f"icon exists {icon['src']}", (ROOT / icon["src"].lstrip("/")).is_file(), True)
+    check("apple-touch-icon", (ROOT / "icons/apple-touch-icon.png").is_file(), True)
+    sw = (ROOT / "sw.js").read_text("utf-8")
+    check("sw skips api", 'startsWith("/api/")' in sw, True)
+    html = (ROOT / "index.html").read_text("utf-8")
+    check("manifest linked", 'rel="manifest"' in html, True)
+    check("apple icon linked", 'rel="apple-touch-icon"' in html, True)
+
+
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape):
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))

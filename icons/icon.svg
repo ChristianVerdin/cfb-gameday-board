@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="0" fill="#0b1220"/>
+  <g transform="translate(256 236) rotate(-35)">
+    <ellipse rx="150" ry="92" fill="#e8c36a"/>
+    <ellipse rx="150" ry="92" fill="none" stroke="#1a1406" stroke-width="6"/>
+    <path d="M-150 0 Q-110 -40 -70 0" fill="none" stroke="#0b1220" stroke-width="10" stroke-linecap="round"/>
+    <path d="M150 0 Q110 -40 70 0" fill="none" stroke="#0b1220" stroke-width="10" stroke-linecap="round"/>
+    <line x1="-60" y1="0" x2="60" y2="0" stroke="#f4f7fb" stroke-width="10" stroke-linecap="round"/>
+    <g stroke="#f4f7fb" stroke-width="9" stroke-linecap="round">
+      <line x1="-40" y1="-14" x2="-40" y2="14"/><line x1="-20" y1="-14" x2="-20" y2="14"/>
+      <line x1="0" y1="-14" x2="0" y2="14"/><line x1="20" y1="-14" x2="20" y2="14"/><line x1="40" y1="-14" x2="40" y2="14"/>
+    </g>
+  </g>
+  <text x="256" y="420" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="800" font-size="88" letter-spacing="6" fill="#e8c36a">CFB</text>
+</svg>
