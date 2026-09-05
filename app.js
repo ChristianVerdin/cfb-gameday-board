@@ -5,7 +5,14 @@
   const $ = (id) => document.getElementById(id);
   const STAR_KEY = "cfb_gameday_stars_v1";
   const stars = new Set(JSON.parse(localStorage.getItem(STAR_KEY) || "[]"));
+  // Client line book: last non-null odds per game. ESPN nulls odds on finals, so this is the closing line.
+  const LINES_KEY = "cfb_gameday_lines_v1";
+  let lineBook = {};
+  try { lineBook = JSON.parse(localStorage.getItem(LINES_KEY) || "{}") || {}; } catch (e) { lineBook = {}; }
+  let lineBookDirty = false;
   const CT = "America/Chicago";
+  const ET = "America/New_York";
+  const etDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: ET, year:"numeric", month:"2-digit", day:"2-digit" });
   const ctDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: CT, year:"numeric", month:"2-digit", day:"2-digit" });
   const ctTimeFmt = new Intl.DateTimeFormat("en-US", { timeZone: CT, hour:"2-digit", minute:"2-digit", hourCycle:"h23" });
   const ctDayFmt = new Intl.DateTimeFormat("en-US", { timeZone: CT, weekday:"short" });
@@ -79,6 +86,24 @@
     }
     return out;
   }
+  // Which odds to keep: a real incoming line wins (unless the game is over and we already hold its close);
+  // a null incoming line falls back to the stored close, then to whatever we had.
+  function chooseOdds(stored, incoming, state, current) {
+    const real = incoming && (incoming.spread != null || incoming.total != null);
+    if (real) return (state === "post" && stored) ? stored : incoming;
+    return stored || current || null;
+  }
+  // ESPN dates (Eastern calendar) that still have a game not yet final.
+  function liveDatesFor(list, dates) {
+    const byDate = {};
+    list.forEach(g => {
+      const d = kickDate(g); if (!d) return;
+      const key = etDateFmt.format(d).replace(/-/g, "");
+      (byDate[key] = byDate[key] || []).push(g);
+    });
+    const known = (dates && dates.length) ? dates.map(String) : Object.keys(byDate).sort();
+    return known.filter(k => !byDate[k] || byDate[k].some(g => !isFinal(g)));
+  }
   // ESPN sometimes serves "0-0" on the live scoreboard after games were played; keep the real one.
   function betterRecord(current, incoming) {
     if (!incoming) return current || "";
@@ -102,8 +127,10 @@
       g.away.score = String(live.away.score ?? g.away.score ?? "");
       g.away.record = betterRecord(g.away.record, live.away.record);
     }
-    if (live.odds) {
-      g.odds = Object.assign({}, g.odds || {}, live.odds);
+    const chosen = chooseOdds(lineBook[g.id], live.odds, live.state, g.odds);
+    if (chosen && chosen !== lineBook[g.id]) { lineBook[g.id] = chosen; lineBookDirty = true; }
+    if (chosen) {
+      g.odds = Object.assign({}, g.odds || {}, chosen);
       if (g.odds.total != null && g.odds.spread != null) {
         const total = Number(g.odds.total), hs = Number(g.odds.spread);
         g.implied = { home: +((total - hs) / 2).toFixed(1), away: +((total + hs) / 2).toFixed(1) };
@@ -118,13 +145,16 @@
       render();
       return;
     }
+    const dates = liveDatesFor(games, DATA.dates);
+    if (!dates.length) { liveStatus.ok = true; liveStatus.last = new Date(); render(); return; }   // slate is over
     try {
-      const res = await fetch("/api/live", { cache: "no-store" });
+      const res = await fetch("/api/live?dates=" + dates.join(","), { cache: "no-store" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "live failed");
       const map = {};
       (data.games || []).forEach(g => { map[g.id] = g; });
       games.forEach(g => { if (map[g.id]) applyLive(g, map[g.id]); });
+      if (lineBookDirty) { try { localStorage.setItem(LINES_KEY, JSON.stringify(lineBook)); } catch (e) {} lineBookDirty = false; }
       liveStatus.ok = true;
       liveStatus.error = null;
       liveStatus.last = new Date();

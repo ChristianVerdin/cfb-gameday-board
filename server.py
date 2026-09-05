@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -238,23 +240,24 @@ class LineBook:
 LINES = LineBook(LINES_PATH)
 
 
-def snapshot() -> dict:
-    events = []
-    seen = set()
-    errors = []
-    for date in DATES:
-        batch, error, _cached = CACHE.get(date)
-        if error:
-            errors.append(f"{date}: {error}")
-        for event in batch:
-            eid = event.get("id")
-            if not eid or eid in seen:
-                continue
-            seen.add(eid)
-            events.append(event)
-    if not events:
-        raise RuntimeError(" | ".join(errors) or "ESPN returned no games")
+DATE_RE = re.compile(r"^\d{8}$")
 
+
+def parse_dates(query: str) -> list[str] | None:
+    """?dates=20260912,20260913 -> validated list, max 5. None when absent."""
+    raw = urllib.parse.parse_qs(query).get("dates")
+    if not raw:
+        return None
+    found = []
+    for d in raw[0].split(","):
+        d = d.strip()
+        if DATE_RE.match(d) and d not in found:
+            found.append(d)
+    return found[:5] or None
+
+
+def live_payload(events: list, lines: "LineBook | None" = None) -> list:
+    """Flatten ESPN events into the /api/live game shape."""
     live = []
     for event in events:
         comp = (event.get("competitions") or [{}])[0]
@@ -273,6 +276,9 @@ def snapshot() -> dict:
                 "record": overall,
                 "winner": bool(team.get("winner")),
             }
+        odds = parse_odds(comp)
+        if lines is not None:
+            odds = lines.apply(event.get("id"), odds, status.get("state"))
         live.append({
             "id": event.get("id"),
             "state": status.get("state"),
@@ -284,7 +290,7 @@ def snapshot() -> dict:
             "completed": bool(status.get("completed")),
             "home": teams.get("home"),
             "away": teams.get("away"),
-            "odds": LINES.apply(event.get("id"), parse_odds(comp), status.get("state")),
+            "odds": odds,
             "situation": {
                 "text": situation.get("downDistanceText") or situation.get("possessionText"),
                 "lastPlay": ((situation.get("lastPlay") or {}).get("text")),
@@ -292,13 +298,34 @@ def snapshot() -> dict:
                 "isRedZone": bool(situation.get("isRedZone")),
             } if situation else None,
         })
+    return live
+
+
+def snapshot(dates: list[str] | None = None) -> dict:
+    dates = dates or DATES
+    events = []
+    seen = set()
+    errors = []
+    for date in dates:
+        batch, error, _cached = CACHE.get(date)
+        if error:
+            errors.append(f"{date}: {error}")
+        for event in batch:
+            eid = event.get("id")
+            if not eid or eid in seen:
+                continue
+            seen.add(eid)
+            events.append(event)
+    if not events:
+        raise RuntimeError(" | ".join(errors) or "ESPN returned no games")
+    live = live_payload(events, LINES)
     LINES.flush()
     return {
         "ok": True,
         "count": len(live),
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "warnings": errors,
-        "dates": DATES,
+        "dates": dates,
         "games": live,
     }
 
@@ -327,13 +354,13 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        path = self.path.split("?", 1)[0]
+        path, _, query = self.path.partition("?")
         if path in ("/", "/index.html"):
             self.path = "/index.html"
             return super().do_GET()
         if path == "/api/live":
             try:
-                self.send_json(200, snapshot())
+                self.send_json(200, snapshot(parse_dates(query)))
             except Exception as exc:
                 print("LIVE ERROR:", exc)
                 self.send_json(502, {"ok": False, "error": str(exc)})
