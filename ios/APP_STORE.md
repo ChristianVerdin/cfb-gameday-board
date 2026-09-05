@@ -1,13 +1,16 @@
 # App Store listing and submission notes
 
+Status: 1.0.0 (1) submitted 2026-09-05, Waiting for Review, manual release.
+Live state and what to do on approval or rejection: `../CONTEXT.md`.
+The copy below is also laid out field-by-field in `PASTE_ME.md`.
+
 Everything below is copy-paste ready for App Store Connect. Nothing in it
 promises wagering, picks, or "locks". Keep it that way through Review.
 
 ## Prerequisites (must be true before you upload)
 
-- https://cfbgameday.app serves the board, `/privacy`, and `/support` (until the
-  domain is live, `BoardURL` in `ios/project.yml` points at the vercel.app alias;
-  switch it and regenerate before the App Store build).
+- https://cfbgameday.app serves the board, `/privacy`, and `/support`.
+  `BoardURL` / `BoardHost` in `ios/project.yml` point at that domain.
 - `ios/project.yml` carries `DEVELOPMENT_TEAM: 3V73W9NUZ6` (Hoyne Labs LLC), so
   automatic signing survives `xcodegen generate`.
 - The app has been run on a physical iPhone (Review checks this, 2.1).
