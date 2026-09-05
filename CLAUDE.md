@@ -5,8 +5,9 @@ ESPN, implied scores, TV, then live cover/total state. Owner: cv
 (@SportsBettingML). Public repo: https://github.com/ChristianVerdin/cfb-gameday-board
 
 ## Session start
-1. Read this file, then `README.md`. `docs/ARCHITECTURE.md` when touching
-   data flow, ESPN, or weather.
+1. Read this file, then `CONTEXT.md` (live state, open items), then `README.md`.
+   `docs/ARCHITECTURE.md` when touching data flow, ESPN, or weather; `AGENTS.md`
+   for the map of everything that runs unattended.
 2. `git status` and `git log --oneline | head -5`.
 3. Check whether `server.py` is already running on 8765 (`lsof -nP -iTCP:8765`).
    On a game day, do not kill it. Test changes on another port: `PORT=8766 python3 server.py`.
@@ -19,6 +20,10 @@ python3 scripts/check.py          # offline smoke test, run after touching rules
 scripts/tunnel.sh                 # gameday Cloudflare quick tunnel, prints the https URL
 ```
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
+
+## Status
+- Web live at https://cfbgameday.app. iOS 1.0.0 (1) submitted to App Review 2026-09-05,
+  manual release. Details and what to do on approval/rejection: `CONTEXT.md`.
 
 ## Hosted
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
