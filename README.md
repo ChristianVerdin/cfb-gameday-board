@@ -7,6 +7,15 @@ start.
 
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
+## No keys, no accounts
+
+- No API keys are required for a local run.
+- ESPN's scoreboard feed and Open-Meteo are public and keyless.
+- Live mode is a local proxy to ESPN on `127.0.0.1`, not a sportsbook
+  connection. Nothing here logs into or scrapes DraftKings, FanDuel, or any
+  book.
+- Not betting advice.
+
 ## Run locally
 
 ```
@@ -81,6 +90,12 @@ The committed `games.json` / `games.js` is the Week 1 2026 slate
 (Fri Sep 4 to Mon Sep 7, 2026), generated 2026-09-04 21:10 UTC. Lines and
 weather in that file are as of that moment. Run the refresh script for any
 later week.
+
+## Secrets policy
+
+There are none. The repo must never contain `.env` files, API keys, AWS
+credentials, sportsbook cookies, or model-provider tokens. `.gitignore` blocks
+the usual filenames; scan the tree before adding anything new.
 
 ## License
 
