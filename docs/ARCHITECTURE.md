@@ -93,6 +93,15 @@ games[]: { id, state, status, statusDetail, statusShort, period, clock,
            odds{...}, situation{text,lastPlay,possession,isRedZone} | null }
 ```
 
+### Closing line capture
+
+ESPN removes `odds` from an event once it is final. `server.py` keeps a
+`LineBook`: the last non-null odds seen per game id, seeded from the snapshot
+and persisted to `lines.json` (gitignored) whenever it changes. Once a game is
+`post` the stored line is frozen and served in its place, so cover math on a
+final uses the closing line even after a page reload or server restart. A
+server that only started after a game ended serves the snapshot line for it.
+
 ### Polling and caching
 
 - The client polls `/api/live` every 30 s (and on the Refresh button).

@@ -192,6 +192,50 @@ class DateCache:
 
 
 CACHE = DateCache()
+LINES_PATH = ROOT / "lines.json"
+
+
+class LineBook:
+    """Last non-null odds seen per game. ESPN drops odds once a game is final,
+    so this is the closing line the client uses for finals after a reload."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.lock = threading.Lock()
+        self.dirty = False
+        try:
+            self.lines = json.loads(path.read_text("utf-8"))
+        except Exception:
+            self.lines = {}
+        try:  # snapshot odds as the floor for games this process never saw live
+            for game in json.loads((ROOT / "games.json").read_text("utf-8")).get("games") or []:
+                if game.get("id") and game.get("odds") and game["id"] not in self.lines:
+                    self.lines[game["id"]] = game["odds"]
+                    self.dirty = True
+        except Exception:
+            pass
+
+    def apply(self, game_id: str, odds: dict | None, state: str | None) -> dict | None:
+        with self.lock:
+            if odds and (odds.get("spread") is not None or odds.get("total") is not None):
+                if state != "post" or game_id not in self.lines:
+                    if self.lines.get(game_id) != odds:
+                        self.lines[game_id] = odds
+                        self.dirty = True
+                return odds
+            return self.lines.get(game_id)
+
+    def flush(self):
+        with self.lock:
+            if not self.dirty:
+                return
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.lines), "utf-8")
+            tmp.replace(self.path)
+            self.dirty = False
+
+
+LINES = LineBook(LINES_PATH)
 
 
 def snapshot() -> dict:
@@ -240,7 +284,7 @@ def snapshot() -> dict:
             "completed": bool(status.get("completed")),
             "home": teams.get("home"),
             "away": teams.get("away"),
-            "odds": parse_odds(comp),
+            "odds": LINES.apply(event.get("id"), parse_odds(comp), status.get("state")),
             "situation": {
                 "text": situation.get("downDistanceText") or situation.get("possessionText"),
                 "lastPlay": ((situation.get("lastPlay") or {}).get("text")),
@@ -248,6 +292,7 @@ def snapshot() -> dict:
                 "isRedZone": bool(situation.get("isRedZone")),
             } if situation else None,
         })
+    LINES.flush()
     return {
         "ok": True,
         "count": len(live),
@@ -280,7 +325,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/index.html", "/board.html"):
+        if path in ("/", "/index.html"):
             self.path = "/index.html"
             return super().do_GET()
         if path == "/api/live":

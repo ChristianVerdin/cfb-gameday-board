@@ -12,3 +12,5 @@ id_ed25519
 .aws/
 credentials
 **/secrets*
+lines.json
+lines.tmp
