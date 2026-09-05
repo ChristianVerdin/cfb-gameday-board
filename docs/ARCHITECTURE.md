@@ -171,11 +171,13 @@ Done once per week by `scripts/refresh_week.py`, never live.
 ## Rebuilding `games.json` for a new week
 
 ```
+python3 scripts/refresh_week.py                      # Thu..Mon of the current/next slate
 python3 scripts/refresh_week.py --start 20260911 --end 20260914
 ```
 
-- `--start` / `--end` are inclusive ESPN (Eastern) dates, `YYYYMMDD`.
-  Thursday-through-Monday covers a normal week; a single date works too.
+- `--start` / `--end` are inclusive ESPN (Eastern) dates, `YYYYMMDD`. With no
+  arguments: the Thursday on or before today (Thu-Mon) or the coming Thursday
+  (Tue-Wed), through the following Monday. `--start` alone means that one day.
 - `--out DIR` writes elsewhere (default: repo root). Useful to diff before
   overwriting.
 - Output: `games.json` and `games.js` with the payload

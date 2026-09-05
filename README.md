@@ -50,8 +50,13 @@ needs the server because the browser cannot call ESPN directly.
 Before each Saturday, rebuild the snapshot for the coming slate:
 
 ```
-python3 scripts/refresh_week.py --start 20260911 --end 20260914
+python3 scripts/refresh_week.py
 ```
+
+With no arguments it targets Thursday through Monday of the current or next
+slate (Tuesday and Wednesday roll forward). Pass `--start 20260911 --end
+20260914` to pick dates. Rerun it Saturday morning to refresh the forecast to
+same-day accuracy, then restart `server.py`.
 
 That pulls the ESPN scoreboard for each date, geocodes each venue city with
 Open-Meteo, pulls the hourly forecast at the local kickoff hour, computes the

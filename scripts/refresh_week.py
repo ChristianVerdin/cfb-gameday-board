@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild games.json / games.js for a new slate.
 
+    python3 scripts/refresh_week.py                      # next Thu..Mon slate
     python3 scripts/refresh_week.py --start 20260911 --end 20260914
 
 Pulls the ESPN scoreboard per date, geocodes each venue city with Open-Meteo,
@@ -83,6 +84,15 @@ def date_range(start: str, end: str) -> list[str]:
     if b < a:
         raise SystemExit("--end is before --start")
     return [(a + timedelta(days=i)).strftime("%Y%m%d") for i in range((b - a).days + 1)]
+
+
+def default_dates(today: datetime | None = None) -> tuple[str, str]:
+    """Thursday through Monday of the slate that is current or next.
+    Tue/Wed roll forward to the coming Thursday; Thu-Mon stay on the slate in progress."""
+    today = (today or datetime.now(CHICAGO)).date()
+    back = (today.weekday() - 3) % 7          # days since the last Thursday
+    thursday = today - timedelta(days=back) if back <= 4 else today + timedelta(days=7 - back)
+    return thursday.strftime("%Y%m%d"), (thursday + timedelta(days=4)).strftime("%Y%m%d")
 
 
 def parse_utc(iso: str) -> datetime:
@@ -397,8 +407,8 @@ def week_label(payload: dict, events: list) -> str | None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--start", required=True, help="first ESPN (Eastern) date, YYYYMMDD")
-    ap.add_argument("--end", required=True, help="last ESPN date, inclusive, YYYYMMDD")
+    ap.add_argument("--start", help="first ESPN (Eastern) date, YYYYMMDD (default: this/next Thursday)")
+    ap.add_argument("--end", help="last ESPN date, inclusive, YYYYMMDD (default: start + 4 days, Monday)")
     ap.add_argument("--out", default=str(ROOT), help="directory for games.json / games.js (default: repo root)")
     ap.add_argument("--sleep", type=float, default=0.2, help="seconds between Open-Meteo calls")
     args = ap.parse_args()
@@ -411,7 +421,10 @@ def main() -> int:
     except Exception:
         pass
 
-    dates = date_range(args.start, args.end)
+    start, end = default_dates()
+    start = args.start or start
+    end = args.end or (end if not args.start else args.start)
+    dates = date_range(start, end)
     print(f"ESPN scoreboard for {', '.join(dates)}")
     events, seen, label, warnings = [], set(), None, []
     for date in dates:
