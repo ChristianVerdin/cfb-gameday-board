@@ -11,7 +11,7 @@ settings:
   base:
     SWIFT_VERSION: "5.10"
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 3V73W9NUZ6   # Hoyne Labs LLC; keeps signing across xcodegen regenerations
     TARGETED_DEVICE_FAMILY: "1"          # iPhone only; "1,2" would trigger the iPad multitasking orientation rule at upload

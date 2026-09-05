@@ -68,8 +68,25 @@ git add games.json games.js && git commit -m "Snapshot: ..." && git push
 
 ## Shipping the next iOS build
 
-1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `ios/project.yml`.
-2. `cd ios && xcodegen generate`
-3. `xcodebuild -project CFBGameDay.xcodeproj -scheme CFBGameDay -configuration Release -destination 'generic/platform=iOS' -archivePath build/CFBGameDay.xcarchive -allowProvisioningUpdates archive`
-4. `open build/CFBGameDay.xcarchive`, then Distribute App, App Store Connect, Distribute (cv clicks; needs the Apple sign-in).
-5. App Store Connect: new version, What's New, attach build, submit.
+```
+scripts/release_ios.sh --bump 1.0.1     # or no --bump to keep the version; build number auto-increments
+git add ios/project.yml && git commit -m "iOS 1.0.1 (3)" && git push
+```
+
+The script regenerates the project, archives, exports an App Store IPA
+(`ios/ExportOptions.plist`), validates, and uploads through the App Store
+Connect API using `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`
+and the `.p8` in `~/.appstoreconnect/private_keys/`. Verified through export on
+2026-09-05; the upload step is untested until the API key exists.
+`--no-upload` stops at the IPA, then `open ios/build/CFBGameDay.xcarchive` and
+upload from Organizer as a fallback. After upload: App Store Connect, add a new
+version, What's New, attach the build, submit.
+
+## After approval
+
+1. Click **Release This Version** in App Store Connect.
+2. Un-hide the App Store links: remove `hidden` from `#store-link` in
+   `support.html` and `#store-footer` in `index.html` (badge already in
+   `icons/app-store-badge.svg`, URL `https://apps.apple.com/app/id6809035228`).
+3. Add the App Store link to `README.md`.
+4. Install the App Store Connect app on the phone for review/ratings pushes.

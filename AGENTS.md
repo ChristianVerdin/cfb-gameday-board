@@ -46,8 +46,14 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 **File:** `scripts/tunnel.sh` → `cloudflared tunnel --url http://127.0.0.1:8765`
 **When:** only if the hosted site is down. Random URL, Mac must stay awake, Ctrl+C ends it.
 
+## 7. iOS release script (manual, one command)
+
+**File:** `scripts/release_ios.sh` + `ios/ExportOptions.plist`
+**Does:** bumps the build number in `ios/project.yml`, `xcodegen generate`, Release archive, App Store IPA export, `altool --validate-app` then `--upload-app` with the App Store Connect API key (`ASC_KEY_ID`, `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`).
+**Cost:** $0. **Guardrails:** never commits the key; `*.p8` is gitignored; `--no-upload` for a dry run.
+
 ## Not automated, on purpose
 
-- App Store uploads and submissions (cv, in Xcode Organizer and App Store Connect).
+- Submitting for review, release, and store metadata (cv, in App Store Connect).
 - Telegram alerts: no chat ID is declared for this project; do not send.
 - Player-prop posting: lives in `~/projects/sportsbettingml_full_package`, never here.
