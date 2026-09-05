@@ -43,7 +43,7 @@ needs the server because the browser cannot call ESPN directly.
 | `server.py` | Static server + `/api/live` ESPN proxy with per-date cache |
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
-| `board.html` | Outdated single-file snapshot from the first build. Kept for reference, not source of truth |
+| `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math |
 
 ## Weekly refresh
 

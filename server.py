@@ -342,7 +342,7 @@ if __name__ == "__main__":
     httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"CFB GameDay live board: http://127.0.0.1:{PORT}/")
     print(f"Polling ESPN dates: {', '.join(DATES)}")
-    print("Leave this terminal open. Do not open board.html as a file.")
+    print("Leave this terminal open. Live scores need this server, not a file:// open.")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
