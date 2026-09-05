@@ -7,6 +7,10 @@ start.
 
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
+Live site: https://cfb-gameday-board.vercel.app (moving to https://cfbgameday.app
+once the domain is attached). Deploys from `main` on every push. The snapshot
+rebuilds itself Thursday night and Saturday morning via GitHub Actions.
+
 ## No keys, no accounts
 
 - No API keys are required for a local run.
@@ -45,7 +49,11 @@ needs the server because the browser cannot call ESPN directly.
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
-| `docs/DEPLOY.md`, `deploy/` | Hosting notes plus Caddyfile, nginx.conf, systemd unit drafts. Nothing deployed |
+| `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
+| `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
+| `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
+| `ios/` | SwiftUI iPhone app (XcodeGen spec, sources, listing copy in `ios/APP_STORE.md`) |
+| `docs/DEPLOY.md`, `deploy/` | Hosting: Vercel (live), tunnels, and self-host drafts |
 
 ## Install on iPhone (PWA)
 
@@ -91,7 +99,7 @@ Test portrait on a 390 to 430 wide phone (iPhone 13 through 16 Pro Max).
 
 ## Weekly refresh
 
-Before each Saturday, rebuild the snapshot for the coming slate:
+The GitHub Action does this on a schedule. To run it by hand:
 
 ```
 python3 scripts/refresh_week.py
@@ -131,7 +139,9 @@ posted line, not a live steam feed.
   geocoder, so it is the city's elevation, not the field's.
 - Odds come only from what ESPN exposes (DraftKings). No sportsbook scraping.
 - Times display in America/Chicago regardless of venue.
-- Localhost only. See `docs/DEPLOY.md` for tunnels and hosting.
+- The local server keeps closing lines in `lines.json`; the hosted site keeps
+  them in the browser's local storage, so they are per device.
+- Hosting details, tunnels, and self-host drafts are in `docs/DEPLOY.md`.
 
 ## Snapshot note
 

@@ -1,6 +1,7 @@
 # Architecture
 
-One folder, no build. Three moving parts:
+One folder, no build. Three moving parts, plus a hosted copy on Vercel that
+runs the same files with `api/live.py` in place of `server.py`:
 
 1. A **snapshot** (`games.json` / `games.js`) built once per week by
    `scripts/refresh_week.py`.
@@ -92,6 +93,28 @@ games[]: { id, state, status, statusDetail, statusShort, period, clock,
            completed, home{id,abbr,score,record,winner}, away{...},
            odds{...}, situation{text,lastPlay,possession,isRedZone} | null }
 ```
+
+### Hosted variant (Vercel)
+
+`api/live.py` is a stateless Python function that imports `pull_date`,
+`live_payload`, and `parse_dates` from `server.py`. It sets
+`Cache-Control: public, max-age=0, s-maxage=20, stale-while-revalidate=40`, so
+Vercel's CDN answers every viewer from one ESPN pull per 20 s per URL. There is
+no in-process cache and no line book on the function.
+
+The client sends `?dates=` built by `liveDatesFor()`: the snapshot's ESPN
+dates minus any date whose games are all final. That replaces the local
+server's frozen-date logic and keeps the CDN key stable.
+
+Closing lines on the hosted site live in the browser: `chooseOdds()` in
+`app.js` keeps the last non-null odds per game in `localStorage`
+(`cfb_gameday_lines_v1`) and uses them when ESPN nulls the odds on a final.
+`scripts/refresh_week.py` applies the same rule at build time, carrying the
+prior snapshot's line forward when ESPN has none, so a mid-slate rebuild never
+strips lines.
+
+`#live`, `#starred`, `#all` in the URL set the filters (`hashFilters()`); the
+iOS app's tabs use that.
 
 ### Closing line capture
 

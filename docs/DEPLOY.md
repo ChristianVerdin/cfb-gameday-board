@@ -1,7 +1,43 @@
 # Deploy
 
-Nothing here is deployed yet. These are the files and the order for when a
-public HTTPS URL is wanted. Cheapest first.
+Live: Vercel project `cfb-gameday-board` on team `christian-verdins-projects`,
+production alias https://cfb-gameday-board.vercel.app, GitHub-connected: every
+push to `main` deploys. The tunnel and self-host sections below remain as
+fallbacks.
+
+## Vercel (live)
+
+- `vercel.json`: `api/live.py` as a Python function (15 s max), HSTS and
+  nosniff headers, `cleanUrls` so `/privacy` and `/support` resolve.
+- `.vercelignore` keeps `ios/`, `docs/`, `deploy/`, `scripts/`, `lines.json`
+  out of the upload.
+- Local CLI link lives in `.vercel/project.json` (gitignored). Recreate with
+  `vercel project inspect cfb-gameday-board --scope christian-verdins-projects`
+  and write `{orgId, projectId, projectName}` by hand; `vercel link` refuses to
+  run non-interactively in this shell.
+- Manual deploys: `vercel deploy --yes` (preview, behind Vercel Authentication)
+  or `vercel deploy --prod --yes`.
+- Checks: `curl -sI "https://cfb-gameday-board.vercel.app/api/live?dates=YYYYMMDD"`
+  twice; `x-vercel-cache` goes `MISS` then `HIT`.
+
+### Domain: cfbgameday.app
+
+1. Claim it at https://vercel.com/domains (must show "Free With Pro",
+   checkout at $0). One per team, final once claimed.
+2. `vercel domains add cfbgameday.app --scope christian-verdins-projects`, then
+   `vercel domains inspect cfbgameday.app`. Vercel-registered domains get DNS
+   automatically; add `www.cfbgameday.app` and set the redirect to the apex in
+   Project Settings > Domains.
+3. `vercel certs ls` until the certificate shows, then `curl -sI https://cfbgameday.app/`.
+4. Update `BoardURL` / `BoardHost` in `ios/project.yml`, the URLs in
+   `README.md`, `privacy.html`, `support.html`, and this file.
+
+### Weekly data
+
+`.github/workflows/refresh.yml` runs Thursday 9 PM CT and Saturday 9 AM CT
+(cron in UTC), rebuilds the snapshot, runs `scripts/check.py`, and commits
+`games.json` / `games.js` when they changed. Vercel deploys the commit. Trigger
+by hand with `gh workflow run refresh.yml` (optional `start` / `end` inputs).
 
 ## Rule that does not change
 
