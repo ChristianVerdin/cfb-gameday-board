@@ -47,6 +47,6 @@ targets:
           - UIInterfaceOrientationPortrait
         UILaunchScreen:
           UIColorName: LaunchBackground
-        # The one URL the app loads. Switch to https://cfbgameday.app once the domain is live.
-        BoardURL: https://cfb-gameday-board.vercel.app
-        BoardHost: cfb-gameday-board.vercel.app
+        # The one URL the app loads.
+        BoardURL: https://cfbgameday.app
+        BoardHost: cfbgameday.app
