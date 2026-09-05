@@ -1,6 +1,6 @@
 {
   "name": "CFB GameDay Board",
-  "short_name": "GameDay",
+  "short_name": "CFB Board",
   "description": "College football slate board: venue, weather, lines, live cover and total state.",
   "start_url": "/",
   "scope": "/",

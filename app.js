@@ -191,10 +191,10 @@
     });
     return list;
   }
-  // Gold implied score only pre-game; once live/final the real score column takes over.
+  // Implied score is always prefixed "proj" so it cannot be read as points; dimmed once the game starts.
   function implCell(v, started) {
-    if (started || v == null) return `<div class="impl"></div>`;
-    return `<div class="impl" title="Implied score from spread + total (ESPN/DK snapshot)">${v}<span class="proj">proj</span></div>`;
+    if (v == null) return `<div class="impl"></div>`;
+    return `<div class="impl ${started?"started":""}" title="Implied score from spread + total (ESPN/DK snapshot), not points"><span class="proj">proj</span>${v}</div>`;
   }
   function liveStatusText(g, live) {
     const st = g.statusDetail || g.statusShort || "";
@@ -216,7 +216,7 @@
     const math=liveMath(g);
     const live = isLive(g);
     const done = isFinal(g);
-    const showScore = live || done || (a.score && a.score !== "0") || (h.score && h.score !== "0" && g.gameState !== "pre");
+    const showScore = live || done;
     const sit = g.situation || {};
     let liveRow = "";
     if (live || done) {

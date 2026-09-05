@@ -1,6 +1,6 @@
 /* UI shell only. /api/live is never cached; games.js is network-first so the
    last snapshot still renders offline, clearly marked as such by app.js. */
-const VERSION = "cfb-gameday-v1";
+const VERSION = "cfb-gameday-v2";
 const SHELL = ["/", "/index.html", "/app.js", "/games.js", "/manifest.webmanifest",
                "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
