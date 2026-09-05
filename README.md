@@ -53,7 +53,11 @@ needs the server because the browser cannot call ESPN directly.
 | `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
-| `ios/` | SwiftUI iPhone app (XcodeGen spec, sources, listing copy in `ios/APP_STORE.md`, paste sheet `ios/PASTE_ME.md`) |
+| `ios/` | SwiftUI iPhone app: `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, `ExportOptions.plist`, listing copy in `APP_STORE.md`, paste sheet `PASTE_ME.md` |
+| `scripts/release_ios.sh` | One-command iOS release: archive, export, validate, upload via the App Store Connect API |
+| `scripts/tunnel.sh` | Gameday Cloudflare quick tunnel for the local server (fallback only) |
+| `CLAUDE.md` | Rules and conventions for working in this repo with an AI agent |
+| `.vercelignore` | Keeps `ios/`, docs, scripts, and local state out of the Vercel upload |
 | `CONTEXT.md`, `AGENTS.md` | Live project state and open items; map of everything that runs unattended |
 | `docs/DEPLOY.md`, `deploy/` | Hosting: Vercel (live), tunnels, and self-host drafts |
 
