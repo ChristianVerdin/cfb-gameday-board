@@ -7,9 +7,8 @@ start.
 
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
-Live site: https://cfb-gameday-board.vercel.app (moving to https://cfbgameday.app
-once the domain is attached). Deploys from `main` on every push. The snapshot
-rebuilds itself Thursday night and Saturday morning via GitHub Actions.
+Live site: https://cfbgameday.app. Deploys from `main` on every push. The
+snapshot rebuilds itself Thursday night and Saturday morning via GitHub Actions.
 
 ## No keys, no accounts
 

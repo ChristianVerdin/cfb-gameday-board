@@ -1,9 +1,9 @@
 # Deploy
 
-Live: Vercel project `cfb-gameday-board` on team `christian-verdins-projects`,
-production alias https://cfb-gameday-board.vercel.app, GitHub-connected: every
-push to `main` deploys. The tunnel and self-host sections below remain as
-fallbacks.
+Live: https://cfbgameday.app (www redirects to the apex). Vercel project
+`cfb-gameday-board` on team `christian-verdins-projects`, GitHub-connected:
+every push to `main` deploys. `cfb-gameday-board.vercel.app` stays as the
+generated alias. The tunnel and self-host sections below remain as fallbacks.
 
 ## Vercel (live)
 
@@ -20,17 +20,15 @@ fallbacks.
 - Checks: `curl -sI "https://cfb-gameday-board.vercel.app/api/live?dates=YYYYMMDD"`
   twice; `x-vercel-cache` goes `MISS` then `HIT`.
 
-### Domain: cfbgameday.app
+### Domain: cfbgameday.app (done 2026-09-05)
 
-1. Claim it at https://vercel.com/domains (must show "Free With Pro",
-   checkout at $0). One per team, final once claimed.
-2. `vercel domains add cfbgameday.app --scope christian-verdins-projects`, then
-   `vercel domains inspect cfbgameday.app`. Vercel-registered domains get DNS
-   automatically; add `www.cfbgameday.app` and set the redirect to the apex in
-   Project Settings > Domains.
-3. `vercel certs ls` until the certificate shows, then `curl -sI https://cfbgameday.app/`.
-4. Update `BoardURL` / `BoardHost` in `ios/project.yml`, the URLs in
-   `README.md`, `privacy.html`, `support.html`, and this file.
+Claimed free-with-Pro (renews $15/yr on 2027-09-05, registrar Vercel), attached
+with `vercel domains add cfbgameday.app cfb-gameday-board` plus the `www`
+host. Vercel runs the nameservers, so DNS and the certificate are automatic.
+Check with `vercel domains inspect cfbgameday.app --scope christian-verdins-projects`
+and `curl -sI https://cfbgameday.app/`. If the domain ever moves, update
+`BoardURL` / `BoardHost` in `ios/project.yml`, `README.md`, `privacy.html`,
+`support.html`, and this file.
 
 ### Weekly data
 
