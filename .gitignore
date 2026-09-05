@@ -21,3 +21,8 @@ AuthKey_*.p8
 *.crt
 *.key
 .vercel/
+ios/*.xcodeproj/
+ios/build/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
