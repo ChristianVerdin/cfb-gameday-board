@@ -112,7 +112,7 @@ def test_live_math():
         return
     src = (ROOT / "app.js").read_text("utf-8")
     fns = []
-    for name in ("num", "liveMath", "betterRecord"):
+    for name in ("num", "liveMath", "betterRecord", "chooseOdds"):
         m = re.search(rf"\n  function {name}\(.*?\n  }}\n", src, re.S)
         if not m:
             FAILS.append(f"could not extract {name} from app.js")
@@ -134,6 +134,15 @@ const out = cases.map(c => {{
   return [m.coverState ?? null, m.coverBy ?? null, m.totalState ?? null, m.overNeed ?? null];
 }});
 out.push([betterRecord("1-0", "0-0"), betterRecord("0-0", "1-1"), betterRecord("", null), betterRecord("2-0", "2-1")]);
+const close = {{ spread: -3, total: 50 }}, opened = {{ spread: -2.5, total: 49.5 }}, snap = {{ spread: -1, total: 48 }};
+out.push([
+  chooseOdds(undefined, opened, "pre", snap) === opened,   // fresh line wins
+  chooseOdds(close, opened, "in", snap) === opened,        // still moving while live
+  chooseOdds(close, opened, "post", snap) === close,       // frozen once final
+  chooseOdds(close, null, "post", snap) === close,         // ESPN nulls odds on finals
+  chooseOdds(undefined, null, "post", snap) === snap,      // never seen live: snapshot line
+  chooseOdds(undefined, {{ spread: null, total: null }}, "pre", null) === null,
+]);
 console.log(JSON.stringify(out));
 """
     res = subprocess.run([node, "-e", script], capture_output=True, text=True)
@@ -143,7 +152,10 @@ console.log(JSON.stringify(out));
     got = json.loads(res.stdout)
     for c, g in zip(cases, got):
         check(f"liveMath {c['a']}-{c['h']} {c['s']}/{c['t']}", g, c["want"])
-    check("betterRecord", got[-1], ["1-0", "1-1", "", "2-1"])
+    check("betterRecord", got[-2], ["1-0", "1-1", "", "2-1"])
+    check("chooseOdds", got[-1], [True] * 6)
+    src_dates = re.search(r"\n  function liveDatesFor\(.*?\n  }\n", src, re.S)
+    check("liveDatesFor present", bool(src_dates), True)
 
 
 def test_snapshot_shape():
@@ -173,6 +185,9 @@ def test_pwa():
     for icon in m.get("icons") or []:
         check(f"icon exists {icon['src']}", (ROOT / icon["src"].lstrip("/")).is_file(), True)
     check("apple-touch-icon", (ROOT / "icons/apple-touch-icon.png").is_file(), True)
+    check("api/live.py exists", (ROOT / "api/live.py").is_file(), True)
+    vj = json.loads((ROOT / "vercel.json").read_text("utf-8"))
+    check("vercel functions", "api/live.py" in (vj.get("functions") or {}), True)
     sw = (ROOT / "sw.js").read_text("utf-8")
     check("sw skips api", 'startsWith("/api/")' in sw, True)
     html = (ROOT / "index.html").read_text("utf-8")
