@@ -53,48 +53,38 @@ Turn on Do Not Disturb so no banner lands in the clip. Then:
 Target 60 to 90 seconds. AirDrop the .mp4 from Photos to the Mac and save it
 as `ios/review/walkthrough-raw.mp4` (the folder is gitignored).
 
-## Step 1c: optional narration with ElevenLabs
+## Step 1c: optional narration (ElevenLabs, already rendered)
 
-Apple does not require audio. Only do this if you want the clip to explain
-itself. Two rules: the narration describes what is on screen and never
-promises picks, wagers, or "locks"; and the video track stays the untouched
-phone recording, since Apple wants a real device capture.
+Apple does not require audio; a silent recording is accepted. If you want the
+clip to explain itself, the narration is done: ten lines, one per beat, in
+`ios/review/lines/` (62 s of speech, voice Brian, speed 0.9), rendered through
+`dailylocks-studio`'s ElevenLabs client by `ios/narrate.mts`. Listen to
+`ios/review/narration-preview.mp3` first. The text is `ios/narration.txt`;
+it describes what is on screen and never promises picks or wagers.
 
-Script, one line per beat, about 75 seconds read at a normal pace:
-
-```
-This is CFB GameDay Board, launched from the home screen on an iPhone.
-The Board tab shows every FBS game this week. Each card has the venue, kickoff time in Central, the kickoff-hour weather at the stadium, the TV network, and the publicly posted line with the implied score.
-Day and conference filters narrow the slate. Search finds a team, stadium, city, or network.
-Tapping a venue opens Apple Maps outside the app.
-Pull down to refresh.
-The Live tab lists games in progress with score, clock, and whether the favorite is covering. Between game days it shows the latest finals.
-Starring a game adds it to the Starred tab.
-About lists the data sources, ESPN and Open-Meteo, with links to the privacy policy and support page.
-With no connection, the app shows an offline view and a Retry button.
-There are no accounts, no purchases, no ads, and no wagering. It is an information display.
-```
-
-Generate the audio in ElevenLabs (elevenlabs.io, Text to Speech, a neutral
-voice, model Multilingual v2 or Flash, speed 1.0) and save it as
-`ios/review/narration.mp3`. Or ask a Claude session in this repo to generate
-it through the ElevenLabs connector and drop it in that path.
-
-Mux without re-encoding the video. If the narration is shorter than the
-recording, it simply ends early; if it is longer, the phone recording is not
-trimmed, so re-record the narration shorter instead:
+To change a line, edit `ios/narration.txt` and re-render (about 900 credits,
+$0.18, for the whole file):
 
 ```
-mkdir -p ios/review
-ffmpeg -i ios/review/walkthrough-raw.mp4 -i ios/review/narration.mp3 \
-  -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -shortest \
-  ios/review/walkthrough.mp4
-ffprobe ios/review/walkthrough.mp4 2>&1 | rg "Duration|Stream"
+cd /Users/cv/projects/dailylocks-studio && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts 0.9
 ```
 
-Watch it once end to end before attaching it. If timing is off, cut the
-narration into lines and adjust with `-itsoffset`, or drop the audio and
-attach `walkthrough-raw.mp4`; silent is fine.
+Then sync it to the recording. Open `walkthrough-raw.mp4` in QuickTime, note
+the second each beat begins (app launch, Board scroll, filters and search,
+Maps, pull-to-refresh, Live, Starred, About, offline, and a quiet moment at
+the end for the closing line), and put those into `ios/review/cues.txt`
+(`NN  seconds`, one per line). Then:
+
+```
+python3 scripts/review_mux.py ios/review/walkthrough-raw.mp4 ios/review/cues.txt
+```
+
+It copies the video untouched, drops each line at its cue, pushes a cue back
+if the previous line is still speaking, and warns if a line runs past the end.
+Output is `ios/review/walkthrough.mp4`. Watch it once end to end before
+attaching. Line 2 is the longest at 14.6 s, so scroll the Board slowly, and
+leave about 8 s at the end for line 10. If the timing fights you, attach
+`walkthrough-raw.mp4` silent instead.
 
 ## Step 2: reply text (paste into "Reply to App Review")
 
