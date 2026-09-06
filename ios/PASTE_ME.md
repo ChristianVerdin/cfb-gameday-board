@@ -70,11 +70,22 @@ Leave empty until Apple emails "has completed processing". Then click the plus, 
 - Contact: your first name, last name, phone, email
 - Notes:
 ```
-CFB GameDay Board is an informational sports display: NCAA football scores, venues, kickoff weather, TV listings, and the publicly posted point spread and total for context. There are no accounts, no sign-in, no purchases, no deposits, and no way to place a wager. The app does not link to any sportsbook.
+CFB GameDay Board is an informational sports display: NCAA football scores, venues, kickoff weather, TV listings, and the publicly posted point spread and total for context. No accounts, no sign-in, no purchases, no deposits, no way to place a wager, no sportsbook links. Content comes from our always-on backend at https://cfbgameday.app. No demo account is needed.
 
-The content is served from our own backend at https://cfbgameday.app, which is always on. The Board, Live, and Starred tabs show the same live board filtered natively; pull down to refresh. The About tab, offline handling, and external-link routing (maps, ESPN game pages) are native.
+PURPOSE AND AUDIENCE
+An information display for adult NCAA college football fans in the United States who follow the full Saturday slate. One screen per game: kickoff time in US Central, stadium and city with elevation, kickoff-hour weather at the stadium, TV network or streaming service, the publicly posted spread and total as context, and once games start the live score, clock, down and distance, and whether the game is tracking above or below the posted numbers. Rated 17+ because it displays posted betting lines. Not a sportsbook, no wagers, no payments, no sportsbook links, no betting advice.
 
-No demo account is needed. Live scores appear on game days (Thursday to Saturday during the season); outside game windows the board shows the upcoming slate with lines and weather.
+SETUP AND ACCESS
+No setup, login, credentials, or sample files. Launch and the Board tab loads the current week. Tabs: Board (full slate with day, time, conference, ranked, weather-impact, and starred filters, plus search), Live (games in progress), Starred (games the user starred; stored on the device), About (data sources, privacy, support, source, reload). Pull down to refresh. Venue taps open Apple Maps; ESPN links open Safari. Offline shows a Retry screen. Live scores appear during games (in season Thursday to Saturday plus holiday Sundays and Mondays); otherwise the board shows the upcoming slate and the Live tab shows an empty state.
+
+EXTERNAL SERVICES
+ESPN public scoreboard feed (site.api.espn.com) for schedules, scores, game state, TV, and the posted lines ESPN publishes; team logos from ESPN's public image CDN (a.espncdn.com). Open-Meteo (open-meteo.com) for venue geocoding and the kickoff-hour forecast, open data, no key. Our backend at https://cfbgameday.app on Vercel serves the content and proxies ESPN; the app never calls ESPN directly. Apple Maps links for directions. GitHub for the public source and issue tracker. No authentication, payment, analytics, advertising, AI, or push services. No data collected: https://cfbgameday.app/privacy.
+
+REGIONAL DIFFERENCES
+None. Identical in every region; NCAA football only, times in US Central, same data for every user.
+
+REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+Not a regulated industry: no gambling offered, accepted, facilitated, or linked, so no gaming license applies. No licensed media (no video, audio, or broadcast content). Displays publicly available factual sports data with attribution to ESPN and Open-Meteo in the app and on the support page; team logos as shown on ESPN's public scoreboard, for identification only. Free, no purchases, source public under MIT at https://github.com/ChristianVerdin/cfb-gameday-board.
 ```
 
 ### Version Release

@@ -24,7 +24,8 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 
 ## Status
 - Web live at https://cfbgameday.app. iOS 1.0.0 (1) submitted to App Review 2026-09-05,
-  manual release. Details and what to do on approval/rejection: `CONTEXT.md`.
+  manual release. Apple asked for more info (2.1) the same night; the reply is
+  `ios/REVIEW_REPLY.md`. Details and what to do on approval/rejection: `CONTEXT.md`.
 
 ## Hosted
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
@@ -38,7 +39,7 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - `server.py` static server + `/api/live` ESPN proxy, per-date cache, closing-line book (`lines.json`, gitignored).
 - `scripts/refresh_week.py` weekly snapshot builder. `scripts/check.py` smoke test.
 - `manifest.webmanifest`, `sw.js`, `icons/` PWA. Shell-only cache; `/api/*` never cached. Bump `VERSION` in `sw.js` when the shell changes.
-- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`. Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC.
+- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`, review replies: `ios/REVIEW_REPLY.md`. Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC.
 - `privacy.html`, `support.html`, `site.css`: public pages App Review links to; keep them accurate when data sources change.
 
 ## Product rules
