@@ -15,9 +15,14 @@
 ## 2026-09-05 — Built, shipped to the web, submitted to App Review, all in one day
 
 **State right now**
-- iOS 1.0.0 (1) is **Waiting for Review** (submitted 15:52 CT, submission id
-  a0285351-31b8-4551-ac2c-4c8c214ecde7). Manual release selected: when
-  Approved, click **Release This Version** on the App Store Connect version page.
+- iOS 1.0.0 (1) submitted 15:52 CT (submission id
+  a0285351-31b8-4551-ac2c-4c8c214ecde7). 23:18 CT Apple replied **Guideline 2.1,
+  Information Needed**: new developer account, they want a screen recording from a
+  physical device plus six written answers (purpose, setup, external services,
+  regional differences, regulated content). Not a rejection; the submission is
+  open until we reply. Reply text, Notes text, and the recording shot list are in
+  `ios/REVIEW_REPLY.md`. Manual release selected: when Approved, click
+  **Release This Version** on the App Store Connect version page.
 - Web is live at cfbgameday.app with HSTS, www redirects to apex, service worker
   caches the shell only, `/api/live` is a Vercel Python function CDN-cached 20 s.
 - Snapshot refreshes itself: GitHub Action `refresh.yml` runs Thu 9 PM CT and
@@ -35,7 +40,10 @@
 - Likely outcomes and the prepared responses are in `ios/APP_STORE.md`.
 
 **Open items**
-- Wait for Apple. On approval: release, then confirm the store listing renders.
+- **cv, now:** record the screen recording on the iPhone and send the reply
+  (`ios/REVIEW_REPLY.md`, two steps at the top). Then paste the six answers into
+  App Review Information > Notes. Note the reply date here.
+- Then wait for Apple. On approval: release, then confirm the store listing renders.
 - On rejection: paste the note into a session; 4.2 is the one to expect, and the
   next native lever is a Starred list backed by `games.json`.
 - Optional, unbuilt: line-movement chip on cards, Telegram ping from the refresh
