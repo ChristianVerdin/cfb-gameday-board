@@ -15,9 +15,14 @@
 ## 2026-09-05 — Built, shipped to the web, submitted to App Review, all in one day
 
 **State right now**
-- iOS 1.0.0 (1) is **Waiting for Review** (submitted 15:52 CT, submission id
-  a0285351-31b8-4551-ac2c-4c8c214ecde7). Manual release selected: when
-  Approved, click **Release This Version** on the App Store Connect version page.
+- iOS 1.0.0 (1) was **rejected 2026-09-05 23:18 CT under Guideline 2.1,
+  Information Needed** (new account with no review history; nothing wrong with
+  the build). Submission id a0285351-31b8-4551-ac2c-4c8c214ecde7. Apple wants a
+  screen recording from a physical iPhone plus six written answers, in the
+  reply and in the App Review Information notes. The recording script, the
+  reply text, and the notes text are in `ios/APP_REVIEW_REPLY.md`; the only
+  human step is recording the phone, then Resubmit on the same build. Manual
+  release selected: when Approved, click **Release This Version**.
 - Web is live at cfbgameday.app with HSTS, www redirects to apex, service worker
   caches the shell only, `/api/live` is a Vercel Python function CDN-cached 20 s.
 - Snapshot refreshes itself: GitHub Action `refresh.yml` runs Thu 9 PM CT and
@@ -35,9 +40,11 @@
 - Likely outcomes and the prepared responses are in `ios/APP_STORE.md`.
 
 **Open items**
-- Wait for Apple. On approval: release, then confirm the store listing renders.
-- On rejection: paste the note into a session; 4.2 is the one to expect, and the
-  next native lever is a Starred list backed by `games.json`.
+- Record the walkthrough on the phone, paste the reply and notes from
+  `ios/APP_REVIEW_REPLY.md`, attach the video in both places, Resubmit.
+- Then wait for Apple. On approval: release, then confirm the store listing renders.
+- If a second rejection cites 4.2, the next native lever is a Starred list
+  backed by `games.json`.
 - Optional, unbuilt: line-movement chip on cards, Telegram ping from the refresh
   Action (needs a chat ID declared in `CLAUDE.md`), starred-game props hook into
   `sportsbettingml_full_package`.
