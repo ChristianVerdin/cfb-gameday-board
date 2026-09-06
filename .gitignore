@@ -27,3 +27,6 @@ ios/DerivedData/
 *.xcuserstate
 xcuserdata/
 ios/screenshots/
+
+# App Review attachments (screen recordings, narration)
+ios/review/

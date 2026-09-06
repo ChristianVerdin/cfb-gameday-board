@@ -4,30 +4,103 @@ Apple asked for six items because the account has no review history. Nothing in
 the build needs to change. Do the three steps below, then click **Resubmit to
 App Review** on the same build.
 
-## Step 1: screen recording (physical iPhone, latest iOS)
+## Step 0: prerequisites (10 minutes, one time)
 
-Install the submitted build on the phone through TestFlight (App Store Connect,
-TestFlight tab, add yourself as an internal tester for build 1.0.0 (1)) or run
-it from Xcode with the phone plugged in. Then Control Center, Screen Record,
-and walk this in order. Target 60 to 90 seconds. No narration needed.
+- iPhone 14 ("Christian's iPhone (2)") updated to the current iOS release
+  (Settings, General, Software Update). Apple said "latest operating system".
+- The phone signed in to the same Apple ID that is on the Hoyne Labs developer
+  team, with the TestFlight app installed from the App Store.
+- A voiceover is optional. Apple only needs a screen recording of the real app;
+  a silent one is accepted. If you want narration, Step 1c covers it.
 
-1. Home screen. Tap the CFB GameDay Board icon so the recording starts with launch.
-2. Board tab loads the slate. Scroll a few cards: venue, kickoff time, weather line, TV, posted line and gold `proj` score.
-3. Tap a day pill and a conference filter, then clear them. Type a team name in search, clear it.
-4. Tap a venue to open Maps (shows external links leave the app), come back.
-5. Pull down to refresh.
-6. Live tab. On a Sunday it shows final cards with the cover and total state resolved; that is fine, say so in the reply.
-7. Star two games, open the Starred tab.
-8. About tab: data sources, Privacy policy, Support links (tap Privacy, come back).
-9. Airplane mode on, pull to refresh, show the offline view and Retry. Airplane mode off, Retry.
-10. Stop recording.
+## Step 1a: put build 1.0.0 (1) on the phone (TestFlight)
 
-AirDrop the .mp4 to the Mac. Attach it in the App Store Connect reply box
-(paperclip icon) and also under App Review Information, Attachments, on the
-version page. Keep it under 500 MB; Settings, Screen Recording quality does
-not matter.
+1. App Store Connect, CFB GameDay Board, **TestFlight** tab.
+2. Left sidebar, Internal Testing, **+** to create a group named `Hoyne`.
+   Add yourself as a tester. Leave "Enable automatic distribution" on.
+3. In the group, Builds, **+**, pick 1.0.0 (1). Internal groups need no beta
+   review. If it asks about export compliance, answer No (HTTPS only).
+4. On the phone, open TestFlight, accept the invite from the email or the
+   in-app list, Install.
+
+Fallback: plug the phone in, `cd ios && xcodegen generate && open CFBGameDay.xcodeproj`,
+select the phone as the run destination, press Run. Trust the developer
+under Settings, General, VPN and Device Management if iOS asks.
+
+## Step 1b: record the walkthrough (physical iPhone)
+
+Settings, Control Center, add **Screen Recording** if it is not there.
+Turn on Do Not Disturb so no banner lands in the clip. Then:
+
+1. On the home screen, open Control Center, tap the record button, wait for
+   the 3-second countdown, and swipe back to the home screen before it starts.
+2. Tap the **CFB GameDay Board** icon. The recording must begin with the launch.
+3. Board tab loads the slate. Scroll slowly through four or five cards so
+   venue, kickoff time, weather line, TV, and the posted line with the gold
+   `proj` score are readable.
+4. Tap a day pill, tap a conference filter, then clear both.
+5. Tap the search field, type a team name, wait for the board to narrow, clear it.
+6. Tap a venue name. Apple Maps opens. Swipe back to the app.
+7. Pull down to refresh.
+8. **Live** tab. On a non-game day it shows the latest finals with the cover
+   and total resolved. That is fine; the reply text says so.
+9. Star two games on the Board tab, then open the **Starred** tab.
+10. **About** tab. Scroll to Links, tap Privacy policy, come back.
+11. Open Control Center, turn on Airplane Mode, return to the app, pull to
+    refresh, show the offline view. Turn Airplane Mode off, tap Retry.
+12. Open Control Center, tap the red record button to stop.
+
+Target 60 to 90 seconds. AirDrop the .mp4 from Photos to the Mac and save it
+as `ios/review/walkthrough-raw.mp4` (the folder is gitignored).
+
+## Step 1c: optional narration with ElevenLabs
+
+Apple does not require audio. Only do this if you want the clip to explain
+itself. Two rules: the narration describes what is on screen and never
+promises picks, wagers, or "locks"; and the video track stays the untouched
+phone recording, since Apple wants a real device capture.
+
+Script, one line per beat, about 75 seconds read at a normal pace:
+
+```
+This is CFB GameDay Board, launched from the home screen on an iPhone.
+The Board tab shows every FBS game this week. Each card has the venue, kickoff time in Central, the kickoff-hour weather at the stadium, the TV network, and the publicly posted line with the implied score.
+Day and conference filters narrow the slate. Search finds a team, stadium, city, or network.
+Tapping a venue opens Apple Maps outside the app.
+Pull down to refresh.
+The Live tab lists games in progress with score, clock, and whether the favorite is covering. Between game days it shows the latest finals.
+Starring a game adds it to the Starred tab.
+About lists the data sources, ESPN and Open-Meteo, with links to the privacy policy and support page.
+With no connection, the app shows an offline view and a Retry button.
+There are no accounts, no purchases, no ads, and no wagering. It is an information display.
+```
+
+Generate the audio in ElevenLabs (elevenlabs.io, Text to Speech, a neutral
+voice, model Multilingual v2 or Flash, speed 1.0) and save it as
+`ios/review/narration.mp3`. Or ask a Claude session in this repo to generate
+it through the ElevenLabs connector and drop it in that path.
+
+Mux without re-encoding the video. If the narration is shorter than the
+recording, it simply ends early; if it is longer, the phone recording is not
+trimmed, so re-record the narration shorter instead:
+
+```
+mkdir -p ios/review
+ffmpeg -i ios/review/walkthrough-raw.mp4 -i ios/review/narration.mp3 \
+  -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -shortest \
+  ios/review/walkthrough.mp4
+ffprobe ios/review/walkthrough.mp4 2>&1 | rg "Duration|Stream"
+```
+
+Watch it once end to end before attaching it. If timing is off, cut the
+narration into lines and adjust with `-itsoffset`, or drop the audio and
+attach `walkthrough-raw.mp4`; silent is fine.
 
 ## Step 2: reply text (paste into "Reply to App Review")
+
+On the submission page (the one showing Rejected), click **Reply to App
+Review**, paste the block below, attach `ios/review/walkthrough.mp4` with the
+paperclip (under 500 MB), Send.
 
 ```
 Thank you for the review. The requested screen recording is attached; it was captured on a physical iPhone running the current iOS release and begins with launching the app. The same information has been added to the App Review Information notes.
@@ -56,6 +129,10 @@ The app does not operate in a regulated industry. It does not offer, facilitate,
 ```
 
 ## Step 3: App Review Information, Notes field
+
+App Store Connect, Distribution tab, the 1.0.0 version page, scroll to **App
+Review Information**. Replace the Notes with the block below and add the same
+video under **Attachments**. Click Save at the top right.
 
 Replace the current note with the block below (the reply text from Step 2
 minus the opening paragraph and item 1, with the recording attached beside it).
