@@ -1,6 +1,7 @@
 # App Store listing and submission notes
 
-Status: 1.0.0 (1) submitted 2026-09-05, Waiting for Review, manual release.
+Status: 1.0.0 (1) rejected 2026-09-05 under 2.1 (information needed, new account).
+Reply kit: `APP_REVIEW_REPLY.md`. Manual release once approved.
 Live state and what to do on approval or rejection: `../CONTEXT.md`.
 The copy below is also laid out field-by-field in `PASTE_ME.md`.
 
@@ -139,6 +140,7 @@ Contact: your name, phone, and email as registered with the developer account.
 | Approved | Sports scores + weather + TV, native tabs/about/offline/refresh, backend up, honest metadata | Ship |
 | 4.2 Minimum functionality | Reviewer sees only a web page | Point to native tabs, pull-to-refresh, offline state, About; if they insist, add a native Starred list backed by `games.json` in 1.1 |
 | 2.1 Performance | Backend unreachable during review | Check Vercel status; never submit while the domain is mid-migration |
+| 2.1 Information Needed (happened 2026-09-05) | New developer account, no review history | Screen recording from a physical iPhone plus six written answers; `APP_REVIEW_REPLY.md` has the text. Same build, resubmit |
 | 5.3 Gaming | Copy reads as a wagering aid | Reply that no bets are placed, no books are linked, and lines are ESPN's public data; do not add disclaimers that sound like a sportsbook |
 | Metadata rejected | Screenshots do not match the app | Re-take from the simulator with the current build |
 
