@@ -120,6 +120,13 @@ Contact fields stay as registered (Christian Verdin, phone, hoynelabs@gmail.com)
 
 ## Step 4: resubmit
 
-Version page, Save. Back on the submission page, **Resubmit to App Review**.
-Same build 1.0.0 (1); do not upload a new one. Then update `CONTEXT.md` with
-the resubmission time.
+Build 1.0.0 (3) carries the tab fix and is attached to the version (2026-09-07).
+Version page, Save. Then either the **Resubmit to App Review** button on the
+submission page or:
+
+```
+asc review submissions-submit --id a0285351-31b8-4551-ac2c-4c8c214ecde7 --confirm
+asc review status --app 6809035228
+```
+
+Then update `CONTEXT.md` with the resubmission time.

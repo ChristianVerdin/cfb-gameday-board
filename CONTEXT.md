@@ -15,14 +15,22 @@
 ## 2026-09-05 — Built, shipped to the web, submitted to App Review, all in one day
 
 **State right now**
-- iOS 1.0.0 (1) was **rejected 2026-09-05 23:18 CT under Guideline 2.1,
-  Information Needed** (new account with no review history; nothing wrong with
-  the build). Submission id a0285351-31b8-4551-ac2c-4c8c214ecde7. Apple wants a
-  screen recording from a physical iPhone plus six written answers, in the
-  reply and in the App Review Information notes. The recording script, the
-  reply text, and the notes text are in `ios/APP_REVIEW_REPLY.md`; the only
-  human step is recording the phone, then Resubmit on the same build. Manual
-  release selected: when Approved, click **Release This Version**.
+- iOS 1.0.0 was **rejected 2026-09-05 23:18 CT under Guideline 2.1, Information
+  Needed** (new account, no review history; nothing wrong with the build).
+  Submission id a0285351-31b8-4551-ac2c-4c8c214ecde7. Reply sent 2026-09-07
+  12:44 CT with the six answers and a narrated physical-device recording
+  (`ios/review/walkthrough.mp4`, built by `scripts/review_mux.py` from the
+  ElevenLabs lines in `ios/review/lines/`). Same text goes in App Review
+  Information, Notes. Kit: `ios/APP_REVIEW_REPLY.md`.
+- 2026-09-07: cv found revisited tabs rendering blank (Board, Live, Board).
+  Root cause: the shared WKWebView was re-parented in `updateUIView`, which
+  SwiftUI skips when a tab's inputs are unchanged. Fixed in `WebScreen.swift`
+  (`HostView.didMoveToWindow`), verified by `scripts/ios_tab_check.sh` (AXe +
+  simulator screenshots). Also fixed: `.a2hs` CSS overrode the `hidden`
+  attribute so the Add to Home Screen hint showed inside the app; `sw.js` v4.
+  **Build 1.0.0 (3) uploaded and attached to version 1.0.0** with the
+  `asc` CLI (`brew install asc`, key `cfbgameday` in `~/.asc/config.json`).
+  Manual release selected: when Approved, click **Release This Version**.
 - Web is live at cfbgameday.app with HSTS, www redirects to apex, service worker
   caches the shell only, `/api/live` is a Vercel Python function CDN-cached 20 s.
 - Snapshot refreshes itself: GitHub Action `refresh.yml` runs Thu 9 PM CT and
@@ -40,8 +48,9 @@
 - Likely outcomes and the prepared responses are in `ios/APP_STORE.md`.
 
 **Open items**
-- Record the walkthrough on the phone, paste the reply and notes from
-  `ios/APP_REVIEW_REPLY.md`, attach the video in both places, Resubmit.
+- Resubmit: `asc review submissions-submit --id a0285351-31b8-4551-ac2c-4c8c214ecde7 --confirm`
+  or the Resubmit button on the submission page. Check with
+  `asc review status --app 6809035228`.
 - Then wait for Apple. On approval: release, then confirm the store listing renders.
 - If a second rejection cites 4.2, the next native lever is a Starred list
   backed by `games.json`.
