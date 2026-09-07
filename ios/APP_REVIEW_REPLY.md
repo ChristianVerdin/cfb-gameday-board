@@ -27,70 +27,45 @@ Fallback: plug the phone in, `cd ios && xcodegen generate && open CFBGameDay.xco
 select the phone as the run destination, press Run. Trust the developer
 under Settings, General, VPN and Device Management if iOS asks.
 
-## Step 1b: record the walkthrough (physical iPhone)
+## Step 1b: the recording (done 2026-09-06)
 
-Settings, Control Center, add **Screen Recording** if it is not there.
-Turn on Do Not Disturb so no banner lands in the clip. Then:
+Recorded on the iPhone 14 at 19:54 CT, 135 s, launch to home screen. Raw file:
+`ios/review/walkthrough-raw.mp4` (HEVC, 1170x2532, 60 fps, 176 MB). What it
+shows, in order: launch, Board cards, venue into Apple Maps, an ESPN detour,
+starring two games, the Starred tab, ACC filter, About, the privacy page in
+Safari, the Live tab, a blank stretch and the "Snapshot ..." header while
+offline, pull-to-refresh, search for Lambeau, the footer with the privacy and
+support links, exit. No account, purchase, or user-content flows exist.
 
-1. On the home screen, open Control Center, tap the record button, wait for
-   the 3-second countdown, and swipe back to the home screen before it starts.
-2. Tap the **CFB GameDay Board** icon. The recording must begin with the launch.
-3. Board tab loads the slate. Scroll slowly through four or five cards so
-   venue, kickoff time, weather line, TV, and the posted line with the gold
-   `proj` score are readable.
-4. Tap a day pill, tap a conference filter, then clear both.
-5. Tap the search field, type a team name, wait for the board to narrow, clear it.
-6. Tap a venue name. Apple Maps opens. Swipe back to the app.
-7. Pull down to refresh.
-8. **Live** tab. On a non-game day it shows the latest finals with the cover
-   and total resolved. That is fine; the reply text says so.
-9. Star two games on the Board tab, then open the **Starred** tab.
-10. **About** tab. Scroll to Links, tap Privacy policy, come back.
-11. Open Control Center, turn on Airplane Mode, return to the app, pull to
-    refresh, show the offline view. Turn Airplane Mode off, tap Retry.
-12. Open Control Center, tap the red record button to stop.
+If it ever needs re-recording: Do Not Disturb on, start Screen Record from
+Control Center, swipe to the home screen, tap the app icon, walk the tabs,
+hold 8 quiet seconds at the end, stop. AirDrop to the Mac.
 
-Target 60 to 90 seconds. AirDrop the .mp4 from Photos to the Mac and save it
-as `ios/review/walkthrough-raw.mp4` (the folder is gitignored).
+## Step 1c: narration (done 2026-09-07)
 
-## Step 1c: optional narration (ElevenLabs, already rendered)
+Ten lines in `ios/narration.txt`, rendered by `ios/narrate.mts` through
+`dailylocks-studio`'s ElevenLabs client (voice Brian, speed 0.9) into
+`ios/review/lines/`. `ios/review/cues.txt` places each line at the second its
+beat is on screen; `scripts/review_mux.py` lays them over the recording and
+re-encodes to H.264 30 fps so it plays in any browser. Output:
+**`ios/review/walkthrough.mp4`** (26 MB). That is the file to attach.
 
-Apple does not require audio; a silent recording is accepted. If you want the
-clip to explain itself, the narration is done: ten lines, one per beat, in
-`ios/review/lines/` (62 s of speech, voice Brian, speed 0.9), rendered through
-`dailylocks-studio`'s ElevenLabs client by `ios/narrate.mts`. Listen to
-`ios/review/narration-preview.mp3` first. The text is `ios/narration.txt`;
-it describes what is on screen and never promises picks or wagers.
-
-To change a line, edit `ios/narration.txt` and re-render (about 900 credits,
-$0.18, for the whole file):
+To change a line: edit `ios/narration.txt`, re-render just that line
+(`--only N`, about 100 credits), then re-run the mux:
 
 ```
-cd /Users/cv/projects/dailylocks-studio && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts 0.9
-```
-
-Then sync it to the recording. Open `walkthrough-raw.mp4` in QuickTime, note
-the second each beat begins (app launch, Board scroll, filters and search,
-Maps, pull-to-refresh, Live, Starred, About, offline, and a quiet moment at
-the end for the closing line), and put those into `ios/review/cues.txt`
-(`NN  seconds`, one per line). Then:
-
-```
+cd /Users/cv/projects/dailylocks-studio && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts 0.9 --only 9
 python3 scripts/review_mux.py ios/review/walkthrough-raw.mp4 ios/review/cues.txt
 ```
 
-It copies the video untouched, drops each line at its cue, pushes a cue back
-if the previous line is still speaking, and warns if a line runs past the end.
-Output is `ios/review/walkthrough.mp4`. Watch it once end to end before
-attaching. Line 2 is the longest at 14.6 s, so scroll the Board slowly, and
-leave about 8 s at the end for line 10. If the timing fights you, attach
-`walkthrough-raw.mp4` silent instead.
+Apple does not require audio. If the narration ever gets in the way, attach
+`walkthrough-raw.mp4` instead.
 
 ## Step 2: reply text (paste into "Reply to App Review")
 
 On the submission page (the one showing Rejected), click **Reply to App
-Review**, paste the block below, attach `ios/review/walkthrough.mp4` with the
-paperclip (under 500 MB), Send.
+Review**, paste the block below, attach `ios/review/walkthrough.mp4` (26 MB) with the
+paperclip, Send.
 
 ```
 Thank you for the review. The requested screen recording is attached; it was captured on a physical iPhone running the current iOS release and begins with launching the app. The same information has been added to the App Review Information notes.

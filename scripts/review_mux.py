@@ -4,8 +4,10 @@
 
 cues.txt: one line per narration line, "NN  seconds" where seconds is when that
 beat starts on screen (from QuickTime or ffplay). Lines are ios/review/lines/NN.mp3
-from ios/narrate.ts. The video track is copied untouched. Overlaps are reported
-and the next cue is pushed back so lines never talk over each other.
+from ios/narrate.mts. The frames are untouched but re-encoded to H.264 at 30 fps
+(HEVC from the phone does not play in every browser and is 4x the size).
+Overlaps are reported and the next cue is pushed back so lines never talk over
+each other. The device audio track is dropped.
 """
 import json, subprocess, sys
 from pathlib import Path
@@ -31,7 +33,7 @@ for ln in cues_path.read_text().splitlines():
 inputs, filters, labels, cursor = ["-i", str(raw)], [], [], 0.0
 for i, (n, t) in enumerate(cues, start=1):
     dur = index[n]["durationSec"]
-    if t < cursor:
+    if t < cursor - 0.05:
         print(f"line {n:02d}: cue {t:.1f}s overlaps previous line, pushed to {cursor:.1f}s")
         t = cursor
     if t + dur > video_len:
@@ -44,7 +46,8 @@ for i, (n, t) in enumerate(cues, start=1):
 
 mix = "".join(labels) + f"amix=inputs={len(labels)}:normalize=0,apad[aout]"
 cmd = ["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filters + [mix]),
-       "-map", "0:v:0", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
-       "-shortest", str(out)]
+       "-map", "0:v:0", "-map", "[aout]", "-vf", "fps=30,scale=-2:1920",
+       "-c:v", "libx264", "-crf", "22", "-preset", "medium", "-pix_fmt", "yuv420p",
+       "-movflags", "+faststart", "-c:a", "aac", "-b:a", "128k", "-shortest", str(out)]
 subprocess.run(cmd, check=True, capture_output=True)
 print(f"\nwrote {out} ({probe(out):.1f}s)")
