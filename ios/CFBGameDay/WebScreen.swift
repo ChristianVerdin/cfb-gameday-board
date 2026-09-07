@@ -35,23 +35,39 @@ struct WebScreen: View {
 private struct WebHost: UIViewRepresentable {
     let container: WebContainer
 
-    func makeUIView(context: Context) -> UIView {
-        let host = UIView()
+    func makeUIView(context: Context) -> HostView {
+        let host = HostView()
         host.backgroundColor = .clear
+        host.container = container
         return host
     }
 
-    func updateUIView(_ host: UIView, context: Context) {
-        let web = container.webView
-        guard web.superview !== host else { return }
+    func updateUIView(_ host: HostView, context: Context) {
+        host.adoptIfVisible()
+    }
+}
+
+/// Re-parents the shared web view whenever this tab comes on screen. SwiftUI only
+/// calls updateUIView when a view's inputs change, and a revisited tab's inputs never
+/// do, so the web view used to stay in the previous tab's host and the tab showed blank.
+final class HostView: UIView {
+    weak var container: WebContainer?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        adoptIfVisible()
+    }
+
+    func adoptIfVisible() {
+        guard window != nil, let web = container?.webView, web.superview !== self else { return }
         web.removeFromSuperview()
         web.translatesAutoresizingMaskIntoConstraints = false
-        host.addSubview(web)
+        addSubview(web)
         NSLayoutConstraint.activate([
-            web.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-            web.trailingAnchor.constraint(equalTo: host.trailingAnchor),
-            web.topAnchor.constraint(equalTo: host.topAnchor),
-            web.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+            web.leadingAnchor.constraint(equalTo: leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: trailingAnchor),
+            web.topAnchor.constraint(equalTo: topAnchor),
+            web.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
     }
 }
