@@ -28,9 +28,16 @@
   (`HostView.didMoveToWindow`), verified by `scripts/ios_tab_check.sh` (AXe +
   simulator screenshots). Also fixed: `.a2hs` CSS overrode the `hidden`
   attribute so the Add to Home Screen hint showed inside the app; `sw.js` v4.
-  **Build 1.0.0 (3) uploaded and attached to version 1.0.0** with the
-  `asc` CLI (`brew install asc`, key `cfbgameday` in `~/.asc/config.json`).
-  Manual release selected: when Approved, click **Release This Version**.
+  Build 1.0.0 (3) uploaded, attached, notes and the video attachment set,
+  and the submission **resubmitted 2026-09-07 13:03 CT, Waiting for Review**,
+  all through the `asc` CLI (`brew install asc`, key `cfbgameday` in
+  `~/.asc/config.json`). The API refuses `submissions-submit` until the
+  rejected item is marked resolved (`asc review items update --resolved true`);
+  the web Resubmit button does that step for you. `asc validate` reports
+  "app availability is missing" through the v2 API even though pricing is set
+  (Free, USA base) and the submission went through; treat it as noise unless
+  Apple raises it. Manual release selected: when Approved, click
+  **Release This Version**.
 - Web is live at cfbgameday.app with HSTS, www redirects to apex, service worker
   caches the shell only, `/api/live` is a Vercel Python function CDN-cached 20 s.
 - Snapshot refreshes itself: GitHub Action `refresh.yml` runs Thu 9 PM CT and
@@ -48,10 +55,7 @@
 - Likely outcomes and the prepared responses are in `ios/APP_STORE.md`.
 
 **Open items**
-- Resubmit: `asc review submissions-submit --id a0285351-31b8-4551-ac2c-4c8c214ecde7 --confirm`
-  or the Resubmit button on the submission page. Check with
-  `asc review status --app 6809035228`.
-- Then wait for Apple. On approval: release, then confirm the store listing renders.
+- Wait for Apple. Check with `asc review status --app 6809035228`. On approval: release, then confirm the store listing renders.
 - If a second rejection cites 4.2, the next native lever is a Starred list
   backed by `games.json`.
 - Optional, unbuilt: line-movement chip on cards, Telegram ping from the refresh

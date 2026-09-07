@@ -129,4 +129,6 @@ asc review submissions-submit --id a0285351-31b8-4551-ac2c-4c8c214ecde7 --confir
 asc review status --app 6809035228
 ```
 
-Then update `CONTEXT.md` with the resubmission time.
+Done 2026-09-07 13:03 CT via asc. The API needs the rejected item marked
+resolved first: `asc review items update --id <ITEM_ID> --resolved true`
+(item ids from `asc review items list --submission <ID>`).
