@@ -45,8 +45,9 @@
   `asc publish appstore`, and the `asc@rorkai` plugin plus the global
   `app-store-release` skill capture all of this for the next app on the
   account. A background loop in the session polls `asc review status` every
-  10 min until the state changes. Reports (`asc analytics`) need a key with
-  reports access; the App Manager key is refused, see `ios/APP_STORE.md`.
+  10 min until the state changes. Reports: a second, Admin key (profile `cfbgameday-reports`) was added
+  and the ongoing analytics report request created; the App Manager key
+  stays the default. Details in `ios/APP_STORE.md`, Reports.
 - Web is live at cfbgameday.app with HSTS, www redirects to apex, service worker
   caches the shell only, `/api/live` is a Vercel Python function CDN-cached 20 s.
 - Snapshot refreshes itself: GitHub Action `refresh.yml` runs Thu 9 PM CT and
