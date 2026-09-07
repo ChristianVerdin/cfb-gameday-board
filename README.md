@@ -46,6 +46,7 @@ needs the server because the browser cannot call ESPN directly.
 | `games.js` | Snapshot payload as `window.CFB_DATA = {...}` (loaded by the page) |
 | `games.json` | Same payload as plain JSON |
 | `server.py` | Static server + `/api/live` ESPN proxy with per-date cache |
+| `CONTEXT.md`, `AGENTS.md` | Operator notes: live state and the map of everything that runs unattended. Not needed to run the board |
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math |
