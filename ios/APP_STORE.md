@@ -138,11 +138,23 @@ Contact: your name, phone, and email as registered with the developer account.
 
 ## Reports
 
-`asc analytics` and `asc analytics sales` need an API key with Admin or
-Sales/Finance reports access. The App Manager key (FQRRWFFM28) gets
-"forbidden for security reasons". To turn reports on, create a second key with
-that access under Users and Access, Integrations, or raise this key's role, then
-`asc auth login --name cfbgameday-reports ...`.
+Analytics needs an Admin API key. Two keys are registered with `asc`:
+
+| Profile | Key | Role | Use |
+| --- | --- | --- | --- |
+| `cfbgameday` (default) | FQRRWFFM28 | App Manager | uploads, metadata, review, TestFlight |
+| `cfbgameday-reports` | R79Z9DL337 | Admin | reports only, always by name |
+
+Ongoing analytics report request `15cce5e9-253a-459b-b969-a07eed348d67`
+created 2026-09-07; Apple produces daily instances from here on.
+
+```
+asc --profile cfbgameday-reports analytics view --request-id 15cce5e9-253a-459b-b969-a07eed348d67
+asc --profile cfbgameday-reports analytics download --request-id 15cce5e9-253a-459b-b969-a07eed348d67 --instance-id <INSTANCE_ID>
+asc --profile cfbgameday-reports analytics sales --vendor <VENDOR> --type SALES --subtype SUMMARY --frequency DAILY --date YYYY-MM-DD
+```
+
+Both `.p8` files live in `~/.appstoreconnect/private_keys/`, never in the repo.
 
 ## Export compliance
 
