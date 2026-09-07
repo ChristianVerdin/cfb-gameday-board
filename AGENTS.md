@@ -49,11 +49,21 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 ## 7. iOS release script (manual, one command)
 
 **File:** `scripts/release_ios.sh` + `ios/ExportOptions.plist`
-**Does:** bumps the build number in `ios/project.yml`, `xcodegen generate`, Release archive, App Store IPA export, `altool --validate-app` then `--upload-app` with the App Store Connect API key (`ASC_KEY_ID`, `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`).
-**Cost:** $0. **Guardrails:** never commits the key; `*.p8` is gitignored; `--no-upload` for a dry run.
+**Does:** bumps the build number in `ios/project.yml`, `xcodegen generate`, Release archive, App Store IPA export, `altool --validate-app`, then `asc publish appstore` (upload, wait for processing, find or create the App Store version, apply `ios/metadata/version/<version>/en-US.json` if present, attach the build). `--submit` adds `--submit --confirm` and sends the version to review. Without `asc` on PATH it falls back to `altool --upload-app` and the build is attached by hand.
+**Auth:** `asc` profile `cfbgameday` in `~/.asc/config.json` (key FQRRWFFM28, App Manager); altool fallback reads `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`.
+**Cost:** $0. **Guardrails:** never commits the key; `*.p8` is gitignored; `--no-upload` stops at the IPA; `--submit` is the only path that submits, and it is never the default.
+
+## 8. iOS tab smoke test (manual, simulator)
+
+**File:** `scripts/ios_tab_check.sh` (needs AXe: `brew install cameroncooke/axe/axe`, a booted simulator, and a Debug simulator build in `ios/build/DerivedData`).
+**Does:** installs and launches the app, taps Board, Live, Board, Starred, Live, About, Board, Starred, screenshots each, and fails if a web tab's header band has no bright pixels (the blank-revisit bug of 2026-09-07). Run it before every iOS upload.
+
+## 9. App Review status watch (session-scoped, optional)
+
+**Command:** a shell loop around `asc review status --app 6809035228` every 10 min that exits when the version state changes; started from a Claude Code session as a background task when a submission is pending. Nothing is scheduled on the machine; nothing notifies (no Telegram chat ID). `asc status --app 6809035228 --watch` is the equivalent one-liner.
 
 ## Not automated, on purpose
 
-- Submitting for review, release, and store metadata (cv, in App Store Connect).
+- Release after approval, pricing, age rating, screenshots, and replying to App Review messages (cv, in App Store Connect). Submitting is scripted (`release_ios.sh --submit`, or `asc review submissions-submit`) but only run on cv's say-so.
 - Telegram alerts: no chat ID is declared for this project; do not send.
 - Player-prop posting: lives in `~/projects/sportsbettingml_full_package`, never here.

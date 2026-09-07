@@ -38,6 +38,15 @@
   (Free, USA base) and the submission went through; treat it as noise unless
   Apple raises it. Manual release selected: when Approved, click
   **Release This Version**.
+- Also done 2026-09-07 with the `asc` CLI: the live listing pulled into
+  `ios/metadata/` (asc round-trip, validated), a 1.0.1 metadata file with the
+  keyword cleanup the audit asked for (locked until the next version), the
+  release script now uploads, attaches, and optionally `--submit`s through
+  `asc publish appstore`, and the `asc@rorkai` plugin plus the global
+  `app-store-release` skill capture all of this for the next app on the
+  account. A background loop in the session polls `asc review status` every
+  10 min until the state changes. Reports (`asc analytics`) need a key with
+  reports access; the App Manager key is refused, see `ios/APP_STORE.md`.
 - Web is live at cfbgameday.app with HSTS, www redirects to apex, service worker
   caches the shell only, `/api/live` is a Vercel Python function CDN-cached 20 s.
 - Snapshot refreshes itself: GitHub Action `refresh.yml` runs Thu 9 PM CT and
@@ -111,3 +120,6 @@ version, What's New, attach the build, submit.
    `icons/app-store-badge.svg`, URL `https://apps.apple.com/app/id6809035228`).
 3. Add the App Store link to `README.md`.
 4. Install the App Store Connect app on the phone for review/ratings pushes.
+5. `asc apps wall submit --app 6809035228 --confirm` (free Wall of Apps listing, needs `gh` auth).
+6. Ship 1.0.1 with `scripts/release_ios.sh --bump 1.0.1` so the audited keywords go live.
+7. Watch `asc testflight crashes list` and `asc testflight feedback list --app 6809035228` the first week.

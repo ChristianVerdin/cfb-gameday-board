@@ -18,13 +18,16 @@ python3 server.py                 # http://127.0.0.1:8765/  (live mode needs thi
 python3 scripts/refresh_week.py   # rebuild games.json/games.js for the next Thu..Mon
 python3 scripts/check.py          # offline smoke test, run after touching rules or liveMath
 scripts/tunnel.sh                 # gameday Cloudflare quick tunnel, prints the https URL
-scripts/release_ios.sh --bump X.Y.Z   # archive, export, upload the iOS app via the ASC API (see CONTEXT.md)
+scripts/release_ios.sh --bump X.Y.Z   # archive, export, upload, attach via asc; add --submit to send to review (see CONTEXT.md)
+scripts/ios_tab_check.sh              # simulator tab smoke test (AXe); run before every iOS upload
+asc review status --app 6809035228    # App Review state; asc is installed and logged in (profile cfbgameday)
 ```
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
 
 ## Status
-- Web live at https://cfbgameday.app. iOS 1.0.0 (1) submitted to App Review 2026-09-05,
-  manual release. Details and what to do on approval/rejection: `CONTEXT.md`.
+- Web live at https://cfbgameday.app. iOS 1.0.0 (3) resubmitted to App Review 2026-09-07
+  after a 2.1 Information Needed round, manual release. Details and what to do on
+  approval/rejection: `CONTEXT.md`. Cross-project App Store playbook: `app-store-release` skill.
 
 ## Hosted
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
@@ -38,7 +41,7 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - `server.py` static server + `/api/live` ESPN proxy, per-date cache, closing-line book (`lines.json`, gitignored).
 - `scripts/refresh_week.py` weekly snapshot builder. `scripts/check.py` smoke test.
 - `manifest.webmanifest`, `sw.js`, `icons/` PWA. Shell-only cache; `/api/*` never cached. Bump `VERSION` in `sw.js` when the shell changes.
-- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`. Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC.
+- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`; live metadata JSON: `ios/metadata/` (applied by the release script). Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC. Review media (`ios/review/`) is gitignored.
 - `privacy.html`, `support.html`, `site.css`: public pages App Review links to; keep them accurate when data sources change.
 
 ## Product rules
@@ -59,8 +62,9 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - Public repo: never commit `.env`, keys, cookies, tokens, Apple `.p8` / provisioning profiles, Vercel tokens, `.vercel/`. Scan the tree before `git add`.
 - Never rebuild the snapshot in a way that drops lines: `refresh_week.py` carries the prior line forward when ESPN has none. Keep that.
 - Hosting is Vercel; `deploy/` holds self-host drafts only. Never deploy to EC2
-  without "deploy to EC2" and a host. App Store upload, signing, and submission
-  are cv's steps in Xcode; do not attempt them from the CLI.
+  without "deploy to EC2" and a host. App Store upload and attach run from
+  `scripts/release_ios.sh`; submitting (`--submit`, `asc review submissions-submit`)
+  and releasing happen only when cv says so in that session.
 - No sportsbook deep links, affiliate params, accounts, or push. Keep copy as
   scores / venue / weather / posted lines, never a wagering tool.
   The live proxy stays on 127.0.0.1 or behind auth; it is an ESPN fetch-amplifier.
