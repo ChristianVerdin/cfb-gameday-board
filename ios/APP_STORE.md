@@ -98,6 +98,13 @@ calls are to cfbgameday.app, which proxies ESPN and serves static files.
 
 > college football,cfb,scores,ncaa football,gameday,weather,spread,odds,live scores,schedule
 
+Live for 1.0.0. `asc metadata keywords audit` flags four of them as wasted
+because Apple already indexes the name and subtitle: cfb, gameday, scores,
+weather. Keywords are locked while a version is in review, so
+`metadata/version/1.0.1/en-US.json` carries the replacement (99 chars):
+
+> college football,ncaa football,ncaaf,live scores,schedule,point spread,odds,totals,kickoff,forecast
+
 **What's New** (1.0.0)
 
 > First release. Week-by-week slate with venue, weather, TV, posted lines, and live cover and total state.
@@ -128,6 +135,14 @@ frames needed. Screenshots must show this app, not a mock.
 > No demo account is needed. Live scores appear on game days (Thursday to Saturday during the season); outside game windows the board shows the upcoming slate with lines and weather.
 
 Contact: your name, phone, and email as registered with the developer account.
+
+## Reports
+
+`asc analytics` and `asc analytics sales` need an API key with Admin or
+Sales/Finance reports access. The App Manager key (FQRRWFFM28) gets
+"forbidden for security reasons". To turn reports on, create a second key with
+that access under Users and Access, Integrations, or raise this key's role, then
+`asc auth login --name cfbgameday-reports ...`.
 
 ## Export compliance
 
