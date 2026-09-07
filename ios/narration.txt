@@ -6,5 +6,5 @@ Pull down to refresh.
 The Live tab lists games in progress with the score, the clock, and whether the favorite is covering. Between game days it shows the latest finals.
 Starring a game adds it to the Starred tab.
 About lists the data sources, ESPN and Open-Meteo, with links to the privacy policy and the support page.
-With no connection, the app shows an offline view and a Retry button.
+Without a connection, the board falls back to the stored weekly snapshot, and the header says so until the next refresh.
 There are no accounts, no purchases, no ads, and no wagering. It is an information display.
