@@ -70,6 +70,7 @@ select { width: auto; padding: 8px 10px; border-radius: 999px; font-size: 13px; 
 .empty { text-align: center; color: var(--muted); padding: 40px 16px; }
 footer { color: var(--dim); font-size: 11px; text-align: center; padding: 4px 16px 28px; line-height: 1.4; }
 .a2hs { margin: 0 14px 10px; background: #10192b; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.a2hs[hidden] { display: none; }   /* display:flex above would otherwise override the hidden attribute */
 .a2hs b { color: var(--text); }
 .a2hs button { background: none; border: 0; color: var(--dim); font-size: 16px; padding: 0 4px; }
 @media (min-width: 900px) {
