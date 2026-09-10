@@ -64,8 +64,15 @@
   pages on the domain.
 - Likely outcomes and the prepared responses are in `ios/APP_STORE.md`.
 
+**2026-09-10 — Approved.** 1.0.0 (3) passed App Review (submission
+a0285351 COMPLETE, version a7fbb1ed-f98e-4636-8927-cd3058d491bc in
+PENDING_DEVELOPER_RELEASE, release type MANUAL). Week 2 snapshot pushed
+2026-09-10 15:45 CT so the first installs see the current slate. Release
+with `asc versions release --version-id a7fbb1ed-f98e-4636-8927-cd3058d491bc --confirm`
+or the web button, then run the After approval list below.
+
 **Open items**
-- Wait for Apple. Check with `asc review status --app 6809035228`. On approval: release, then confirm the store listing renders.
+- Release 1.0.0, then confirm https://apps.apple.com/app/id6809035228 renders (up to 24 h).
 - If a second rejection cites 4.2, the next native lever is a Starred list
   backed by `games.json`.
 - Optional, unbuilt: line-movement chip on cards, Telegram ping from the refresh
