@@ -156,6 +156,42 @@ asc --profile cfbgameday-reports analytics sales --vendor <VENDOR> --type SALES 
 
 Both `.p8` files live in `~/.appstoreconnect/private_keys/`, never in the repo.
 
+## Marketing surfaces (set up 2026-09-10, release day)
+
+Live listing: https://apps.apple.com/us/app/cfb-gameday-board/id6809035228 (short form
+`https://apps.apple.com/app/id6809035228`). Released 2026-09-10 15:4x CT, 175 territories.
+
+- **Promotional text is the weekly billboard.** It is the only listing field Apple edits
+  without review. `python3 scripts/promo_text.py --apply` builds it from `games.json`
+  (game count, Saturday count, tightest line with ranked teams preferred, rain-risk
+  count) and pushes it through `asc apps info edit`. Run it after each Thursday refresh.
+  The evergreen line lives in `ios/metadata/version/1.0.0/en-US.json` and is what to
+  restore off-season.
+- **Site:** Smart App Banner (`apple-itunes-app` meta) on `/`, `/support`, `/privacy`;
+  Open Graph + Twitter card (`icons/og.png`, 1200x630, source `docs/og-card.html`,
+  re-render with headless Chrome at 1200x630 if the copy changes); JSON-LD
+  SoftwareApplication; `robots.txt` + `sitemap.xml`; App Store badge on `/support` and
+  in the board footer.
+- **Cross-links:** GitHub profile README (project row, use case, featured section with
+  three iPhone screenshots), dailylocks.ai footer (`CFB GAMEDAY BOARD` → cfbgameday.app),
+  Wall of Apps PR https://github.com/rorkai/App-Store-Connect-CLI/pull/2481.
+  hoynelabs.com is frozen while a Camera Recall version sits with Ring; add the badge
+  there when it unfreezes.
+- **Campaign links (attribution in App Analytics).** Format:
+  `https://apps.apple.com/app/apple-store/id6809035228?pt=PROVIDER_TOKEN&ct=CAMPAIGN&mt=8`.
+  The provider token is shown once in App Store Connect → Analytics → Acquisition →
+  Campaigns → Generate Campaign Link; it is not exposed by the API. Campaign names in
+  use once the token is set: `site-footer`, `site-support`, `github-readme`,
+  `github-profile`, `x-bio`, `x-post`, `dailylocks-footer`.
+- **Not automatable, do by hand:** pin `cfb-gameday-board` on the GitHub profile
+  (no API for profile pins), the Apple Silicon Mac checkbox in Pricing and
+  Availability (defaults on; untested there), Featuring nominations and In-App Events
+  (both have `asc nominations` / `asc app-events`; file 2-3 weeks before Rivalry Week,
+  Championship Saturday, and the Playoff).
+- **Apple marketing rules that apply:** official badge only, unaltered, min 40 px tall
+  with clear space; say "on the App Store"; screenshots in Apple's product bezels only;
+  never imply Apple endorsement. https://developer.apple.com/app-store/marketing/guidelines/
+
 ## Export compliance
 
 `ITSAppUsesNonExemptEncryption` is `false` in Info.plist (HTTPS only). No ERN needed.

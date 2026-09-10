@@ -50,6 +50,7 @@ needs the server because the browser cannot call ESPN directly.
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math |
+| `scripts/promo_text.py` | Builds the week's App Store promotional text from `games.json`; `--apply` pushes it with `asc` |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
 | `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
@@ -112,6 +113,7 @@ The GitHub Action does this on a schedule. To run it by hand:
 
 ```
 python3 scripts/refresh_week.py
+python3 scripts/promo_text.py --apply   # App Store promotional text for the week (needs asc)
 ```
 
 With no arguments it targets Thursday through Monday of the current or next
