@@ -28,7 +28,7 @@ def build(games, week):
         lo = min(abs(g["odds"]["spread"]) for g in lined)
         tight = [g for g in lined if abs(g["odds"]["spread"]) <= lo + 0.5]
         # among the tightest lines prefer the game with ranked teams
-        tight.sort(key=lambda g: -sum(1 for t in (g["away"], g["home"]) if t.get("rank")))
+        tight.sort(key=lambda g: -sum(1 for t in (g["away"], g["home"]) if 0 < (t.get("rank") or 99) < 99))
         close = tight[0]
 
     head = f"Week {week}: {n} games, {sat} on Saturday." if week else f"{n} games, {sat} on Saturday."

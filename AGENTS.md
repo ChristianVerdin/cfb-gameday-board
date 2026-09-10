@@ -62,6 +62,14 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 
 **Command:** a shell loop around `asc review status --app 6809035228` every 10 min that exits when the version state changes; started from a Claude Code session as a background task when a submission is pending. Nothing is scheduled on the machine; nothing notifies (no Telegram chat ID). `asc status --app 6809035228 --watch` is the equivalent one-liner.
 
+## 10. Weekly App Store promotional text (manual, one command)
+
+**File:** `scripts/promo_text.py` (stdlib; `--apply` shells out to `asc apps info edit`).
+Run after the Thursday snapshot refresh. Reads `games.json`, writes a ≤170-char line
+(game count, Saturday count, tightest line, rain-risk count) and pushes it as the
+listing's promotional text, which Apple updates without review. Not wired into the
+GitHub Action because that would put the App Store Connect `.p8` key in repo secrets.
+
 ## Not automated, on purpose
 
 - Release after approval, pricing, age rating, screenshots, and replying to App Review messages (cv, in App Store Connect). Submitting is scripted (`release_ios.sh --submit`, or `asc review submissions-submit`) but only run on cv's say-so.

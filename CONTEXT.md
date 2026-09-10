@@ -71,8 +71,26 @@ PENDING_DEVELOPER_RELEASE, release type MANUAL). Week 2 snapshot pushed
 with `asc versions release --version-id a7fbb1ed-f98e-4636-8927-cd3058d491bc --confirm`
 or the web button, then run the After approval list below.
 
+**Released 2026-09-10 ~15:44 CT.** `asc versions release` → READY_FOR_DISTRIBUTION;
+App Store Connect showed "Removed from App Store" / "175 Processing" for ~2 min while
+availability propagated (contentStatuses PROCESSING_TO_AVAILABLE), then 175 Available.
+Store page live ~15:56 CT: https://apps.apple.com/us/app/cfb-gameday-board/id6809035228.
+Release-day marketing pass (same afternoon): store badge + README link pushed, Smart App
+Banner / Open Graph / Twitter card / JSON-LD / robots / sitemap on the site, share image
+`icons/og.png`, `scripts/promo_text.py` with the Week 2 promotional text applied, Wall of
+Apps PR #2481, GitHub profile README section, dailylocks.ai footer link. Details and the
+manual follow-ups: `ios/APP_STORE.md` § Marketing surfaces.
+
 **Open items**
-- Release 1.0.0, then confirm https://apps.apple.com/app/id6809035228 renders (up to 24 h).
+- Campaign links need the App Analytics provider token (`pt`); cv reads it from
+  Analytics → Acquisition → Campaigns → Generate Campaign Link, then the links in
+  `index.html`, `support.html`, `README.md`, the profile README, and the X bio get
+  `?pt=…&ct=…&mt=8` (names listed in `ios/APP_STORE.md`).
+- Pin `cfb-gameday-board` on the GitHub profile by hand (no API).
+- Decide the Apple Silicon Mac checkbox (Pricing and Availability, defaults on).
+- Ship 1.0.1 (keyword cleanup already in `ios/metadata/version/1.0.1/`, plus a
+  native ratings prompt) after a few days of 1.0.0 data; submit only on cv's word.
+- Featuring nominations / In-App Events for Rivalry Week, Championship Saturday, Playoff.
 - If a second rejection cites 4.2, the next native lever is a Starred list
   backed by `games.json`.
 - Optional, unbuilt: line-movement chip on cards, Telegram ping from the refresh
