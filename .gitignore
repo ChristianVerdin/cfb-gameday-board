@@ -33,3 +33,6 @@ ios/review/
 
 # asc CLI metadata review artifacts
 ios/.asc/
+
+# transient backup written by scripts/ci_heal.py
+.heal-backup/

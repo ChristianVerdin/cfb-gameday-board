@@ -8,13 +8,16 @@ name: Refresh slate snapshot
 #   Thu 7 AM CT  Thursday weather and any games ESPN has added
 #   Fri 7 AM CT  Friday weather
 #   Sat 4 AM CT  Saturday same-day weather (earliest kick is 11 AM CT)
-# Commits games.json/games.js when they change; Vercel deploys the push.
+#   Sat 8 AM CT  backup for the 4 AM run - a dropped run cannot detect itself,
+#                and Saturday carries ~70 of the ~75 games
+# Commits games.json/games.js/index.html/sitemap.xml when they change; Vercel deploys the push.
 on:
   schedule:
     - cron: "0 18 * * 3"
     - cron: "0 12 * * 4"
     - cron: "0 12 * * 5"
     - cron: "0 9 * * 6"
+    - cron: "0 13 * * 6"
   workflow_dispatch:
     inputs:
       start:
@@ -56,6 +59,7 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          python3 scripts/ci_heal.py
           python3 scripts/check.py
           python3 scripts/run_summary.py >> "$GITHUB_STEP_SUMMARY"
           if git diff --quiet -- games.json games.js index.html sitemap.xml; then
@@ -72,3 +76,9 @@ jobs:
           git add games.json games.js index.html sitemap.xml
           git commit -m "Snapshot: $label ($(date -u +%Y-%m-%dT%H:%MZ))"
           git push
+      # Runs after the push on purpose: the board should still get the best data we
+      # have, and the red X is the notification. This repo has no Telegram chat id,
+      # so a failed run's email is the only unattended signal.
+      - name: Flag a degraded snapshot
+        if: always() && steps.build.outputs.changed != ''
+        run: python3 scripts/ci_heal.py --verify

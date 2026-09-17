@@ -52,6 +52,7 @@ needs the server because the browser cannot call ESPN directly.
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math, snapshot shape, structured data |
 | `scripts/run_summary.py` | Prints the build's counts and warnings as Markdown for the GitHub Actions step summary |
+| `scripts/ci_heal.py` | Rebuilds once in CI when a run dropped kickoff forecasts, keeping the better result; `--verify` fails the job if still degraded |
 | `scripts/promo_text.py` | Builds the week's App Store promotional text from `games.json`; `--apply` pushes it with `asc` |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
 | `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
@@ -130,8 +131,8 @@ block in `index.html` and the `sitemap.xml` lastmod from the committed
 `games.json`, with no network calls at all. A normal run writes all four files,
 so commit `games.json games.js index.html sitemap.xml` together.
 
-The Action runs it four times a week - Wed 1 PM, Thu 7 AM, Fri 7 AM and Sat
-4 AM CT. Each is scheduled hours ahead of when it is actually needed because
+The Action runs it five times a week - Wed 1 PM, Thu 7 AM, Fri 7 AM, Sat 4 AM
+and a Sat 8 AM backup. Each is scheduled hours ahead of when it is actually needed because
 GitHub creates scheduled runs late under load (measured 5h08m late once on this
 repo) and can drop them entirely.
 
