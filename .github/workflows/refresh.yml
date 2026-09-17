@@ -1,12 +1,20 @@
 name: Refresh slate snapshot
 
-# Thu 9 PM CT (02:00 UTC Fri) builds the coming Thu..Mon slate.
-# Sat 9 AM CT (14:00 UTC) refreshes lines and same-day weather.
+# Four runs a week, each with hours of lead time before it is needed.
+# GitHub creates scheduled runs late under load - measured 5h08m and 2h52m late
+# on this repo in Sept 2026 - and may drop them entirely, so every cron sits well
+# ahead of its deadline rather than close to it.
+#   Wed 1 PM CT  build the coming Thu..Mon slate (before Thursday night kickoff)
+#   Thu 7 AM CT  Thursday weather and any games ESPN has added
+#   Fri 7 AM CT  Friday weather
+#   Sat 4 AM CT  Saturday same-day weather (earliest kick is 11 AM CT)
 # Commits games.json/games.js when they change; Vercel deploys the push.
 on:
   schedule:
-    - cron: "0 2 * * 5"
-    - cron: "0 14 * * 6"
+    - cron: "0 18 * * 3"
+    - cron: "0 12 * * 4"
+    - cron: "0 12 * * 5"
+    - cron: "0 9 * * 6"
   workflow_dispatch:
     inputs:
       start:
