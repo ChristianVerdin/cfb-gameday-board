@@ -356,7 +356,12 @@
     </div>`;
   }
   function deskHtml(list) {
-    const unders = list.filter(g => g.impact_level==="UNDER" || g.impact_level==="WATCH");
+    // under_score is the directional part of the weather (wind/rain/cold). Heat scores
+    // impact_score but not this, so hot games stay out of the desk and in the heat list
+    // below. Fallback keeps a service-worker-cached snapshot rendering.
+    const unders = list.filter(g => g.under_score != null
+      ? g.under_score > 0
+      : (g.impact_level==="UNDER" || g.impact_level==="WATCH"));
     const heat = list.filter(g => (g.flags||[]).some(f=>f.includes("HEAT")||f==="HOT")).sort((a,b)=>(b.temp||0)-(a.temp||0)).slice(0,5);
     const alt = list.filter(g => (g.flags||[]).includes("ALTITUDE"));
     const indoor = list.filter(g=>g.indoor);

@@ -46,7 +46,8 @@ def test_impact():
     check("clean level", r["impact_level"], "CLEAR")
 
     check("hot 90", impact(False, wx(temp=90.4), 0, "Clear")["flags"], ["HOT"])
-    check("hot 90 note", impact(False, wx(temp=90.4), 0, "Clear")["impact_notes"], ["Clean outdoor conditions"])
+    check("hot 90 note", impact(False, wx(temp=90.4), 0, "Clear")["impact_notes"],
+          ["90° at kick — heat, hydration and rotation, not a total read"])
     check("heat 95", impact(False, wx(temp=95.0), 0, "Clear")["flags"], ["EXTREME HEAT"])
     check("heat 93 note", impact(False, wx(temp=92.7), 0, "Clear")["impact_notes"],
           ["93° and sunny — hydration / rotation game"])
@@ -55,10 +56,21 @@ def test_impact():
     check("heat overcast note", impact(False, wx(temp=94, weathercode=3), 0, "Overcast")["impact_notes"],
           ["94° and overcast — hydration / rotation game"])
 
+    # Heat is weather (scores) but not an under signal (under_score stays 0).
+    # A calm 101 degree kickoff must read WATCH: never CLEAR, never UNDER.
+    check("heat 95 level", impact(False, wx(temp=95.0), 0, "Clear")["impact_level"], "WATCH")
+    check("heat 95 score", impact(False, wx(temp=95.0), 0, "Clear")["impact_score"], 2)
+    check("hot 90 level", impact(False, wx(temp=90.4), 0, "Clear")["impact_level"], "WATCH")
+    r = impact(False, wx(temp=101.4, wind=4.9, pop=7), 0, "Overcast")
+    check("calm heat not under", r["impact_level"], "WATCH")
+    check("calm heat under_score", r["under_score"], 0)
+    check("heat plus wind under", impact(False, wx(temp=101.4, wind=22), 0, "Clear")["impact_level"], "UNDER")
+    check("indoor under_score", impact(True, wx(temp=100), 200, "Clear")["under_score"], 0)
+
     check("cold", impact(False, wx(temp=38), 0, "Clear")["flags"], ["COLD"])
-    check("cold level", impact(False, wx(temp=38), 0, "Clear")["impact_level"], "CLEAR")
+    check("cold level", impact(False, wx(temp=38), 0, "Clear")["impact_level"], "WATCH")
     check("freezing", impact(False, wx(temp=30), 0, "Clear")["flags"], ["FREEZING"])
-    check("freezing level", impact(False, wx(temp=30), 0, "Clear")["impact_level"], "WATCH")
+    check("freezing level", impact(False, wx(temp=30), 0, "Clear")["impact_level"], "UNDER")
 
     r = impact(False, wx(wind=17.8), 4505, "Clear")
     check("wind flags", r["flags"], ["WIND", "ALTITUDE"])

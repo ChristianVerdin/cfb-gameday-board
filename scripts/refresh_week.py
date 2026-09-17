@@ -211,55 +211,73 @@ def kick_ct(kick: datetime) -> str:
 
 
 def impact(indoor: bool, wx: dict | None, elev_ft: int | None, label: str) -> dict:
+    """Two scores, one level.
+
+    impact_score is total weather magnitude: heat counts, because a 101 degree
+    kickoff is weather. under_score is only the part that historically suppresses
+    scoring - wind, rain, cold - and drives impact_level, because heat does not
+    play like wind and rain. Without the split a calm 102 degree game reads
+    "UNDER", which contradicts this function's own heat note.
+    """
     if indoor:
-        return {"flags": ["INDOOR"], "impact_score": 0, "impact_level": "NONE",
-                "impact_notes": ["Indoor — weather off the board"]}
+        return {"flags": ["INDOOR"], "impact_score": 0, "under_score": 0,
+                "impact_level": "NONE", "impact_notes": ["Indoor — weather off the board"]}
     wx = wx or {}
-    flags, notes, score = [], [], 0
+    flags, notes, score, under = [], [], 0, 0
     temp, wind, pop = wx.get("temp"), wx.get("wind"), wx.get("pop")
     if temp is not None:
         t = round(temp)
-        if temp >= 95:
-            flags.append("EXTREME HEAT")
-        elif temp >= 90:
-            flags.append("HOT")
+        if temp >= 90:
+            flags.append("EXTREME HEAT" if temp >= 95 else "HOT")
+            score += 2 if temp >= 95 else 1
+            # Note bands ride the flag, never the rounding: t is rounded, temp is not.
+            if t >= 98:
+                notes.append(f"{t}° heat — early-season pace can stay fast; monitor late-game fade")
+            elif t >= 93:
+                sky = "sunny" if (wx.get("weathercode") in (0, 1)) else label.lower()
+                notes.append(f"{t}° and {sky} — hydration / rotation game")
+            else:
+                notes.append(f"{t}° at kick — heat, hydration and rotation, not a total read")
         elif temp <= 32:
             flags.append("FREEZING")
-            score += 1
+            score += 2
+            under += 2
             notes.append(f"{t}° at kick — freezing, ball and hands suffer")
         elif temp <= 40:
             flags.append("COLD")
+            score += 1
+            under += 1
             notes.append(f"{t}° at kick — cold-weather check on the total")
-        if t >= 98:
-            notes.append(f"{t}° heat — early-season pace can stay fast; monitor late-game fade")
-        elif t >= 93:
-            sky = "sunny" if (wx.get("weathercode") in (0, 1)) else label.lower()
-            notes.append(f"{t}° and {sky} — hydration / rotation game")
     if wind is not None:
         if wind >= 20:
             flags.append("HIGH WIND")
             score += 2
+            under += 2
             notes.append(f"Wind {round(wind)} mph — passing / kicking game, lean under")
         elif wind >= 15:
             flags.append("WIND")
             score += 1
+            under += 1
             notes.append(f"Wind {round(wind)} mph — check total")
     if pop is not None:
         if pop >= 60:
             flags.append("RAIN RISK")
             score += 2
+            under += 2
             notes.append(f"{pop}% rain — lean under if it arrives")
         elif pop >= 40:
             flags.append("SHOWERS")
             score += 1
+            under += 1
             notes.append(f"{pop}% shower chance — watch radar at kick")
     if not notes and score == 0:
         notes.append("Clean outdoor conditions")
     if elev_ft is not None and elev_ft >= 4000:
         flags.append("ALTITUDE")
         notes.append(f"Elevation {elev_ft:,} ft — kicking / conditioning note")
-    level = "CLEAR" if score == 0 else "WATCH" if score == 1 else "UNDER"
-    return {"flags": flags, "impact_score": score, "impact_level": level, "impact_notes": notes}
+    level = "UNDER" if under >= 2 else "WATCH" if (under or score) else "CLEAR"
+    return {"flags": flags, "impact_score": score, "under_score": under,
+            "impact_level": level, "impact_notes": notes}
 
 
 def team_block(comp_team: dict, conf_names: dict) -> dict:
