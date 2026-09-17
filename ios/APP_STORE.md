@@ -101,9 +101,18 @@ calls are to cfbgameday.app, which proxies ESPN and serves static files.
 Live for 1.0.0. `asc metadata keywords audit` flags four of them as wasted
 because Apple already indexes the name and subtitle: cfb, gameday, scores,
 weather. Keywords are locked while a version is in review, so
-`metadata/version/1.0.1/en-US.json` carries the replacement (99 chars):
+`metadata/version/1.0.1/en-US.json` carries the replacement (98 chars):
 
-> college football,ncaa football,ncaaf,live scores,schedule,point spread,odds,totals,kickoff,forecast
+> college,ncaa,football,ncaaf,live,schedule,spread,odds,totals,kickoff,forecast,channel,rankings,fbs
+
+Tightened 2026-09-16 from the 09-10 draft. The audit only checks phrase overlap
+with the name and subtitle; it does not see token-level waste, and Apple indexes
+tokens. The 09-10 set spent 9 bytes on a second `football` and 6 on `scores`
+(already in the subtitle) via `live scores`. Those bytes now buy `channel` ("what
+channel is the game on" is a top CFB query), `rankings`, and `fbs`. `point spread`
+became `spread`; `point` alone has no search value. Nothing here names a
+sportsbook, a network, or a wagering verb. What's New for 1.0.1 was also corrected:
+it described the blank-tab fix, which already shipped in 1.0.0 (3).
 
 **What's New** (1.0.0)
 
