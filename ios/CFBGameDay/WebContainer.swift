@@ -10,6 +10,8 @@ final class WebContainer: NSObject, ObservableObject {
 
     let webView: WKWebView
     private let refresh = UIRefreshControl()
+    private var backgroundedAt: Date?
+    private var observers: [NSObjectProtocol] = []
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -34,6 +36,61 @@ final class WebContainer: NSObject, ObservableObject {
         refresh.tintColor = .systemYellow
         refresh.addTarget(self, action: #selector(pulled), for: .valueChanged)
         webView.scrollView.refreshControl = refresh
+
+        // willEnterForeground, not didBecomeActive: the latter also fires after a
+        // dismissed alert, a Control Centre pull and app-switcher previews, which would
+        // reload the board mid-scroll during a phone call.
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification,
+                                           object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.backgroundedAt = Date() }
+        })
+        observers.append(center.addObserver(forName: UIApplication.willEnterForegroundNotification,
+                                           object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshIfStale() }
+        })
+    }
+
+    /// Reload only when the page is actually holding a stale slate.
+    ///
+    /// A blind reload on every foreground would wipe scroll position and the in-page
+    /// filters, which is hostile on a Saturday afternoon - and usually pointless, since
+    /// app.js already polls /api/live every 30s, so scores self-heal without us. So ask
+    /// the page what it is holding and decide from that. No new endpoint, works offline.
+    func refreshIfStale() {
+        guard failure == nil else { reload(); return }      // offline screen: nothing to keep
+        let away = backgroundedAt.map { Date().timeIntervalSince($0) } ?? 0
+        backgroundedAt = nil
+        guard away >= 15 * 60 else { return }               // the poller has it covered
+        if away >= 6 * 60 * 60 { reload(); return }         // overnight in a pocket
+
+        // Plain multi-line JS: no trailing backslashes, so nothing here depends on Swift's
+        // line-continuation rules inside the payload.
+        let js = """
+        (function () {
+          var d = window.CFB_DATA || {}, g = d.games || [];
+          var live = g.some(function (x) {
+            return x.gameState === "in" || x.status === "STATUS_IN_PROGRESS" || x.status === "STATUS_HALFTIME";
+          });
+          return JSON.stringify({ gen: d.generated_at || "", live: live });
+        })()
+        """
+        webView.evaluateJavaScript(js) { [weak self] value, _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                guard let raw = value as? String,
+                      let data = raw.data(using: .utf8),
+                      let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { self.reload(); return }              // could not ask: assume stale
+                if state["live"] as? Bool == true { return } // mid-game: leave their place alone
+                let fmt = ISO8601DateFormatter()
+                guard let gen = (state["gen"] as? String).flatMap({ fmt.date(from: $0) }) else {
+                    self.reload(); return
+                }
+                // 12h means a scheduled rebuild has landed since this page loaded.
+                if Date().timeIntervalSince(gen) >= 12 * 60 * 60 { self.reload() }
+            }
+        }
     }
 
     func loadIfNeeded(fragment: String = "all") {
