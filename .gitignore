@@ -30,3 +30,6 @@ ios/screenshots/
 
 # App Review attachments (screen recordings, narration)
 ios/review/
+
+# asc CLI metadata review artifacts
+ios/.asc/
