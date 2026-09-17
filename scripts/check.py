@@ -15,6 +15,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -117,6 +118,14 @@ def test_time():
     check("compass none", compass(None), None)
     check("has_line", [has_line(None), has_line({"spread": None, "total": None}), has_line({"spread": -3, "total": None})],
           [False, False, True])
+
+    import server  # noqa: E402  - cheap now that the LineBook is built lazily
+    est = ZoneInfo("America/New_York")
+    check("fallback sat", server.fallback_dates(datetime(2026, 9, 5, 12, tzinfo=est)),
+          ["20260903", "20260904", "20260905", "20260906", "20260907"])
+    check("fallback tue rolls forward", server.fallback_dates(datetime(2026, 9, 8, 12, tzinfo=est))[0], "20260910")
+    check("fallback mon stays", server.fallback_dates(datetime(2026, 9, 21, 12, tzinfo=est))[0], "20260917")
+    check("no line book at import", server.LINES, None)
 
 
 def test_live_math():
