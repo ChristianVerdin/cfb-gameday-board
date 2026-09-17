@@ -104,7 +104,21 @@ push rather than leaving it — the weather is the point of the board.
 
 ## iOS 1.0.1 (2026-09-17)
 
-Built, uploaded, attached, **not submitted**. Submitting is cv's call in session.
+**Submitted for review 2026-09-17 18:27 CT on cv's say-so** — submission
+`b8867a34-41e7-449c-b0df-12b9fc7eb220`, state `WAITING_FOR_REVIEW`,
+`asc review doctor` reported 0 blockers.
+
+**Release type is MANUAL**, so approval will NOT put it live. It will sit in
+`PENDING_DEVELOPER_RELEASE` until someone releases it:
+```
+asc versions release --version-id 8e2d8924-410a-42c5-ad1b-abfe684435a0 --confirm
+```
+
+The Week 3 promotional text was pushed onto the 1.0.1 record before submitting.
+Without that, releasing 1.0.1 would have swapped the weekly billboard back to the
+evergreen line that `ios/metadata/version/1.0.1/en-US.json` carries as its
+off-season default. **Any future version needs the same step**, or run
+`promo_text.py --apply` again right after the release.
 
 - Version `1.0.1` id `8e2d8924-410a-42c5-ad1b-abfe684435a0`, state `PREPARE_FOR_SUBMISSION`, release MANUAL.
 - Build **4** id `62cd0f47-97ce-4725-a820-d9997922c6a0`, `VALID`, attached.
