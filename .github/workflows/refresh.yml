@@ -57,6 +57,7 @@ jobs:
             exit 0
           fi
           python3 scripts/check.py
+          python3 scripts/run_summary.py >> "$GITHUB_STEP_SUMMARY"
           if git diff --quiet -- games.json games.js; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
