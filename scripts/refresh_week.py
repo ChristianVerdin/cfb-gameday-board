@@ -360,6 +360,14 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     else:
         group = "G5"
 
+    # ESPN states this outright and gets the hard cases right - notably Notre Dame,
+    # which is Independent (id 18) but plays ACC opponents and is correctly not a
+    # conference game. Derive it only when the cdn payload shape omits the key.
+    hc, ac = home.get("conferenceId"), away.get("conferenceId")
+    derived = bool(hc) and hc == ac and hc != "18" and hc in fbs_ids
+    conf_game = comp.get("conferenceCompetition")
+    conf_game = derived if conf_game is None else bool(conf_game)
+
     game = {
         "id": event.get("id"),
         "name": event.get("name"),
@@ -392,6 +400,8 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
         "kick_ct": kick_ct(kick),
         "elev": elev,
         "group": group,
+        "conf_game": conf_game,
+        "conf_label": home.get("conference") if conf_game else None,
         "spread_abs": spread_abs,
         "blowout": spread_abs >= 28,
         "networks": names,

@@ -33,7 +33,7 @@
     { id:"cards", label:"Cards" }, { id:"lines", label:"Lines sheet" },
     { id:"tv", label:"By TV" }, { id:"blowouts", label:"Blowouts" }
   ];
-  let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, group="all", q="", sort="time";
+  let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, confOnly=false, group="all", q="", sort="time";
   let liveStatus = { ok:false, fromFile: location.protocol === "file:", last:null, error:null };
 
   function kickMinutes(g) {
@@ -50,6 +50,14 @@
   }
   function fmtKick(g) { return g.kick_ct || (g.statusShort || "").replace(/^\d{1,2}\/\d{1,2}\s+-\s+/, ""); }
   function rank(t) { return (t && t.rank && t.rank < 30) ? `<span class="rank">#${t.rank}</span>` : ""; }
+  // Conference game: the snapshot's flag when the pipeline has emitted it, else same
+  // conference on both sides. A cached games.js predates the field, hence the fallback.
+  function isConfGame(g) {
+    if (typeof g.conf_game === "boolean") return g.conf_game;
+    const h = g.home || {}, a = g.away || {};
+    return !!h.conferenceId && h.conferenceId === a.conferenceId
+           && h.conference !== "FCS" && h.conference !== "Independent";
+  }
   function flagClass(f) {
     if (["EXTREME HEAT","HOT","COLD","FREEZING"].includes(f)) return "hot";
     if (["RAIN RISK","SHOWERS"].includes(f)) return "rain";
@@ -203,6 +211,7 @@
         const confs=[g.home&&g.home.conference, g.away&&g.away.conference];
         if (!confs.includes(group)) return false;
       }
+      if (confOnly && !isConfGame(g)) return false;
       if (ranked) {
         const hr=g.home&&g.home.rank&&g.home.rank<30;
         const ar=g.away&&g.away.rank&&g.away.rank<30;
@@ -437,6 +446,7 @@
       <button class="fbtn ${group==="Big Ten"?"active":""}" data-group="Big Ten">Big Ten</button>
       <button class="fbtn ${group==="ACC"?"active":""}" data-group="ACC">ACC</button>
       <button class="fbtn ${group==="Big 12"?"active":""}" data-group="Big 12">Big 12</button>
+      <button class="fbtn ${confOnly?"active":""}" id="confonly">Conf game</button>
       <button class="fbtn ${ranked?"active":""}" id="ranked">Ranked</button>
       <button class="fbtn ${starredOnly?"active":""}" id="starred">Starred</button>
       <button class="fbtn ${liveOnly?"active":""}" id="liveonly">Live</button>
@@ -456,6 +466,7 @@
     $("toggles").onclick = e => {
       const g=e.target.closest("[data-group]"); if(g){ group=g.dataset.group; pills(); render(); }
     };
+    $("confonly").onclick = () => { confOnly=!confOnly; pills(); render(); };
     $("ranked").onclick = () => { ranked=!ranked; pills(); render(); };
     $("starred").onclick = () => { starredOnly=!starredOnly; pills(); render(); };
     $("liveonly").onclick = () => { liveOnly=!liveOnly; pills(); render(); };
