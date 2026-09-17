@@ -196,13 +196,17 @@ Done once per week by `scripts/refresh_week.py`, never live.
      therefore `WATCH`: never `CLEAR`, never `UNDER`. The weather desk in
      `app.js` filters its directional list on `under_score > 0`, so hot games
      appear only in its dedicated heat section.
-   - `impact_notes[]`: heat note when rounded temp >= 93 (`"96° and sunny —
-     hydration / rotation game"`, or `"98° heat — early-season pace can stay
-     fast; monitor late-game fade"` at 98+), wind note (`"Wind 18 mph — check
-     total"`), rain note (`"75% rain — lean under if it arrives"`), cold note,
-     elevation note (`"Elevation 6,030 ft — kicking / conditioning note"`).
-     If nothing scored and no heat note, `"Clean outdoor conditions"` is added
-     first. Indoor: `"Indoor — weather off the board"`.
+   - `impact_notes[]`: three heat bands, all nested under the `temp >= 90` flag
+     branch so a note can never fire without its flag (the notes key off rounded
+     temp while the flags key off raw temp, so 89.6° was otherwise one rounding
+     away from a note with no flag) — `"101° heat — early-season pace can stay
+     fast; monitor late-game fade"` at 98+, `"96° and sunny — hydration /
+     rotation game"` at 93-97, `"90° at kick — heat, hydration and rotation, not
+     a total read"` at 90-92. Then wind (`"Wind 18 mph — check total"`), rain
+     (`"75% rain — lean under if it arrives"`), cold, and elevation
+     (`"Elevation 6,030 ft — kicking / conditioning note"`). If nothing scored
+     and there are no notes, `"Clean outdoor conditions"` is added first.
+     Indoor: `"Indoor — weather off the board"`.
    - `kick_ct` is the kickoff in America/Chicago, e.g. `Sat 2:30 PM CT`.
    - `group`: `P4/P5` if either team is ACC / Big 12 / Big Ten / SEC / Pac-12,
      else `FCS mix` if either team is FCS, else `G5`.
