@@ -113,13 +113,34 @@ manual follow-ups: `ios/APP_STORE.md` § Marketing surfaces.
 
 ## Weekly ops (in season)
 
-Nothing manual. If the Action fails or ESPN changes shape:
+The snapshot refresh is automatic; the App Store promotional text is **not**.
 
+**Thursday (or whenever the week rolls):**
 ```
-python3 scripts/refresh_week.py      # Thu..Mon of the current/next slate
+python3 scripts/promo_text.py --apply   # Week N billboard; Apple allows this without review
+```
+
+**If the Action fails or ESPN changes shape:**
+```
+python3 scripts/refresh_week.py          # Thu..Mon of the current/next slate
 python3 scripts/check.py
-git add games.json games.js && git commit -m "Snapshot: ..." && git push
+git add games.json games.js index.html sitemap.xml && git commit -m "Snapshot: ..." && git push
 ```
+`index.html` and `sitemap.xml` are generated too (the SportsEvent block and the
+kicker), so they must go in the same commit or the structured data freezes.
+`--seo-only` rebuilds just those from the committed `games.json`, no network.
+`--no-enrich` skips the per-game ESPN summary pass if you want a fast local run.
+
+**On a gameday morning, do not assume the cron fired.** GitHub creates scheduled
+runs late under load and can drop them: measured on this repo, the Thursday cron
+due 2026-09-11 02:00 UTC was created 07:08 UTC (5h08m late) and the Saturday one
+due 2026-09-12 14:00 UTC was created 16:52 UTC. That is why the schedule is four
+crons each sitting hours ahead of when it is needed. Confirm with:
+```
+gh run list --workflow=refresh.yml --limit 5
+curl -s https://cfbgameday.app/games.js | head -c 400 | grep -o '"generated_at":"[^"]*"'
+```
+`gh workflow run refresh.yml` forces one.
 
 ## Shipping the next iOS build
 
