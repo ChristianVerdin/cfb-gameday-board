@@ -184,12 +184,53 @@ def test_snapshot_shape():
         return
     games = data.get("games") or []
     check("count matches", data.get("count"), len(games))
-    need = {"id", "date", "home", "away", "odds", "implied", "flags", "impact_level", "kick_ct", "gameState"}
-    for g in games[:5]:
-        missing = need - set(g)
-        check(f"fields {g.get('shortName')}", missing, set())
+    # Every game, not the first five: that slice is why a half-broken build passed.
+    need = {"id", "date", "home", "away", "odds", "implied", "flags", "impact_level",
+            "under_score", "conf_game", "kick_ct", "gameState"}
+    bad = [(g.get("shortName"), need - set(g)) for g in games if need - set(g)]
+    check("all games have the required fields", bad[:3], [])
     js = (ROOT / "games.js").read_text("utf-8")
     check("games.js prefix", js.startswith("window.CFB_DATA = {"), True)
+
+
+def test_run_health():
+    """Catch a snapshot that built but is quietly degraded.
+
+    Deliberately lenient: check.py gates the Action's commit, and that commit also
+    carries the odds refresh, so a strict gate on an ordinary Open-Meteo wobble would
+    strand the board on a stale snapshot. Hard-fail only when it is unusable.
+    """
+    try:
+        data = json.loads((ROOT / "games.json").read_text("utf-8"))
+    except Exception:
+        return                                  # test_snapshot_shape already reported it
+    games = data.get("games") or []
+    counts = data.get("counts") or {}
+    check("warnings is a list", isinstance(data.get("warnings"), list), True)
+    if not games:
+        FAILS.append("snapshot has no games")
+        return
+    outdoor = [g for g in games if not g.get("indoor")]
+    missing = sum(1 for g in outdoor if not g.get("wx"))
+    # Open-Meteo only forecasts ~16 days out; a far-future --start legitimately has none.
+    try:
+        gen = datetime.strptime(data["generated_at"], "%Y-%m-%dT%H:%M:%SZ")
+        first = datetime.strptime((data.get("dates") or ["19700101"])[0], "%Y%m%d")
+        in_range = (first - gen).days <= 14
+    except Exception:
+        in_range = False
+    if outdoor and len(games) >= 20 and in_range:
+        pct = 100 * missing / len(outdoor)
+        if pct > 25:
+            FAILS.append(f"{missing}/{len(outdoor)} outdoor games have no forecast ({pct:.0f}%)")
+        elif pct > 10:
+            print(f"warn: {missing}/{len(outdoor)} outdoor games without forecast ({pct:.0f}%)")
+    if counts.get("no_groups_fallback"):
+        print(f"warn: {counts['no_groups_fallback']} date(s) served by the groups-less fallback URL")
+    if counts.get("games_skipped"):
+        print(f"warn: {counts['games_skipped']} game(s) skipped during build")
+    if counts.get("geocode_failed"):
+        print(f"warn: {counts['geocode_failed']} geocode failure(s)")
 
 
 def test_pwa():
@@ -214,7 +255,7 @@ def test_pwa():
 
 
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_pwa):
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))

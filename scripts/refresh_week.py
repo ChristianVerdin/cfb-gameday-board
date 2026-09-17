@@ -121,10 +121,36 @@ def has_line(odds: dict | None) -> bool:
     return bool(odds) and (odds.get("spread") is not None or odds.get("total") is not None)
 
 
+class Run:
+    """Per-run tally so the envelope can say what quietly failed.
+
+    Before this, warnings[] only ever held whole-date scoreboard failures, so an
+    empty warnings list was not evidence of a clean build: a geocode failure
+    produced no forecast, and impact() then reported "Clean outdoor conditions"
+    for a game we simply knew nothing about.
+    """
+    MAX_WARNINGS = 50
+
+    def __init__(self):
+        self.warnings = []
+        self.counts = {}
+
+    def warn(self, msg: str) -> None:
+        print(f"  WARN {msg}")
+        if len(self.warnings) < self.MAX_WARNINGS:
+            self.warnings.append(msg)
+        elif len(self.warnings) == self.MAX_WARNINGS:
+            self.warnings.append("… further warnings suppressed")
+
+    def bump(self, key: str, n: int = 1) -> None:
+        self.counts[key] = self.counts.get(key, 0) + n
+
+
 class Geocoder:
-    def __init__(self, existing: dict, sleep: float):
+    def __init__(self, existing: dict, sleep: float, run: Run):
         self.cache = {}
         self.sleep = sleep
+        self.run = run
         for game in existing.get("games") or []:
             if game.get("geo") and game.get("city"):
                 self.cache[(game["city"], game.get("state"))] = game["geo"]
@@ -148,13 +174,14 @@ class Geocoder:
                     "admin1": pick.get("admin1"), "timezone": pick.get("timezone"),
                 }
         except Exception as exc:
-            print(f"  geocode fail {city}, {state}: {exc}")
+            self.run.warn(f"geocode {city}, {state}: {exc}")
+            self.run.bump("geocode_failed")
         time.sleep(self.sleep)
         self.cache[key] = geo
         return geo
 
 
-def forecast(geo: dict, kick: datetime, sleep: float) -> dict | None:
+def forecast(geo: dict, kick: datetime, sleep: float, run: Run) -> dict | None:
     day = kick.strftime("%Y-%m-%d")
     try:
         data = get(FORECAST_URL, {
@@ -165,7 +192,8 @@ def forecast(geo: dict, kick: datetime, sleep: float) -> dict | None:
             "end_date": (kick + timedelta(days=1)).strftime("%Y-%m-%d"),
         })
     except Exception as exc:
-        print(f"  forecast fail {geo.get('geo_name')} {day}: {exc}")
+        run.warn(f"forecast {geo.get('geo_name')} {day}: {exc}")
+        run.bump("forecast_failed")
         return None
     finally:
         time.sleep(sleep)
@@ -175,6 +203,8 @@ def forecast(geo: dict, kick: datetime, sleep: float) -> dict | None:
     hourly = data.get("hourly") or {}
     times = hourly.get("time") or []
     if want not in times:
+        run.warn(f"forecast {geo.get('geo_name')}: no hourly row for {want}")
+        run.bump("forecast_missing")
         return None
     i = times.index(want)
 
@@ -304,7 +334,7 @@ def team_block(comp_team: dict, conf_names: dict) -> dict:
 
 
 def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, sleep: float,
-               prior_odds: dict | None = None) -> dict:
+               run: Run, prior_odds: dict | None = None) -> dict:
     comp = (event.get("competitions") or [{}])[0]
     status = event.get("status") or {}
     stype = status.get("type") or {}
@@ -330,7 +360,7 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     geo = geocoder.lookup(city, state)
     elev = geo.get("elev") if geo else None
     elev_ft = round(elev * 3.28084) if elev is not None else None
-    wx = forecast(geo, kick, sleep) if geo else None
+    wx = forecast(geo, kick, sleep, run) if geo else None
 
     code = wx.get("weathercode") if wx else None
     if indoor:
@@ -344,6 +374,7 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     odds = parse_odds(comp)
     if not has_line(odds) and has_line(prior_odds):
         odds = prior_odds          # ESPN drops odds at kickoff; keep the last posted line as the close
+        run.bump("lines_carried")
     spread = odds.get("spread") if odds else None
     total = odds.get("total") if odds else None
     if spread is not None and total is not None:
@@ -413,14 +444,19 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     return game
 
 
-def pull(date: str) -> tuple[list, dict]:
+def pull(date: str, run: Run) -> tuple[list, dict, bool]:
+    """Returns (events, payload, groups80). The last endpoint drops groups=80, so a
+    date served by it carries the whole D1 slate; the caller filters it back to FBS."""
     last = None
-    for url in endpoints(date):
+    for i, url in enumerate(endpoints(date)):
         try:
             data = fetch_json(url)
             events = events_from(data)
             print(f"  {date} {url.split('/')[2]} -> {len(events)} events")
-            return events, data
+            if i:
+                run.bump("fallback_url_used")
+                run.warn(f"{date}: primary scoreboard failed, served by {url.split('/')[2]} (#{i + 1})")
+            return events, data, "groups=80" in url
         except Exception as exc:
             last = exc
             print(f"  {date} fail {url.split('/')[2]}: {exc}")
@@ -448,6 +484,7 @@ def main() -> int:
     ap.add_argument("--sleep", type=float, default=0.2, help="seconds between Open-Meteo calls")
     args = ap.parse_args()
 
+    run = Run()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     existing = {}
@@ -461,14 +498,24 @@ def main() -> int:
     end = args.end or (end if not args.start else args.start)
     dates = date_range(start, end)
     print(f"ESPN scoreboard for {', '.join(dates)}")
-    events, seen, label, warnings = [], set(), None, []
+    events, seen, label = [], set(), None
+    conf_names, fbs_ids = load_conferences()   # needed inside the loop to refilter a groups-less pull
     for date in dates:
         try:
-            batch, payload = pull(date)
+            batch, payload, groups80 = pull(date, run)
         except Exception as exc:
-            warnings.append(str(exc))
-            print(f"  WARN {exc}")
+            run.warn(str(exc))
+            run.bump("dates_failed")
             continue
+        if not groups80:
+            # Filter rather than reject: dropping the date would lose a whole slate day.
+            before = len(batch)
+            batch = [e for e in batch
+                     if any((c.get("team") or {}).get("conferenceId") in fbs_ids
+                            or str((c.get("team") or {}).get("conferenceId")) in fbs_ids
+                            for c in ((e.get("competitions") or [{}])[0].get("competitors") or []))]
+            run.bump("no_groups_fallback")
+            run.warn(f"{date}: fallback URL has no groups=80; filtered {before} -> {len(batch)} to FBS")
         label = label or week_label(payload, batch)
         for event in batch:
             if event.get("id") and event["id"] not in seen:
@@ -478,16 +525,16 @@ def main() -> int:
         print("no games found; nothing written")
         return 1
 
-    conf_names, fbs_ids = load_conferences()
-    geocoder = Geocoder(existing, args.sleep)
+    geocoder = Geocoder(existing, args.sleep, run)
     prior = {g["id"]: g.get("odds") for g in existing.get("games") or [] if g.get("id")}
     games = []
     print(f"Building {len(events)} games (geocode + kickoff-hour forecast)")
     for i, event in enumerate(events, 1):
         try:
-            game = build_game(event, conf_names, fbs_ids, geocoder, args.sleep, prior.get(event.get("id")))
+            game = build_game(event, conf_names, fbs_ids, geocoder, args.sleep, run, prior.get(event.get("id")))
         except Exception as exc:
-            print(f"  skip {event.get('shortName')} ({event.get('id')}): {exc}")
+            run.warn(f"skip {event.get('shortName')} ({event.get('id')}): {exc}")
+            run.bump("games_skipped")
             continue
         games.append(game)
         wx = "wx ok" if game["wx"] else ("indoor" if game["indoor"] else "no wx")
@@ -499,7 +546,8 @@ def main() -> int:
         "source": "ESPN scoreboard + Open-Meteo kickoff hour",
         "week_label": label,
         "dates": dates,
-        "warnings": warnings,
+        "warnings": run.warnings,
+        "counts": dict(run.counts, games=len(games), events=len(events)),
         "count": len(games),
         "games": games,
     }
@@ -508,6 +556,10 @@ def main() -> int:
     missing_wx = sum(1 for g in games if not g["wx"] and not g["indoor"])
     print(f"\nWrote {out / 'games.json'} and {out / 'games.js'}")
     print(f"{len(games)} games · {label or 'week label unknown'} · {missing_wx} without forecast")
+    if run.counts:
+        print("counts: " + ", ".join(f"{k}={v}" for k, v in sorted(run.counts.items())))
+    if run.warnings:
+        print(f"{len(run.warnings)} warning(s) recorded in the snapshot envelope")
     return 0
 
 
