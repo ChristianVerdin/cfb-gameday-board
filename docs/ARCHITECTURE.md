@@ -165,6 +165,12 @@ Done once per week by `scripts/refresh_week.py`, never live.
    get `kick_local`, and the hourly row whose time equals that hour (minutes
    dropped) becomes `wx`. Open-Meteo forecasts 16 days out; beyond that `wx`
    is null and the ESPN text forecast (`espn_weather`) is used for the label.
+   The call has a 10 s timeout and **one retry**, drawn from a whole-run budget
+   of 20 so a bad Open-Meteo day cannot blow the Action's 20-minute cap. The
+   retry exists because a dropped forecast is not a visible gap: `impact()` then
+   runs on `wx=None` and reports "Clean outdoor conditions", so a 98° game
+   silently loses its heat flag. A 2026-09-17 CI run lost 8 of 75 forecasts to
+   TLS handshake timeouts exactly this way.
 3. **Derive** the display fields:
    - `wx_label` / `wx_emoji` from the WMO `weather_code` (0 Clear, 1 Mostly
      clear, 2 Partly cloudy, 3 Overcast, 45/48 Fog, 51-57 Drizzle, 61-67 Rain,

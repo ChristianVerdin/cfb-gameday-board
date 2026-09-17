@@ -34,6 +34,7 @@ SUMMARY_URL = (
     "college-football/summary"
 )   # site.api.espn.com 403s on this path; site.web.api does not
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+FORECAST_TIMEOUT = 10   # down from the 20s default: 75 games x 2 tries must fit the 20-min job cap
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 HOURLY = ",".join([
     "temperature_2m", "relative_humidity_2m", "precipitation_probability",
@@ -79,8 +80,8 @@ COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
 
 
-def get(url: str, params: dict) -> dict:
-    return fetch_json(url + "?" + urllib.parse.urlencode(params))
+def get(url: str, params: dict, timeout: int = 20) -> dict:
+    return fetch_json(url + "?" + urllib.parse.urlencode(params), timeout=timeout)
 
 
 def date_range(start: str, end: str) -> list[str]:
@@ -135,10 +136,18 @@ class Run:
     for a game we simply knew nothing about.
     """
     MAX_WARNINGS = 50
+    RETRY_BUDGET = 20      # whole-run cap, so a bad Open-Meteo day cannot blow the job timeout
 
     def __init__(self):
         self.warnings = []
         self.counts = {}
+        self.retries_left = self.RETRY_BUDGET
+
+    def take_retry(self) -> bool:
+        if self.retries_left <= 0:
+            return False
+        self.retries_left -= 1
+        return True
 
     def warn(self, msg: str) -> None:
         print(f"  WARN {msg}")
@@ -187,21 +196,36 @@ class Geocoder:
 
 
 def forecast(geo: dict, kick: datetime, sleep: float, run: Run) -> dict | None:
+    """Kickoff-hour forecast, with one retry.
+
+    Open-Meteo TLS handshakes time out intermittently from GitHub runners - a
+    2026-09-17 CI run lost 8 of 75 forecasts that way. A dropped forecast is not a
+    visible gap: impact() then runs on wx=None and reports "Clean outdoor
+    conditions", so a 98 degree game silently loses its heat flag. One retry is
+    worth more here than anywhere else in the pipeline.
+    """
     day = kick.strftime("%Y-%m-%d")
-    try:
-        data = get(FORECAST_URL, {
-            "latitude": geo["lat"], "longitude": geo["lon"], "hourly": HOURLY,
-            "temperature_unit": "fahrenheit", "wind_speed_unit": "mph",
-            "precipitation_unit": "inch", "timezone": "auto",
-            "start_date": (kick - timedelta(days=1)).strftime("%Y-%m-%d"),
-            "end_date": (kick + timedelta(days=1)).strftime("%Y-%m-%d"),
-        })
-    except Exception as exc:
-        run.warn(f"forecast {geo.get('geo_name')} {day}: {exc}")
-        run.bump("forecast_failed")
-        return None
-    finally:
-        time.sleep(sleep)
+    params = {
+        "latitude": geo["lat"], "longitude": geo["lon"], "hourly": HOURLY,
+        "temperature_unit": "fahrenheit", "wind_speed_unit": "mph",
+        "precipitation_unit": "inch", "timezone": "auto",
+        "start_date": (kick - timedelta(days=1)).strftime("%Y-%m-%d"),
+        "end_date": (kick + timedelta(days=1)).strftime("%Y-%m-%d"),
+    }
+    data = None
+    for attempt in (1, 2):
+        try:
+            data = get(FORECAST_URL, params, timeout=FORECAST_TIMEOUT)
+            break
+        except Exception as exc:
+            if attempt == 1 and run.take_retry():
+                time.sleep(max(sleep, 1.0))
+                continue
+            run.warn(f"forecast {geo.get('geo_name')} {day}: {exc}")
+            run.bump("forecast_failed")
+            return None
+        finally:
+            time.sleep(sleep)
     offset = int(data.get("utc_offset_seconds") or 0)
     local = kick + timedelta(seconds=offset)
     want = local.strftime("%Y-%m-%dT%H:00")
