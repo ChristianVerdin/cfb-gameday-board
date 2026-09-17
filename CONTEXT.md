@@ -81,6 +81,37 @@ Banner / Open Graph / Twitter card / JSON-LD / robots / sitemap on the site, sha
 Apps PR #2481, GitHub profile README section, dailylocks.ai footer link. Details and the
 manual follow-ups: `ios/APP_STORE.md` § Marketing surfaces.
 
+## iOS 1.0.1 (2026-09-17)
+
+Built, uploaded, attached, **not submitted**. Submitting is cv's call in session.
+
+- Version `1.0.1` id `8e2d8924-410a-42c5-ad1b-abfe684435a0`, state `PREPARE_FOR_SUBMISSION`, release MANUAL.
+- Build **4** id `62cd0f47-97ce-4725-a820-d9997922c6a0`, `VALID`, attached.
+- Metadata applied and verified live: the 98-char keyword set and a What's New
+  describing the foreground refresh (the drafted "no functional changes" line was
+  false once this build existed).
+- Change: `WebContainer` observes `willEnterForeground` and reloads only when the
+  page is actually holding a stale slate - see the decision table in the commit.
+- To submit when cv says so:
+  `asc review submissions-submit --app 6809035228` (or `scripts/release_ios.sh --submit`
+  on a fresh build). Then `asc review status --app 6809035228`.
+
+**Release-script gotcha found today:** `scripts/release_ios.sh` is not idempotent
+after a partial run. Its upload can succeed while the run is cut off before attach,
+which leaves an uploaded build plus a created App Store version record and no
+build attached. Re-running then fails twice over: `publish appstore` reports
+"bundle version must be higher than the previously uploaded version" and
+`versions create` reports "cannot create a new version of the App in the current
+state". Recovery is not another full run - it is:
+```
+asc builds list --app 6809035228 --limit 8          # find the uploaded build id
+asc versions list --app 6809035228                  # find the existing version id
+asc versions attach-build --version-id VID --build-id BID
+asc metadata plan --app 6809035228 --dir metadata --version 1.0.1
+```
+Also note the build list lags several minutes behind a successful upload, so
+"not in the list" does not mean "not uploaded".
+
 **Open items**
 - Campaign links need the App Analytics provider token (`pt`); cv reads it from
   Analytics → Acquisition → Campaigns → Generate Campaign Link, then the links in
