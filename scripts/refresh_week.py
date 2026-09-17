@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.parse
@@ -546,6 +547,100 @@ def pull(date: str, run: Run) -> tuple[list, dict, bool]:
     raise RuntimeError(f"{date}: {last}")
 
 
+SEO_BLOCK = re.compile(r"(<!-- games:start -->).*?(<!-- games:end -->)", re.S)
+KICKER = re.compile(r'(<div class="kicker" id="kicker">).*?(</div>)', re.S)
+NEUTRAL_LABEL = "College football slate"
+
+
+def event_ld(game: dict) -> dict | None:
+    """One schema.org SportsEvent.
+
+    Never emits odds, spread, total, implied, offers or potentialAction: ticketing
+    markup would read as commerce and odds markup as a sportsbook. check.py enforces
+    this with a forbidden-substring scan so the rule outlives whoever remembers it.
+    """
+    if game.get("gameState") == "post":
+        return None                      # do not assert "scheduled" about a played game
+    wx = game.get("wx") or {}
+    local, offset = wx.get("kick_local"), wx.get("utc_offset_seconds")
+    if local and offset is not None:
+        sign = "+" if offset >= 0 else "-"
+        mins = abs(int(offset)) // 60
+        start = f"{local.replace(' ', 'T')}:00{sign}{mins // 60:02d}:{mins % 60:02d}"
+    else:
+        start = (game.get("date") or "").replace("Z", ":00Z")   # UTC fallback, never naive local
+    out = {
+        "@type": "SportsEvent",
+        "@id": f"https://cfbgameday.app/#game-{game.get('id')}",
+        "name": game.get("name"),
+        "startDate": start,
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "sport": "American Football",
+        "url": "https://cfbgameday.app/",
+        "location": {
+            "@type": "Place",
+            "name": game.get("venue"),
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": game.get("city"),
+                "addressRegion": game.get("venueState"),
+                "addressCountry": "US",
+            },
+        },
+        "homeTeam": {"@type": "SportsTeam", "name": (game.get("home") or {}).get("full")},
+        "awayTeam": {"@type": "SportsTeam", "name": (game.get("away") or {}).get("full")},
+        "organizer": {"@type": "Organization", "name": "NCAA"},
+    }
+    nets = game.get("networks") or []
+    if nets:
+        out["publication"] = [
+            {"@type": "BroadcastEvent", "isLiveBroadcast": True, "startDate": start,
+             "publishedOn": {"@type": "BroadcastService", "name": n}}
+            for n in nets
+        ]
+    return out
+
+
+def write_seo(root: Path, payload: dict) -> None:
+    """Rewrite the delimited slate block in index.html and sitemap lastmod.
+
+    Generated from the same games list, by the same script, in the same commit as
+    games.js, so the markup cannot drift from the board.
+    """
+    html_path = root / "index.html"
+    try:
+        html = html_path.read_text("utf-8")
+    except Exception as exc:
+        print(f"  index.html unreadable ({exc}); SEO block not written")
+        return
+    if not SEO_BLOCK.search(html):
+        print("  index.html: <!-- games:start --> markers missing; SEO block not written")
+        return
+    events = [e for e in (event_ld(g) for g in payload["games"]) if e]
+    graph = {"@context": "https://schema.org", "@graph": events}
+    body = ('<script type="application/ld+json">'
+            + json.dumps(graph, separators=(",", ":"), ensure_ascii=False)
+            + "</script>")
+    label = payload.get("week_label") or NEUTRAL_LABEL
+    # lambda, never a replacement string: a backslash in a team name would corrupt it
+    html = SEO_BLOCK.sub(lambda m: m.group(1) + body + m.group(2), html, count=1)
+    html = KICKER.sub(lambda m: m.group(1) + label + m.group(2), html, count=1)
+    html_path.write_text(html, "utf-8")
+
+    sm_path = root / "sitemap.xml"
+    try:
+        sm = sm_path.read_text("utf-8")
+    except Exception:
+        return
+    day = (payload.get("generated_at") or "")[:10]
+    if day:
+        sm = re.sub(r"(<loc>https://cfbgameday\.app/</loc>)(<lastmod>[^<]*</lastmod>)?",
+                    lambda m: m.group(1) + f"<lastmod>{day}</lastmod>", sm, count=1)
+        sm_path.write_text(sm, "utf-8")
+    print(f"  index.html: {len(events)} SportsEvent entries, kicker '{label}'")
+
+
 def week_label(payload: dict, events: list) -> str | None:
     lg = (payload.get("leagues") or [{}])[0]
     season = lg.get("season") or {}
@@ -565,6 +660,8 @@ def main() -> int:
     ap.add_argument("--end", help="last ESPN date, inclusive, YYYYMMDD (default: start + 4 days, Monday)")
     ap.add_argument("--out", default=str(ROOT), help="directory for games.json / games.js (default: repo root)")
     ap.add_argument("--sleep", type=float, default=0.2, help="seconds between Open-Meteo calls")
+    ap.add_argument("--seo-only", action="store_true",
+                    help="rebuild index.html's slate block and sitemap from the committed games.json, no network")
     ap.add_argument("--enrich", action=argparse.BooleanOptionalAction, default=True,
                     help="pull per-game ESPN summary detail (surface, predictor, ATS, conf record)")
     args = ap.parse_args()
@@ -577,6 +674,13 @@ def main() -> int:
         existing = json.loads((out / "games.json").read_text("utf-8"))
     except Exception:
         pass
+
+    if args.seo_only:
+        if not existing.get("games"):
+            print("no committed games.json to build from")
+            return 1
+        write_seo(ROOT, existing)
+        return 0
 
     start, end = default_dates()
     start = args.start or start
@@ -643,6 +747,8 @@ def main() -> int:
     }
     (out / "games.json").write_text(json.dumps(payload), "utf-8")
     (out / "games.js").write_text("window.CFB_DATA = " + json.dumps(payload, separators=(",", ":")) + ";\n", "utf-8")
+    if out.resolve() == ROOT:
+        write_seo(ROOT, payload)      # index.html/sitemap.xml live at ROOT, not at --out
     missing_wx = sum(1 for g in games if not g["wx"] and not g["indoor"])
     print(f"\nWrote {out / 'games.json'} and {out / 'games.js'}")
     print(f"{len(games)} games · {label or 'week label unknown'} · {missing_wx} without forecast")
