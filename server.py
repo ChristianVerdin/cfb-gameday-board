@@ -10,14 +10,13 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
 PORT = int(os.environ.get("PORT", "8765"))
-FALLBACK_DATES = ["20260904", "20260905", "20260906", "20260907"]
 EASTERN = ZoneInfo("America/New_York")
 CACHE_TTL = 20          # seconds between ESPN pulls for a date with action
 IDLE_TTL = 300          # seconds when nothing is live and no kick is near
@@ -34,14 +33,26 @@ HEADERS = {
 }
 
 
-def fetch_json(url: str) -> dict:
+def fetch_json(url: str, timeout: int = 20) -> dict:
     req = urllib.request.Request(url, headers=HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "ignore")[:300]
         raise RuntimeError(f"ESPN {exc.code} {exc.reason} :: {body}") from exc
+
+
+def fallback_dates(today: datetime | None = None) -> list[str]:
+    """Thu..Mon of the current or next slate, Eastern. Only reached when games.json
+    is unreadable. Deliberately duplicates scripts/refresh_week.default_dates rather
+    than importing it: vercel.json excludeFiles drops scripts/** from the api/live.py
+    bundle, so that import would 502 every cold start.
+    """
+    d = (today or datetime.now(EASTERN)).date()
+    back = (d.weekday() - 3) % 7
+    thursday = d - timedelta(days=back) if back <= 4 else d + timedelta(days=7 - back)
+    return [(thursday + timedelta(days=i)).strftime("%Y%m%d") for i in range(5)]
 
 
 def load_dates() -> list[str]:
@@ -50,7 +61,7 @@ def load_dates() -> list[str]:
         data = json.loads((ROOT / "games.json").read_text("utf-8"))
     except Exception as exc:
         print(f"games.json unreadable ({exc}); using fallback dates")
-        return FALLBACK_DATES
+        return fallback_dates()
     if isinstance(data.get("dates"), list) and data["dates"]:
         return [str(d) for d in data["dates"]]
     found = set()
@@ -60,7 +71,7 @@ def load_dates() -> list[str]:
         except (KeyError, ValueError):
             continue
         found.add(utc.astimezone(EASTERN).strftime("%Y%m%d"))
-    return sorted(found) or FALLBACK_DATES
+    return sorted(found) or fallback_dates()
 
 
 DATES = load_dates()
@@ -237,7 +248,18 @@ class LineBook:
             self.dirty = False
 
 
-LINES = LineBook(LINES_PATH)
+# Local server only. api/live.py is stateless and imports from this module, so building
+# the book at import time meant every Vercel cold start read a lines.json that
+# vercel.json excludes from the bundle, then reparsed games.json to seed a book that is
+# never used and never flushed there.
+LINES: "LineBook | None" = None
+
+
+def line_book() -> LineBook:
+    global LINES
+    if LINES is None:
+        LINES = LineBook(LINES_PATH)
+    return LINES
 
 
 DATE_RE = re.compile(r"^\d{8}$")
@@ -318,8 +340,9 @@ def snapshot(dates: list[str] | None = None) -> dict:
             events.append(event)
     if not events:
         raise RuntimeError(" | ".join(errors) or "ESPN returned no games")
-    live = live_payload(events, LINES)
-    LINES.flush()
+    book = line_book()
+    live = live_payload(events, book)
+    book.flush()
     return {
         "ok": True,
         "count": len(live),

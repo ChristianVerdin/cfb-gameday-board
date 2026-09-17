@@ -10,6 +10,16 @@
   let lineBook = {};
   try { lineBook = JSON.parse(localStorage.getItem(LINES_KEY) || "{}") || {}; } catch (e) { lineBook = {}; }
   let lineBookDirty = false;
+  // Only ids in the current snapshot are ever read back (chooseOdds keys off g.id), so
+  // drop the rest: a season of dead ids would otherwise accumulate and be reparsed on
+  // every load. Stars are deliberately never pruned - those are user intent.
+  {
+    const live = new Set(games.map(g => g.id));
+    const keep = {};
+    let dropped = 0;
+    for (const k of Object.keys(lineBook)) { if (live.has(k)) keep[k] = lineBook[k]; else dropped++; }
+    if (dropped) { lineBook = keep; lineBookDirty = true; }
+  }
   const CT = "America/Chicago";
   const ET = "America/New_York";
   const etDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: ET, year:"numeric", month:"2-digit", day:"2-digit" });
