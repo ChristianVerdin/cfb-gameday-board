@@ -136,8 +136,16 @@ server that only started after a game ended serves the snapshot line for it.
   TTL instead of 20 s.
 - Which dates to poll comes from the snapshot: `games.json` carries a `dates`
   list written by the refresh script. If that is missing the server derives
-  Eastern dates from each game's `date`. The old hard-coded Week 1 list is the
-  final fallback.
+  Eastern dates from each game's `date`. `fallback_dates()` is the final
+  fallback: it computes Thu..Mon of the current or next slate rather than a
+  frozen list, which had silently stayed on Week 1's dates. It deliberately
+  duplicates `refresh_week.default_dates` instead of importing it — `vercel.json`
+  excludes `scripts/**` from the `api/live.py` bundle, so that import would 502
+  on every cold start.
+- The `LineBook` is built lazily via `line_book()`. It used to be constructed at
+  module import, which meant every Vercel cold start read a `lines.json` the
+  bundle excludes and reparsed `games.json` to seed a book the function never
+  uses or flushes.
 
 ## Open-Meteo snapshot process
 
@@ -163,22 +171,31 @@ Done once per week by `scripts/refresh_week.py`, never live.
      71-77 Snow, 80-82 Showers, 95-99 Thunderstorm). Indoor venues get
      `Indoor climate` / stadium emoji regardless of code.
    - `wind_dir` is the 16-point compass label of `winddir`.
-   - `flags[]` and `impact_score`:
+   - `flags[]`, `impact_score` and `under_score`. Two scores, because one number
+     was doing two jobs: `impact_score` is how much weather is in the game, and
+     `under_score` is only the part that historically suppresses scoring. Heat
+     counts toward the first and not the second, so a calm 102° game can never
+     render as `UNDER` — which would contradict the board's own heat note that
+     early-season pace stays fast.
 
-     | Condition | Flag | Score |
-     | --- | --- | --- |
-     | venue `indoor` | `INDOOR` (only flag; level `NONE`) | 0 |
-     | temp >= 95 | `EXTREME HEAT` | 0 |
-     | 90 <= temp < 95 | `HOT` | 0 |
-     | temp <= 32 | `FREEZING` | 1 |
-     | 32 < temp <= 40 | `COLD` | 0 |
-     | wind >= 20 | `HIGH WIND` | 2 |
-     | 15 <= wind < 20 | `WIND` | 1 |
-     | pop >= 60 | `RAIN RISK` | 2 |
-     | 40 <= pop < 60 | `SHOWERS` | 1 |
-     | elev_ft >= 4000 | `ALTITUDE` | 0 |
+     | Condition | Flag | `impact_score` | `under_score` |
+     | --- | --- | --- | --- |
+     | venue `indoor` | `INDOOR` (only flag; level `NONE`) | 0 | 0 |
+     | temp >= 95 | `EXTREME HEAT` | 2 | 0 |
+     | 90 <= temp < 95 | `HOT` | 1 | 0 |
+     | temp <= 32 | `FREEZING` | 2 | 2 |
+     | 32 < temp <= 40 | `COLD` | 1 | 1 |
+     | wind >= 20 | `HIGH WIND` | 2 | 2 |
+     | 15 <= wind < 20 | `WIND` | 1 | 1 |
+     | pop >= 60 | `RAIN RISK` | 2 | 2 |
+     | 40 <= pop < 60 | `SHOWERS` | 1 | 1 |
+     | elev_ft >= 4000 | `ALTITUDE` | 0 | 0 |
 
-   - `impact_level`: `NONE` indoor, else `CLEAR` (0), `WATCH` (1), `UNDER` (2+).
+   - `impact_level`: `NONE` indoor, else `UNDER` when `under_score >= 2`,
+     `WATCH` when either score is non-zero, else `CLEAR`. A heat-only game is
+     therefore `WATCH`: never `CLEAR`, never `UNDER`. The weather desk in
+     `app.js` filters its directional list on `under_score > 0`, so hot games
+     appear only in its dedicated heat section.
    - `impact_notes[]`: heat note when rounded temp >= 93 (`"96° and sunny —
      hydration / rotation game"`, or `"98° heat — early-season pace can stay
      fast; monitor late-game fade"` at 98+), wind note (`"Wind 18 mph — check
@@ -189,7 +206,53 @@ Done once per week by `scripts/refresh_week.py`, never live.
    - `kick_ct` is the kickoff in America/Chicago, e.g. `Sat 2:30 PM CT`.
    - `group`: `P4/P5` if either team is ACC / Big 12 / Big Ten / SEC / Pac-12,
      else `FCS mix` if either team is FCS, else `G5`.
+   - `conf_game` / `conf_label`: ESPN states this directly as
+     `competitions[0].conferenceCompetition`, already in the scoreboard payload,
+     so it costs no extra call. It also gets the hard cases right — Notre Dame is
+     Independent (id 18) but plays ACC opponents, and ESPN correctly says it is
+     not a conference game. The derived rule (same real `conferenceId`, excluding
+     18-vs-18 and any FCS side) is only a fallback for the cdn payload shape,
+     which can omit the key. `conf_label` is the conference name, else null.
    - `implied`, `spread_abs`, `blowout` (spread_abs >= 28) from the odds.
+
+4. **Enrich** each game from ESPN's per-game summary, as a separate pass after
+   the build loop — never inside `build_game()`, where an exception drops the
+   game entirely and a detail lookup must never cost a fixture.
+   `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=<id>`
+   (the `site.api.espn.com` host 403s on this path; `site.web.api` does not).
+   8 s timeout, and a circuit breaker abandons the pass after 5 consecutive
+   failures — 75 hanging calls at the default 20 s would exceed the Action's
+   20-minute cap. Writes one `enrich` block per game:
+
+   | Key | Source | Note |
+   | --- | --- | --- |
+   | `at` | — | UTC stamp of the lookup |
+   | `surface` | `gameInfo.venue.grass` | `"grass"` / `"turf"` |
+   | `capacity` | `gameInfo.venue.capacity` | null in practice so far |
+   | `attendance` | `gameInfo.attendance` | post-game only |
+   | `predictor` | `predictor.{home,away}Team.gameProjection` | **stored, never rendered** |
+   | `ats` | `againstTheSpread[].records` | empty until mid-season |
+   | `conf_record` | `standings` entry stat `vsconf` | |
+
+   A fresh null never overwrites a stored value, because ESPN drops `attendance`
+   and ATS records intermittently. `--no-enrich` skips the pass; it defaults on.
+   `predictor` is a win probability: rendering it beside the gold implied score
+   would drift toward a wagering read, so it stays stored only. `lastFiveGames`
+   is deliberately not extracted — its entries are contaminated with prior-season
+   games, so a "form" string built from it in September is silently wrong.
+
+5. **Write the generated HTML.** `write_seo()` replaces the content between
+   `<!-- games:start -->` and `<!-- games:end -->` in `index.html` with a
+   schema.org `@graph` of one `SportsEvent` per unplayed game, and rewrites the
+   kicker div with `week_label` (or a neutral string, since `week_label()` can
+   return None). `startDate` is venue-local with a real offset derived from
+   `wx.utc_offset_seconds`, never the raw UTC. TV uses
+   `publication` → `BroadcastEvent` → `publishedOn`. `sitemap.xml` gets
+   `<lastmod>` from `generated_at`. Runs only when `--out` is the repo root;
+   `--seo-only` rebuilds just this from the committed `games.json`, no network.
+   **No odds, spread, total, implied, offers or potentialAction, ever** — this
+   must never read as a sportsbook, and `check.py`'s `test_jsonld` enforces it
+   with a forbidden-substring scan.
 
 ## Rebuilding `games.json` for a new week
 
@@ -203,9 +266,26 @@ python3 scripts/refresh_week.py --start 20260911 --end 20260914
   (Tue-Wed), through the following Monday. `--start` alone means that one day.
 - `--out DIR` writes elsewhere (default: repo root). Useful to diff before
   overwriting.
+- `--no-enrich` skips the per-game ESPN summary pass; `--seo-only` rebuilds only
+  the generated block in `index.html` and `sitemap.xml` from the committed
+  `games.json`, with no network at all.
 - Output: `games.json` and `games.js` with the payload
-  `{ generated_at, source, week_label, dates[], count, games[] }`, and a
-  printed game count.
+  `{ generated_at, source, week_label, dates[], warnings[], counts{}, count,
+  games[] }`, and a printed game count. It also rewrites `index.html` and
+  `sitemap.xml` when writing to the repo root, so all four files belong in the
+  same commit — the refresh Action adds and diffs all four.
+- `warnings[]` used to hold only whole-date scoreboard failures, so an empty list
+  was not evidence of a clean build: a geocode failure produced no forecast, and
+  `impact()` then reported "Clean outdoor conditions" for a game it knew nothing
+  about. It now records geocode, forecast, per-game skip and enrichment failures
+  too (capped at 50), and `counts{}` carries `geocode_failed`, `forecast_failed`,
+  `forecast_missing`, `games_skipped`, `lines_carried`, `dates_failed`,
+  `fallback_url_used`, `no_groups_fallback`, `enriched`, `enrich_failed`, plus
+  `games` and `events`.
+- The fourth scoreboard URL above has no `groups=80`, so a date served by it
+  would carry the whole D1 slate. `pull()` reports which URL answered, and a
+  groups-less result is refiltered to FBS rather than rejected — rejecting would
+  lose a whole slate day on a bad ESPN afternoon.
 - Stdlib only (`urllib`, `json`, `zoneinfo`). No third-party packages.
 - Rate limits: Open-Meteo is free without a key at about 10k calls/day; a
   full week is roughly 80 forecast calls plus one geocode per distinct city,
@@ -221,11 +301,32 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
 - Day pills, default day, and time-window buckets are computed from the game
   dates in America/Chicago, so the client has no per-week constants. The
   header kicker reads `week_label` from the payload.
-- Stars persist in `localStorage` under `cfb_gameday_stars_v1`.
+- The header kicker also exists as static text in `index.html`, rewritten by the
+  refresh script, so a crawler and the pre-hydration paint see the real week.
+- Stars persist in `localStorage` under `cfb_gameday_stars_v1`. The closing-line
+  book under `cfb_gameday_lines_v1` is pruned on load to ids in the current
+  snapshot — its only reader is `chooseOdds(lineBook[g.id], …)`, so anything else
+  is dead weight that would accumulate across a season. Stars are deliberately
+  never pruned: those are user intent.
 - The gold implied score is only rendered on pre-game cards, labelled `proj`.
-  Once a game is live or final the real score column replaces it.
+  Once a game is live or final it is suppressed entirely, not dimmed, on all five
+  surfaces that read it — card, lines sheet, blowout board, Copy-post text and
+  CSV — via `started()`. The card keeps an empty placeholder div because `.trow`
+  is a four-column grid. The CSV keeps all 16 headers and emits empty cells, never
+  an em dash, which would break numeric parsing downstream.
+- Filters include `Conf game`, an independent toggle rather than a value in the
+  conference selector, so "SEC conference games" and "P4 non-conference" stay
+  expressible. `isConfGame()` falls back to deriving from `conferenceId` when the
+  snapshot predates `conf_game`.
 - `python3 scripts/check.py` runs the offline smoke test; run it after touching
-  `impact()`, `kick_ct()`, or `liveMath()`.
+  `impact()`, `kick_ct()`, or `liveMath()`. It checks the impact table, the time
+  helpers, `fallback_dates()`, five `app.js` functions extracted as source text
+  and run under node, the shape of **every** game in the snapshot (it used to
+  sample the first five, which is how a half-broken build could pass), the
+  structured-data block, and run health. The health gate is deliberately lenient
+  because it runs before the Action's commit and that commit also carries the odds
+  refresh: it fails only above 25% missing forecasts, warns above 10%, and only
+  inside Open-Meteo's ~16-day horizon. An enrichment failure never fails it.
 
 ## PWA
 
