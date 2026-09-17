@@ -1,7 +1,8 @@
 # App Store listing and submission notes
 
-Status: 1.0.0 (1) rejected 2026-09-05 under 2.1 (information needed, new account).
-Reply kit: `APP_REVIEW_REPLY.md`. Manual release once approved.
+Status: 1.0.0 (3) approved 2026-09-10 and released the same day; live on the App
+Store, `READY_FOR_SALE`. The 2.1 information-needed round on 1.0.0 (1) is closed;
+its reply kit is kept in `APP_REVIEW_REPLY.md` for reference.
 Live state and what to do on approval or rejection: `../CONTEXT.md`.
 The copy below is also laid out field-by-field in `PASTE_ME.md`.
 
@@ -111,8 +112,12 @@ tokens. The 09-10 set spent 9 bytes on a second `football` and 6 on `scores`
 (already in the subtitle) via `live scores`. Those bytes now buy `channel` ("what
 channel is the game on" is a top CFB query), `rankings`, and `fbs`. `point spread`
 became `spread`; `point` alone has no search value. Nothing here names a
-sportsbook, a network, or a wagering verb. What's New for 1.0.1 was also corrected:
-it described the blank-tab fix, which already shipped in 1.0.0 (3).
+sportsbook, a network, or a wagering verb.
+
+1.0.1 is a functional release, not metadata-only: it adds a foreground staleness
+check so an app resumed after days does not keep rendering the previous week's
+slate. What's New describes that; an earlier draft said "no functional changes",
+which this build makes false.
 
 **What's New** (1.0.0)
 
