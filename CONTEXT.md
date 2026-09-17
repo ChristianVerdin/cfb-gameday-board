@@ -9,6 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
+**State (2026-09-17 evening):** site live with Week 3 · iOS 1.0.0 live, **1.0.1 `WAITING_FOR_REVIEW`, releases automatically on approval** · nothing is waiting on cv except an Apple review email
 
 ---
 
@@ -108,10 +109,12 @@ push rather than leaving it — the weather is the point of the board.
 `b8867a34-41e7-449c-b0df-12b9fc7eb220`, state `WAITING_FOR_REVIEW`,
 `asc review doctor` reported 0 blockers.
 
-**Release type is MANUAL**, so approval will NOT put it live. It will sit in
-`PENDING_DEVELOPER_RELEASE` until someone releases it:
+**Release type was switched to `AFTER_APPROVAL`** at cv's request, so it ships
+itself the moment Apple approves — nothing to press. 1.0.0 stays `MANUAL`; the
+release type is per version, so the next version defaults back to whatever the
+script/metadata sets and has to be switched again if the same behaviour is wanted:
 ```
-asc versions release --version-id 8e2d8924-410a-42c5-ad1b-abfe684435a0 --confirm
+asc versions update --version-id <VERSION_ID> --release-type AFTER_APPROVAL
 ```
 
 The Week 3 promotional text was pushed onto the 1.0.1 record before submitting.
@@ -120,16 +123,20 @@ evergreen line that `ios/metadata/version/1.0.1/en-US.json` carries as its
 off-season default. **Any future version needs the same step**, or run
 `promo_text.py --apply` again right after the release.
 
-- Version `1.0.1` id `8e2d8924-410a-42c5-ad1b-abfe684435a0`, state `PREPARE_FOR_SUBMISSION`, release MANUAL.
+- Version `1.0.1` id `8e2d8924-410a-42c5-ad1b-abfe684435a0`, `WAITING_FOR_REVIEW`,
+  release `AFTER_APPROVAL`.
 - Build **4** id `62cd0f47-97ce-4725-a820-d9997922c6a0`, `VALID`, attached.
+- Submission `b8867a34-41e7-449c-b0df-12b9fc7eb220`, submitted 2026-09-17 23:27 UTC.
 - Metadata applied and verified live: the 98-char keyword set and a What's New
   describing the foreground refresh (the drafted "no functional changes" line was
   false once this build existed).
 - Change: `WebContainer` observes `willEnterForeground` and reloads only when the
   page is actually holding a stale slate - see the decision table in the commit.
-- To submit when cv says so:
-  `asc review submissions-submit --app 6809035228` (or `scripts/release_ios.sh --submit`
-  on a fresh build). Then `asc review status --app 6809035228`.
+- Status any time: `asc review status --app 6809035228`.
+- **On rejection:** playbook in `ios/APP_STORE.md` § likely rejections. The API
+  refuses `submissions-submit` until the rejected item is marked resolved
+  (`asc review items update --resolved true`); the web Resubmit button does that step.
+- Screenshots are still the Week 1 set from 2026-09-05. Dated, not a rejection risk.
 
 **Release-script gotcha found today:** `scripts/release_ios.sh` is not idempotent
 after a partial run. Its upload can succeed while the run is cut off before attach,
@@ -154,14 +161,21 @@ Also note the build list lags several minutes behind a successful upload, so
   `?pt=…&ct=…&mt=8` (names listed in `ios/APP_STORE.md`).
 - Pin `cfb-gameday-board` on the GitHub profile by hand (no API).
 - Decide the Apple Silicon Mac checkbox (Pricing and Availability, defaults on).
-- Ship 1.0.1 (keyword cleanup already in `ios/metadata/version/1.0.1/`, plus a
-  native ratings prompt) after a few days of 1.0.0 data; submit only on cv's word.
+- ~~Ship 1.0.1~~ — submitted 2026-09-17, auto-releases on approval. The **native
+  ratings prompt** that was bundled into this item was *not* built; it is still open
+  for a later version.
 - Featuring nominations / In-App Events for Rivalry Week, Championship Saturday, Playoff.
 - If a second rejection cites 4.2, the next native lever is a Starred list
   backed by `games.json`.
-- Optional, unbuilt: line-movement chip on cards, Telegram ping from the refresh
-  Action (needs a chat ID declared in `CLAUDE.md`), starred-game props hook into
-  `sportsbettingml_full_package`.
+- Optional, unbuilt: line-movement chip on cards (offered 2026-09-17, cv declined;
+  the open/current data is already in the snapshot so it stays cheap), playing
+  surface on the card (`enrich.surface` is stored and rendered nowhere, cv declined),
+  Telegram ping from the refresh Action (needs a chat ID declared in `CLAUDE.md`),
+  starred-game props hook into `sportsbettingml_full_package`.
+- Refresh App Store screenshots — still the Week 1 set from 2026-09-05.
+- The weekly `promo_text.py --apply` is the one genuinely manual step and is
+  deliberately not in the Action, which would mean putting the `.p8` in repo
+  secrets. It is cosmetic; skipping a week breaks nothing.
 
 **Things learned the hard way today**
 - `vercel link` refuses to run non-interactively here; `.vercel/project.json`

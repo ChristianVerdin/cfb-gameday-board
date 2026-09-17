@@ -74,6 +74,8 @@ GitHub Action because that would put the App Store Connect `.p8` key in repo sec
 
 ## Not automated, on purpose
 
-- Release after approval, pricing, age rating, screenshots, and replying to App Review messages (cv, in App Store Connect). Submitting is scripted (`release_ios.sh --submit`, or `asc review submissions-submit`) but only run on cv's say-so.
+- Pricing, age rating, screenshots, and replying to App Review messages (cv, in App Store Connect). Submitting is scripted (`asc review submit --app <id> --version-id <id> --build-id <id> --confirm`, or `release_ios.sh --submit`) but only run on cv's say-so.
+- Release after approval is **per version**. 1.0.1 was switched to `AFTER_APPROVAL` so it ships itself; 1.0.0 was `MANUAL`. A new version does not inherit this - set it again with `asc versions update --version-id <id> --release-type AFTER_APPROVAL` if the same behaviour is wanted.
+- The weekly `promo_text.py --apply`. Automating it would put the App Store Connect `.p8` in repo secrets; it is cosmetic, so skipping a week breaks nothing.
 - Telegram alerts: no chat ID is declared for this project; do not send.
 - Player-prop posting: lives in `~/projects/sportsbettingml_full_package`, never here.

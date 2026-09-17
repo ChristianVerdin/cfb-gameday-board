@@ -8,8 +8,9 @@ start.
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 Live site: https://cfbgameday.app. Deploys from `main` on every push. The
-snapshot rebuilds itself four times a week via GitHub Actions (Wed, Thu, Fri
-and Sat, each well ahead of kickoff).
+snapshot rebuilds itself five times a week via GitHub Actions (Wed, Thu, Fri and
+two on Saturday), each well ahead of kickoff, and heals itself if a run drops
+kickoff forecasts.
 iPhone app: SwiftUI shell around the same board, in `ios/`. On the App Store
 since 2026-09-10: https://apps.apple.com/app/id6809035228
 

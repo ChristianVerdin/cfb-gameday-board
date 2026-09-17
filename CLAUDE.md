@@ -25,10 +25,11 @@ asc review status --app 6809035228    # App Review state; asc is installed and l
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
 
 ## Status
-- Web live at https://cfbgameday.app. iOS 1.0.0 (3) approved 2026-09-10 and released the
-  same day; live on the App Store, `READY_FOR_SALE`. 1.0.1 (foreground staleness refresh
-  + keyword cleanup) is built and attached but **not submitted** - submitting is cv's call
-  in the session. Details: `CONTEXT.md`. Cross-project playbook: `app-store-release` skill.
+- Web live at https://cfbgameday.app. iOS 1.0.0 (3) live on the App Store since
+  2026-09-10. **1.0.1 (4) submitted 2026-09-17, `WAITING_FOR_REVIEW`, release type
+  `AFTER_APPROVAL`** so it ships itself — adds a foreground staleness refresh plus the
+  keyword cleanup. Details and the on-rejection path: `CONTEXT.md`. Cross-project
+  playbook: `app-store-release` skill.
 
 ## Hosted
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
