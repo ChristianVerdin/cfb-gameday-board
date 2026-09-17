@@ -58,7 +58,7 @@ jobs:
           fi
           python3 scripts/check.py
           python3 scripts/run_summary.py >> "$GITHUB_STEP_SUMMARY"
-          if git diff --quiet -- games.json games.js; then
+          if git diff --quiet -- games.json games.js index.html sitemap.xml; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -69,6 +69,6 @@ jobs:
           label=$(python3 -c "import json;print(json.load(open('games.json')).get('week_label') or 'slate')")
           git config user.name "gameday-bot"
           git config user.email "gameday-bot@users.noreply.github.com"
-          git add games.json games.js
+          git add games.json games.js index.html sitemap.xml
           git commit -m "Snapshot: $label ($(date -u +%Y-%m-%dT%H:%MZ))"
           git push

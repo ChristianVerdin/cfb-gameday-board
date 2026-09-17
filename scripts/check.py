@@ -242,6 +242,46 @@ def test_run_health():
         print(f"warn: {counts['geocode_failed']} geocode failure(s)")
 
 
+FORBIDDEN_LD = ("spread", "total", "odds", "moneyline", "implied", "offer", "price")
+
+
+def test_jsonld():
+    """The structured data must describe games, never a betting market.
+
+    The forbidden-substring scan is the point of this test: it keeps the CLAUDE.md
+    "never a wagering tool" rule enforced after everyone has forgotten it was a rule.
+    """
+    html = (ROOT / "index.html").read_text("utf-8")
+    m = re.search(r"<!-- games:start -->(.*?)<!-- games:end -->", html, re.S)
+    check("slate markers present", bool(m), True)
+    if not m:
+        return
+    block = m.group(1)
+    bad = [t for t in FORBIDDEN_LD if t in block.lower()]
+    check("no wagering terms in structured data", bad, [])
+    inner = re.search(r'<script type="application/ld\+json">(.*)</script>', block, re.S)
+    check("ld+json script present", bool(inner), True)
+    if not inner:
+        return
+    try:
+        graph = json.loads(inner.group(1)).get("@graph") or []
+    except Exception as exc:
+        FAILS.append(f"structured data does not parse: {exc}")
+        return
+    data = json.loads((ROOT / "games.json").read_text("utf-8"))
+    want = [g for g in data.get("games") or [] if g.get("gameState") != "post"]
+    check("one event per unplayed game", len(graph), len(want))
+    need = {"name", "startDate", "location", "homeTeam", "awayTeam"}
+    check("events have the required fields",
+          [e.get("name") for e in graph if need - set(e)][:3], [])
+    iso = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z)$")
+    check("startDate carries an offset",
+          [e.get("startDate") for e in graph if not iso.match(e.get("startDate") or "")][:3], [])
+    kicker = re.search(r'<div class="kicker" id="kicker">(.*?)</div>', html, re.S)
+    check("kicker matches the snapshot", kicker.group(1) if kicker else None,
+          data.get("week_label") or "College football slate")
+
+
 def test_pwa():
     try:
         m = json.loads((ROOT / "manifest.webmanifest").read_text("utf-8"))
@@ -264,7 +304,7 @@ def test_pwa():
 
 
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_pwa):
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))
