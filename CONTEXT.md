@@ -81,6 +81,27 @@ Banner / Open Graph / Twitter card / JSON-LD / robots / sitemap on the site, sha
 Apps PR #2481, GitHub profile README section, dailylocks.ai footer link. Details and the
 manual follow-ups: `ios/APP_STORE.md` § Marketing surfaces.
 
+## First CI run of the new pipeline (2026-09-17, run 35282517054)
+
+Passed. Enrichment worked from GitHub's runners — `enriched=75`, no 403 — the
+generated `index.html` block was written (`75 SportsEvent entries`), the step
+summary rendered, and `gameday-bot` committed `games.json games.js index.html`,
+which proves the widened `git add`. `sitemap.xml` was unchanged only because
+`lastmod` was already today's date.
+
+It also found a real defect on its first run: **8 of 75 kickoff forecasts were
+lost to Open-Meteo TLS handshake timeouts on the runner.** That is not a visible
+gap — `impact()` runs on `wx=None` and reports "Clean outdoor conditions", so the
+live board showed UTEP @ MICH as clean while ESPN's own label said Rain, and
+dropped the EXTREME HEAT flag from a 98°F LT @ BAY. The new `warnings`/`counts`
+are what made it visible at all; `check.py` warned at 11% and correctly did not
+fail the build. `forecast()` now retries once against a whole-run budget of 20
+with a 10 s timeout, and the snapshot was rebuilt locally to 0 missing.
+
+**Expect this again.** The runner's network is flakier than this Mac's. If a
+gameday snapshot lands with `forecast_failed` in `counts`, rebuild locally and
+push rather than leaving it — the weather is the point of the board.
+
 ## iOS 1.0.1 (2026-09-17)
 
 Built, uploaded, attached, **not submitted**. Submitting is cv's call in session.
