@@ -9,7 +9,8 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 ## 1. Snapshot refresh bot (GitHub Actions)
 
 **File:** `.github/workflows/refresh.yml` → `scripts/refresh_week.py` → `scripts/check.py`
-**Schedule:** `0 2 * * 5` (Thu 9 PM CT) and `0 14 * * 6` (Sat 9 AM CT), plus `workflow_dispatch` with optional `start`/`end` (YYYYMMDD).
+**Schedule:** four runs a week, each deliberately hours ahead of when it is needed - `0 18 * * 3` (Wed 1 PM CT, builds the coming Thu..Mon slate), `0 12 * * 4` (Thu 7 AM CT), `0 12 * * 5` (Fri 7 AM CT), `0 9 * * 6` (Sat 4 AM CT) - plus `workflow_dispatch` with optional `start`/`end` (YYYYMMDD).
+**Why the lead time:** GitHub creates scheduled runs late under load. Measured on this repo: the Thu cron due 2026-09-11 02:00 UTC was created 07:08 UTC (5h08m late) and the Sat cron due 2026-09-12 14:00 UTC was created 16:52 UTC (2h52m late). Runs can also be dropped entirely, so on a gameday morning confirm with `gh run list --workflow=refresh.yml` rather than assuming.
 **Does:** pulls ESPN scoreboard for Thu..Mon, geocodes venues and pulls kickoff-hour weather from Open-Meteo, derives flags/impact/implied/group/kick_ct, writes `games.json` + `games.js`, commits as `gameday-bot` when changed. Vercel deploys the push.
 **Cost:** $0 (public Actions minutes on a public repo; ESPN and Open-Meteo are keyless).
 **Guardrails:** carries the prior snapshot's line forward when ESPN has none (never strips lines mid-slate); exits clean with no commit in the offseason; `check.py` must pass before the commit.

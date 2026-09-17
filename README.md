@@ -118,8 +118,13 @@ python3 scripts/promo_text.py --apply   # App Store promotional text for the wee
 
 With no arguments it targets Thursday through Monday of the current or next
 slate (Tuesday and Wednesday roll forward). Pass `--start 20260911 --end
-20260914` to pick dates. Rerun it Saturday morning to refresh the forecast to
+20260914` to pick dates. Rerun it on a game morning to refresh the forecast to
 same-day accuracy, then restart `server.py`.
+
+The Action runs it four times a week - Wed 1 PM, Thu 7 AM, Fri 7 AM and Sat
+4 AM CT. Each is scheduled hours ahead of when it is actually needed because
+GitHub creates scheduled runs late under load (measured 5h08m late once on this
+repo) and can drop them entirely.
 
 That pulls the ESPN scoreboard for each date, geocodes each venue city with
 Open-Meteo, pulls the hourly forecast at the local kickoff hour, computes the
