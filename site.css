@@ -82,7 +82,6 @@ footer { color: var(--dim); font-size: 11px; text-align: center; padding: 4px 16
 .trow { display:grid; grid-template-columns:28px 1fr auto auto; gap:8px; align-items:center; }
 .impl { color:var(--gold2); font-size:12px; font-weight:700; }
 .impl .proj { color:var(--dim); font-size:9px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-right:3px; }
-.impl.started { color:var(--dim); }
 .section { padding:0 12px 20px; }
 .netblock { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
 .netgame b { font-weight:800; font-size:14px; }
