@@ -28,6 +28,10 @@ CONFERENCES_URL = (
     "https://site.web.api.espn.com/apis/site/v2/sports/football/"
     "college-football/scoreboard/conferences"
 )
+SUMMARY_URL = (
+    "https://site.web.api.espn.com/apis/site/v2/sports/football/"
+    "college-football/summary"
+)   # site.api.espn.com 403s on this path; site.web.api does not
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 HOURLY = ",".join([
@@ -444,6 +448,85 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     return game
 
 
+def _standing(summary: dict, team_id: str | None, stat: str) -> str | None:
+    if not team_id:
+        return None
+    for group in (summary.get("standings") or {}).get("groups") or []:
+        for entry in (group.get("standings") or {}).get("entries") or []:
+            if str(entry.get("id")) == str(team_id):
+                for row in entry.get("stats") or []:
+                    if row.get("type") == stat:
+                        return row.get("displayValue")
+    return None
+
+
+def _ats(summary: dict, team_id: str | None) -> str | None:
+    for row in summary.get("againstTheSpread") or []:
+        if str((row.get("team") or {}).get("id")) == str(team_id):
+            recs = row.get("records") or []
+            return (recs[0] or {}).get("summary") if recs else None
+    return None
+
+
+def enrich(games: list, prior: dict, sleep: float, run: Run) -> None:
+    """Per-game ESPN summary detail. Never raises, never drops a game.
+
+    Kept out of build_game because an exception there drops the game entirely, and a
+    detail lookup must never cost us a fixture. A new null never overwrites a good
+    prior value: ESPN drops attendance and ATS records intermittently.
+    """
+    misses = 0
+    for game in games:
+        gid = game.get("id")
+        was = prior.get(gid) or {}
+        try:
+            summary = fetch_json(f"{SUMMARY_URL}?event={gid}", timeout=8)
+        except Exception as exc:
+            run.warn(f"enrich {game.get('shortName')} ({gid}): {exc}")
+            run.bump("enrich_failed")
+            game["enrich"] = was or None
+            misses += 1
+            if misses >= 5:
+                run.warn("enrich: 5 consecutive failures, skipping the rest of the pass")
+                for rest in games[games.index(game) + 1:]:
+                    rest["enrich"] = prior.get(rest.get("id")) or None
+                return
+            continue
+        finally:
+            time.sleep(sleep)
+        misses = 0
+        info = summary.get("gameInfo") or {}
+        venue = info.get("venue") or {}
+        pred = summary.get("predictor") or {}
+        hid = (game.get("home") or {}).get("id")
+        aid = (game.get("away") or {}).get("id")
+        grass = venue.get("grass")
+        fresh = {
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "surface": None if grass is None else ("grass" if grass else "turf"),
+            "capacity": venue.get("capacity"),
+            "attendance": info.get("attendance"),
+            "predictor": {
+                "home": (pred.get("homeTeam") or {}).get("gameProjection"),
+                "away": (pred.get("awayTeam") or {}).get("gameProjection"),
+            },
+            "ats": {"home": _ats(summary, hid), "away": _ats(summary, aid)},
+            "conf_record": {"home": _standing(summary, hid, "vsconf"),
+                            "away": _standing(summary, aid, "vsconf")},
+        }
+        for key, value in fresh.items():
+            if key == "at":
+                continue
+            if isinstance(value, dict):
+                for sub, sv in value.items():
+                    if sv is None and (was.get(key) or {}).get(sub) is not None:
+                        value[sub] = was[key][sub]
+            elif value is None and was.get(key) is not None:
+                fresh[key] = was[key]
+        game["enrich"] = fresh
+        run.bump("enriched")
+
+
 def pull(date: str, run: Run) -> tuple[list, dict, bool]:
     """Returns (events, payload, groups80). The last endpoint drops groups=80, so a
     date served by it carries the whole D1 slate; the caller filters it back to FBS."""
@@ -482,6 +565,8 @@ def main() -> int:
     ap.add_argument("--end", help="last ESPN date, inclusive, YYYYMMDD (default: start + 4 days, Monday)")
     ap.add_argument("--out", default=str(ROOT), help="directory for games.json / games.js (default: repo root)")
     ap.add_argument("--sleep", type=float, default=0.2, help="seconds between Open-Meteo calls")
+    ap.add_argument("--enrich", action=argparse.BooleanOptionalAction, default=True,
+                    help="pull per-game ESPN summary detail (surface, predictor, ATS, conf record)")
     args = ap.parse_args()
 
     run = Run()
@@ -539,6 +624,11 @@ def main() -> int:
         games.append(game)
         wx = "wx ok" if game["wx"] else ("indoor" if game["indoor"] else "no wx")
         print(f"  [{i}/{len(events)}] {game['shortName']:<14} {game['kick_ct']:<15} {game['city'] or '?'}, {game['state'] or '?'}  {wx}")
+    if args.enrich:
+        prior_enrich = {g["id"]: g.get("enrich") for g in existing.get("games") or [] if g.get("id")}
+        print(f"Enriching {len(games)} games (ESPN summary)")
+        enrich(games, prior_enrich, args.sleep, run)
+
     games.sort(key=lambda g: (g["date"] or "", g["shortName"] or ""))
 
     payload = {
