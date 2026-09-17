@@ -69,6 +69,9 @@
   function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
   function isLive(g) { return g.gameState === "in" || g.status === "STATUS_IN_PROGRESS" || g.status === "STATUS_HALFTIME"; }
   function isFinal(g) { return g.gameState === "post" || g.completed || (g.status || "").includes("FINAL"); }
+  // CLAUDE.md: the implied score is never shown once a game starts. The real score is
+  // on the card by then, and "proj" beside it reads as a prediction of a known result.
+  function started(g) { return isLive(g) || isFinal(g); }
   function clockLabel(g) {
     if (isFinal(g)) return "FINAL";
     if (isLive(g)) { const st = g.statusShort || g.statusDetail || "LIVE"; return (g.clock && !st.includes(g.clock)) ? `${st} · ${g.clock}` : st; }
@@ -188,7 +191,7 @@
       `${fmtKick(g)} · ${(g.networks||g.broadcasts||[]).join("/")}`,
       [g.venue, [g.city,g.state].filter(Boolean).join(", ")].filter(Boolean).join(" · "),
       [g.wx_emoji, g.temp!=null?Math.round(g.temp)+"°":"", g.wx_label, wx.wind!=null?`wind ${Math.round(wx.wind)} ${g.wind_dir||""}`:"", wx.pop!=null?`rain ${wx.pop}%`:""].filter(Boolean).join(" · "),
-      [o.details, o.total!=null?`o/u ${o.total}`:"", impl.home!=null?`proj ${a.abbr} ${impl.away} – ${h.abbr} ${impl.home}`:""].filter(Boolean).join(" · "),
+      [o.details, o.total!=null?`o/u ${o.total}`:"", (!started(g) && impl.home!=null)?`proj ${a.abbr} ${impl.away} – ${h.abbr} ${impl.home}`:""].filter(Boolean).join(" · "),
       (g.impact_notes||[])[0]||""
     ].filter(Boolean).join("\n");
   }
@@ -237,10 +240,12 @@
     });
     return list;
   }
-  // Implied score is always prefixed "proj" so it cannot be read as points; dimmed once the game starts.
-  function implCell(v, started) {
-    if (v == null) return `<div class="impl"></div>`;
-    return `<div class="impl ${started?"started":""}" title="Implied score from spread + total (ESPN/DK snapshot), not points"><span class="proj">proj</span>${v}</div>`;
+  // Implied score is always prefixed "proj" so it cannot be read as points. Suppressed
+  // once the game starts; the empty div stays because .trow is a four-column grid and
+  // dropping it would misalign every started card against every pre-kick one.
+  function implCell(v, hide) {
+    if (v == null || hide) return `<div class="impl"></div>`;
+    return `<div class="impl" title="Implied score from spread + total (ESPN/DK snapshot), not points"><span class="proj">proj</span>${v}</div>`;
   }
   function liveStatusText(g, live) {
     const st = g.statusDetail || g.statusShort || "";
@@ -320,6 +325,8 @@
     </article>`;
   }
   function linesSheet(list) {
+    const showProj = list.some(g => !started(g));   // column goes once everything in view has kicked
+    const cols = showProj ? 6 : 5;
     const rows = list.map(g=>{
       const a=g.away||{}, h=g.home||{}, o=g.odds||{}, impl=g.implied||{};
       const math=liveMath(g);
@@ -329,14 +336,14 @@
         <td><b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}</div></td>
         <td>${o.details||"—"}<div class="juice">${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}</div></td>
         <td>${o.total!=null?o.total:"—"}<div class="juice">${math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
-        <td>${impl.away!=null?`${impl.away}–${impl.home}`:"—"}</td>
+        ${showProj ? `<td>${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
         <td>${g.temp!=null?Math.round(g.temp)+"°":"—"} ${g.wx_emoji||""}<div class="juice">${(g.flags||[]).join(" · ")}</div></td>
       </tr>`;
     }).join("");
     return `<div class="section"><h2>Lines sheet · ${list.length}</h2>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Kick CT</th><th>Game</th><th>Spread</th><th>Total</th><th>Proj</th><th>Wx</th></tr></thead>
-        <tbody>${rows||`<tr><td colspan="6">No games</td></tr>`}</tbody>
+        <thead><tr><th>Kick CT</th><th>Game</th><th>Spread</th><th>Total</th>${showProj?"<th>Proj</th>":""}<th>Wx</th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="${cols}">No games</td></tr>`}</tbody>
       </table></div>
       <div class="actions" style="padding:12px 0 0"><button class="abtn" id="csv">Download CSV</button></div>
     </div>`;
@@ -358,9 +365,15 @@
     const big = list.filter(g=>g.blowout).sort((a,b)=>(b.spread_abs||0)-(a.spread_abs||0));
     return `<div class="section"><h2>Landslide board · spread 28+</h2>
       ${big.length?big.map(g=>{
-        const o=g.odds||{}, impl=g.implied||{};
+        const o=g.odds||{}, impl=g.implied||{}, a=g.away||{}, h=g.home||{};
+        const bits = [fmtKick(g), (g.networks||[]).join("/")];
+        if (started(g)) bits.push(`${a.score||0}–${h.score||0} ${isFinal(g)?"FINAL":"LIVE"}`);
+        else if (impl.away != null) bits.push(`proj ${impl.away}–${impl.home}`);
+        bits.push(`total ${o.total??"—"}`);
+        if (g.temp != null) bits.push(`${Math.round(g.temp)}°`);
+        bits.push(`${g.city}, ${g.state}`);
         return `<div class="deskcard"><div class="t">${g.shortName} · ${o.details||""}</div>
-          <div class="d">${fmtKick(g)} · ${(g.networks||[]).join("/")} · proj ${impl.away}–${impl.home} · total ${o.total??"—"} · ${g.temp!=null?Math.round(g.temp)+"°":""} ${g.city}, ${g.state}</div></div>`;
+          <div class="d">${bits.filter(Boolean).join(" · ")}</div></div>`;
       }).join(""):`<div class="empty">No 28-point spreads in this filter.</div>`}
     </div>`;
   }
@@ -405,7 +418,8 @@
     const headers = ["kick_ct","away","home","venue","city","state","tv","spread","total","proj_away","proj_home","temp","wind","rain","flags","notes"];
     const rows = list.map(g=>{
       const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
-      return [fmtKick(g), a.name, h.name, g.venue, g.city, g.state, (g.networks||[]).join("|"), o.details, o.total, impl.away, impl.home, g.temp, wx.wind, wx.pop, (g.flags||[]).join("|"), (g.impact_notes||[]).join("; ")].map(v => `"${String(v??"").replaceAll('"','""')}"`).join(",");
+      const pa = started(g) ? "" : impl.away, ph = started(g) ? "" : impl.home;
+      return [fmtKick(g), a.name, h.name, g.venue, g.city, g.state, (g.networks||[]).join("|"), o.details, o.total, pa, ph, g.temp, wx.wind, wx.pop, (g.flags||[]).join("|"), (g.impact_notes||[]).join("; ")].map(v => `"${String(v??"").replaceAll('"','""')}"`).join(",");
     });
     const blob = new Blob([[headers.join(","),...rows].join("\n")], {type:"text/csv"});
     const url = URL.createObjectURL(blob);
