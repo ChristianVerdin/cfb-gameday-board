@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-09-17 evening):** site live with Week 3 · iOS 1.0.0 live, **1.0.1 `WAITING_FOR_REVIEW`, releases automatically on approval** · nothing is waiting on cv except an Apple review email
+**State (2026-09-18):** site live with Week 3 · **iOS 1.0.1 (4) live on the App Store** (approved and auto-released by 2026-09-18, `READY_FOR_SALE`) · nothing waiting on Apple
 
 ---
 
@@ -105,6 +105,11 @@ push rather than leaving it — the weather is the point of the board.
 
 ## iOS 1.0.1 (2026-09-17)
 
+**Approved and live by 2026-09-18** — `AFTER_APPROVAL` released it with no
+click; version state `READY_FOR_DISTRIBUTION` / `READY_FOR_SALE`, submission
+`COMPLETE`. The Week 3 promo text carried over as planned. The notes below are the
+submission record.
+
 **Submitted for review 2026-09-17 18:27 CT on cv's say-so** — submission
 `b8867a34-41e7-449c-b0df-12b9fc7eb220`, state `WAITING_FOR_REVIEW`,
 `asc review doctor` reported 0 blockers.
@@ -123,8 +128,8 @@ evergreen line that `ios/metadata/version/1.0.1/en-US.json` carries as its
 off-season default. **Any future version needs the same step**, or run
 `promo_text.py --apply` again right after the release.
 
-- Version `1.0.1` id `8e2d8924-410a-42c5-ad1b-abfe684435a0`, `WAITING_FOR_REVIEW`,
-  release `AFTER_APPROVAL`.
+- Version `1.0.1` id `8e2d8924-410a-42c5-ad1b-abfe684435a0`, `READY_FOR_SALE`
+  (was `WAITING_FOR_REVIEW`), release `AFTER_APPROVAL`.
 - Build **4** id `62cd0f47-97ce-4725-a820-d9997922c6a0`, `VALID`, attached.
 - Submission `b8867a34-41e7-449c-b0df-12b9fc7eb220`, submitted 2026-09-17 23:27 UTC.
 - Metadata applied and verified live: the 98-char keyword set and a What's New
@@ -161,7 +166,7 @@ Also note the build list lags several minutes behind a successful upload, so
   `?pt=…&ct=…&mt=8` (names listed in `ios/APP_STORE.md`).
 - Pin `cfb-gameday-board` on the GitHub profile by hand (no API).
 - Decide the Apple Silicon Mac checkbox (Pricing and Availability, defaults on).
-- ~~Ship 1.0.1~~ — submitted 2026-09-17, auto-releases on approval. The **native
+- ~~Ship 1.0.1~~ — submitted 2026-09-17, live by 2026-09-18. The **native
   ratings prompt** that was bundled into this item was *not* built; it is still open
   for a later version.
 - Featuring nominations / In-App Events for Rivalry Week, Championship Saturday, Playoff.
