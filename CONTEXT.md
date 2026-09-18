@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-09-18):** site live with Week 3 · **iOS 1.0.1 (4) live on the App Store** (approved and auto-released by 2026-09-18, `READY_FOR_SALE`) · nothing waiting on Apple
+**State (2026-09-18):** site live with Week 3 · **iOS 1.0.1 (4) live on the App Store** (approved and auto-released by 2026-09-18, `READY_FOR_SALE`) · Week 3 promo text re-applied 2026-09-18 13:40 CT from the Friday snapshot ("Heat flags at 35", replacing Thursday's "Rain risk at 11 kickoffs") · nothing waiting on Apple or cv
 
 ---
 
@@ -206,6 +206,10 @@ The snapshot refresh is automatic; the App Store promotional text is **not**.
 ```
 python3 scripts/promo_text.py --apply   # Week N billboard; Apple allows this without review
 ```
+Re-run it after the Friday snapshot if convenient: its weather clause comes from the
+forecast and can flip between runs (Week 3 went from rain at 11 kickoffs Thursday to
+heat flags at 35 Friday). No Saturday-morning re-apply; cv decided 2026-09-18 that
+a day-old weather clause is fine and not worth a local job or the `.p8` in CI.
 
 **If the Action fails or ESPN changes shape:**
 ```
