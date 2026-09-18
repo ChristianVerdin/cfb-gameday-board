@@ -105,8 +105,10 @@ push rather than leaving it — the weather is the point of the board.
 
 ## iOS 1.0.1 (2026-09-17)
 
-**Approved and live by 2026-09-18** — `AFTER_APPROVAL` released it with no
-click; version state `READY_FOR_DISTRIBUTION` / `READY_FOR_SALE`, submission
+**Approved 2026-09-18 13:17 CT** (review took ~19 h from the 18:27 CT submit) —
+`AFTER_APPROVAL` released it with no click. Apple's email warns public availability
+can lag up to 24 h: at 13:34 CT the iTunes lookup API still reported 1.0.0 while
+ASC said `READY_FOR_SALE`. That lag is normal, not a failed release; version state `READY_FOR_DISTRIBUTION` / `READY_FOR_SALE`, submission
 `COMPLETE`. The Week 3 promo text carried over as planned. The notes below are the
 submission record.
 
