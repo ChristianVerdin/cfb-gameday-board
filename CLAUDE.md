@@ -65,8 +65,10 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
   `impact_level`. Heat must never render as UNDER.
 - Structured data describes games, never a market: no odds, spread, total, implied,
   offers or potentialAction in the JSON-LD. `check.py` scans for those terms.
-- No fake live weather. A weather refresh must hit Open-Meteo at venue lat/lon
-  for the kick hour and stamp `fetched_at`.
+- No fake live weather. Weather must come from Open-Meteo at venue lat/lon for the
+  kick hour. Snapshot forecasts are all fetched in one build, so the snapshot's
+  `generated_at` dates them; any future live weather refresh must stamp its own
+  `fetched_at` per game (`docs/ARCHITECTURE.md`).
 - Do not scrape DraftKings/FanDuel HTML. Odds come only from ESPN's feed.
 - No player-prop posting here. That lives in `~/projects/sportsbettingml_full_package`
   (`check_prop` gate, `post_hit.py`). Do not copy it in.
