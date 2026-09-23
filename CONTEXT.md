@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-09-18):** site live with Week 3 · **iOS 1.0.1 (4) live on the App Store** (approved and auto-released by 2026-09-18, `READY_FOR_SALE`) · Week 3 promo text re-applied 2026-09-18 13:40 CT from the Friday snapshot ("Heat flags at 35", replacing Thursday's "Rain risk at 11 kickoffs") · nothing waiting on Apple or cv
+**State (2026-09-23):** site live with Week 4 (snapshot forced 2026-09-23 09:12 CT via `gh workflow run`, 71 games, 58 with lines) · **iOS 1.0.1 (4) live on the App Store** (`READY_FOR_SALE` since 2026-09-18) · Week 4 promo text applied 2026-09-23 09:20 CT ("Rain risk at 1 kickoff"; `promo_text.py` now singularizes) · nothing waiting on Apple or cv
 
 ---
 

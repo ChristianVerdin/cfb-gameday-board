@@ -38,8 +38,8 @@ def build(games, week):
                    f"{abs(close['odds']['spread']):g}-point line.")
     wx_full, wx_short = [], ""
     if rain:
-        wx_full.append(f"rain risk at {rain} kickoffs")
-        wx_short = f"Rain risk at {rain} kickoffs."
+        wx_full.append(f"rain risk at {rain} kickoff{'s' if rain != 1 else ''}")
+        wx_short = f"Rain risk at {rain} kickoff{'s' if rain != 1 else ''}."
     if heat:
         wx_full.append(f"heat flags at {heat}")
     if wind:
