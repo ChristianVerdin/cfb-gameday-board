@@ -225,13 +225,14 @@ kicker), so they must go in the same commit or the structured data freezes.
 **On a gameday morning, do not assume the cron fired.** GitHub creates scheduled
 runs late under load and can drop them: measured on this repo, the Thursday cron
 due 2026-09-11 02:00 UTC was created 07:08 UTC (5h08m late) and the Saturday one
-due 2026-09-12 14:00 UTC was created 16:52 UTC. That is why the schedule is four
-crons each sitting hours ahead of when it is needed. Confirm with:
+due 2026-09-12 14:00 UTC was created 16:52 UTC. That is why the schedule is five
+crons, each hours ahead of when it is needed (Sat 8 AM backs up Sat 4 AM). Confirm with:
 ```
 gh run list --workflow=refresh.yml --limit 5
 curl -s https://cfbgameday.app/games.js | head -c 400 | grep -o '"generated_at":"[^"]*"'
 ```
-`gh workflow run refresh.yml` forces one.
+`gh workflow run refresh.yml` forces one. It also builds the coming week early: Week 4 was
+forced Wed 2026-09-23 09:12 CT, ahead of the 1 PM cron, and went live in about 3 minutes.
 
 ## Shipping the next iOS build
 
