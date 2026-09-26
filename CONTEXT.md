@@ -11,6 +11,43 @@
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
 **State (2026-09-23):** site live with Week 4 (snapshot forced 2026-09-23 09:12 CT via `gh workflow run`, 71 games, 58 with lines) · **iOS 1.0.1 (4) live on the App Store** (`READY_FOR_SALE` since 2026-09-18) · Week 4 promo text applied 2026-09-23 09:20 CT ("Rain risk at 1 kickoff"; `promo_text.py` now singularizes) · nothing waiting on Apple or cv
 
+
+## ACTION FOR CV — rotate ASC key `FQRRWFFM28` (opened 2026-09-26)
+
+**What happened.** On 2026-09-25 a Claude Code session in `fanduel_scraping_agent`
+queried Chrome Canary's download history and selected `downloads_url_chains.url`.
+One row was a `data:text/plain` download whose URL *was* a private key, so the
+complete PKCS#8 EC key was printed into that session's transcript.
+
+**Which key.** Verified 2026-09-26 by matching a fragment of the printed key
+against both local files: it is **`AuthKey_FQRRWFFM28.p8`** — the `cfbgameday`
+profile in `~/.asc/config.json`, the default key this repo ships with
+(`scripts/release_ios.sh`, `scripts/promo_text.py`). `R79Z9DL337`
+(`cfbgameday-reports`) does **not** match and needs no action. Both keys are
+on issuer `46c99ca1-23b3-4982-9adc-e04c162c7e97`.
+
+**Blast radius.** The key can upload builds, edit metadata, manage submissions
+and pull sales/analytics reports for app id 6809035228. It cannot move money or
+change bank details. The transcript is local session history plus Anthropic's
+logs — not public — so the likely exposure is low, but the key should be treated
+as compromised.
+
+**Do this:**
+1. App Store Connect → Users and Access → Integrations → App Store Connect API
+   → revoke key `FQRRWFFM28`.
+2. Generate a replacement with the same role (Admin/App Manager, whichever
+   `FQRRWFFM28` had), download the new `.p8` once.
+3. `mv ~/Downloads/AuthKey_<NEW>.p8 ~/.appstoreconnect/private_keys/` and
+   `chmod 600` it.
+4. In `~/.asc/config.json`, update the `cfbgameday` entry (`key_id`,
+   `private_key_path`) and the top-level `key_id` / `private_key_path`.
+5. Verify: `asc apps list` (or `asc validate`) returns without an auth error.
+6. `rm ~/.appstoreconnect/private_keys/AuthKey_FQRRWFFM28.p8`.
+
+**Lesson for any session:** never select `downloads_url_chains.url` from a
+Chrome history DB — `data:` downloads embed their entire payload in that column.
+Select `target_path` and `tab_url` instead.
+
 ---
 
 ## 2026-09-05 — Built, shipped to the web, submitted to App Review, all in one day
