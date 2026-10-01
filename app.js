@@ -470,7 +470,7 @@
       const score = (isLive(g)||isFinal(g)) ? `${a.score||0}–${h.score||0}` : "";
       return `<tr>
         <td>${clockLabel(g)}<div class="juice">${(g.networks||[]).join("/")}</div></td>
-        <td><b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}</div></td>
+        <td>${started(g)?`<a class="glink" href="#game/${g.id}">`:""}<b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}${started(g)?" ›</a>":""}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}</div></td>
         <td>${o.details||"—"}<div class="juice">${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}</div></td>
         <td>${o.total!=null?o.total:"—"}<div class="juice">${math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
         ${showProj ? `<td>${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
@@ -509,8 +509,9 @@
         bits.push(`total ${o.total??"—"}`);
         if (g.temp != null) bits.push(`${Math.round(g.temp)}°`);
         bits.push(`${g.city}, ${g.state}`);
-        return `<div class="deskcard"><div class="t">${g.shortName} · ${o.details||""}</div>
-          <div class="d">${bits.filter(Boolean).join(" · ")}</div></div>`;
+        const tag = started(g) ? `a href="#game/${g.id}"` : "div";
+        return `<${tag} class="deskcard"><div class="t">${g.shortName} · ${o.details||""}</div>
+          <div class="d">${bits.filter(Boolean).join(" · ")}</div></${tag.split(" ")[0]}>`;
       }).join(""):`<div class="empty">No 28-point spreads in this filter.</div>`}
     </div>`;
   }
@@ -531,8 +532,8 @@
       liveGames.forEach(g => {
         const math = liveMath(g);
         const sit = g.situation || {};
-        html += `<div class="deskcard"><div class="t"><span class="tag heat">LIVE</span>${g.shortName} ${g.away&&g.away.score||0}–${g.home&&g.home.score||0}</div>
-          <div class="d">${liveStatusText(g, true)} · ${math.coverState||""} ${math.coverBy!=null?math.coverBy:""} · ${math.combined}/${math.total??"—"} total · ${sit.text||sit.lastPlay||""}</div></div>`;
+        html += `<a class="deskcard" href="#game/${g.id}"><div class="t"><span class="tag heat">LIVE</span>${g.shortName} ${g.away&&g.away.score||0}–${g.home&&g.home.score||0} ›</div>
+          <div class="d">${liveStatusText(g, true)} · ${math.coverState||""} ${math.coverBy!=null?math.coverBy:""} · ${math.combined}/${math.total??"—"} total · ${sit.text||sit.lastPlay||""}</div></a>`;
       });
       html += `</div>`;
     }
