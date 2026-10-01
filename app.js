@@ -191,6 +191,12 @@
       liveStatus.error = String(err.message || err);
     }
     render();
+    if (sheet) {
+      const g = games.find(x => x.id === sheet.id);
+      if (g && isLive(g)) loadGame(sheet.id);                              // live: refresh with the board
+      else if (g && started(g) && !sheet.data && !sheet.loading) loadGame(sheet.id);   // kicked off while open
+      else renderGame();
+    }
   }
   function mapsUrl(g) { return "https://maps.apple.com/?q=" + encodeURIComponent([g.venue,g.city,g.state].filter(Boolean).join(" ")); }
   function teamLabel(t) { return t ? `${(t.rank && t.rank<30)?"#"+t.rank+" ":""}${t.name}` : "TBD"; }
@@ -209,6 +215,126 @@
     try { await navigator.clipboard.writeText(text); if (btn) { const old=btn.textContent; btn.textContent="Copied"; setTimeout(()=>btn.textContent=old,1200);} }
     catch(e) { alert(text); }
   }
+  // Game sheet (#game/<id>): ESPN summary trimmed by /api/game. Every ESPN string goes through esc().
+  function esc(v) { return String(v ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]); }
+  function gameHash(hash) { const m = /^#game\/(\d{6,12})$/.exec(String(hash || "")); return m ? m[1] : null; }
+  let sheet = null;   // { id, tab, data, error, loading, fromBoard, prevHash }
+  async function loadGame(id) {
+    if (!sheet || sheet.id !== id) return;
+    sheet.loading = true; renderGame();
+    try {
+      const res = await fetch("/api/game?id=" + id, { cache: "no-store" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "game failed");
+      if (sheet && sheet.id === id) { sheet.data = data; sheet.error = null; }
+    } catch (err) {
+      if (sheet && sheet.id === id) sheet.error = String(err.message || err);
+    }
+    if (sheet && sheet.id === id) { sheet.loading = false; renderGame(); }
+  }
+  function openGame(id, fromBoard, prevHash) {
+    if (sheet && sheet.id === id) return;
+    sheet = { id, tab: "scoring", data: null, error: null, loading: false, fromBoard, prevHash };
+    document.body.classList.add("gopen");
+    const g = games.find(x => x.id === id);
+    if (g && started(g) && !liveStatus.fromFile) loadGame(id); else renderGame();
+  }
+  function closeGame() {
+    sheet = null;
+    document.body.classList.remove("gopen");
+    const el = $("gsheet"); if (el) el.hidden = true;
+  }
+  function dismissGame() {
+    if (sheet && sheet.fromBoard) { history.back(); return; }   // hashchange closes it
+    history.replaceState(null, "", location.pathname + location.search);
+    closeGame();
+  }
+  function winprobSvg(wp, a, h) {
+    const pts = (wp && wp.points) || [];
+    if (pts.length < 2) return "";
+    const W = 300, H = 80, x = i => (i * W / (pts.length - 1)).toFixed(1), y = v => (H - v * H / 100).toFixed(1);
+    const last = pts[pts.length - 1];
+    const lead = last >= 50 ? `${esc(h.abbr)} ${last}%` : `${esc(a.abbr)} ${100 - last}%`;
+    // The SVG stretches to the sheet width, so quarter labels are HTML (SVG text would distort).
+    const qs = wp.quarters || [];
+    const ticks = qs.map(([, i]) => `<line x1="${x(i)}" x2="${x(i)}" y1="0" y2="${H}" class="wq"/>`).join("");
+    const labels = qs.map(([q, i]) => `<span class="wt" style="left:${(100 * i / (pts.length - 1)).toFixed(1)}%">${q > 4 ? "OT" : "Q" + q}</span>`).join("");
+    return `<div class="wp"><div class="wplab">ESPN win probability · ${lead}</div>
+      <div class="wbox"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="ESPN win probability, ${lead}">
+        <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" class="wmid"/>${ticks}
+        <polyline points="${pts.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" class="wline"/>
+      </svg>${labels}</div><div class="wpaxis"><span>${esc(a.abbr)} ↓</span><span>${esc(h.abbr)} ↑</span></div></div>`;
+  }
+  function gameBody(g, d) {
+    const a = g.away || {}, h = g.home || {};
+    const nothing = `<div class="empty">Nothing yet.</div>`;
+    const newestFirst = list => isLive(g) ? list.slice().reverse() : list;   // live: latest on top
+    if (sheet.tab === "scoring") {
+      const rows = newestFirst(d.scoring || []).map(p => `<div class="gplay">
+        <div class="gq">Q${esc(p.period)} ${esc(p.clock)}<b>${esc(p.team)}</b></div>
+        <div class="gtxt"><b>${esc(p.type)}</b> ${esc(p.text)}</div>
+        <div class="gsc">${esc(a.abbr)} ${esc(p.away)} – ${esc(h.abbr)} ${esc(p.home)}</div></div>`).join("");
+      return rows || nothing;
+    }
+    if (sheet.tab === "box") {
+      if (!(d.box || []).length) return nothing;
+      return `<table class="gbox"><thead><tr><th></th><th>${esc(a.abbr)}</th><th>${esc(h.abbr)}</th></tr></thead><tbody>
+        ${d.box.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody></table>`;
+    }
+    if (sheet.tab === "leaders") {
+      const col = (t, list) => `<div class="glead"><h3>${esc(t.name || t.abbr)}</h3>${(list || []).map(l =>
+        `<div class="gl"><span>${esc(l.cat)}</span><b>${esc(l.name)}</b><div class="juice">${esc(l.line)}</div></div>`).join("") || nothing}</div>`;
+      const L = d.leaders || {};
+      return `<div class="gleads">${col(a, L.away)}${col(h, L.home)}</div>`;
+    }
+    const drives = newestFirst(d.drives || []);
+    const cur = d.current && isLive(g) ? [Object.assign({ now: true }, d.current)] : [];
+    const rows = [...cur, ...drives].map(r => `<div class="gdrive ${r.score ? "scored" : ""} ${r.now ? "now" : ""}">
+      <div class="gq">Q${esc(r.period)}<b>${esc(r.team)}</b></div>
+      <div class="gtxt"><b>${r.now ? "On the field" : esc(r.result)}</b> · from ${esc(r.start)}<div class="juice">${esc(r.desc)}</div></div></div>`).join("");
+    return winprobSvg(d.winprob, a, h) + (rows || nothing);
+  }
+  function renderGame() {
+    let el = $("gsheet");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gsheet"; el.className = "gsheet";
+      document.body.appendChild(el);
+      el.addEventListener("click", e => {
+        if (e.target === el || e.target.closest("[data-gclose]")) { dismissGame(); return; }
+        const t = e.target.closest("[data-gtab]");
+        if (t && sheet) { sheet.tab = t.dataset.gtab; renderGame(); const b = el.querySelector(".gbody"); if (b) b.scrollTop = 0; return; }
+        if (e.target.closest("[data-gretry]") && sheet) loadGame(sheet.id);
+      });
+    }
+    if (!sheet) { el.hidden = true; return; }
+    el.hidden = false;
+    const g = games.find(x => x.id === sheet.id);
+    const panel = body => `<div class="gpanel" role="dialog" aria-modal="true" aria-label="Game detail">
+      <button class="gx" data-gclose aria-label="Close">×</button>${body}</div>`;
+    if (!g) { el.innerHTML = panel(`<div class="empty">That game isn't on this week's board.</div>`); return; }
+    const a = g.away || {}, h = g.home || {}, d = sheet.data;
+    const ls = (d && d.linescores) || {};
+    const n = Math.max((ls.away || []).length, (ls.home || []).length);
+    const qs = Array.from({ length: n }, (_, i) => i < 4 ? `Q${i + 1}` : (n > 5 ? `${i - 3}OT` : "OT"));
+    const line = n ? `<table class="glines"><thead><tr><th></th>${qs.map(q => `<th>${q}</th>`).join("")}<th>T</th></tr></thead><tbody>
+      ${[[a, ls.away], [h, ls.home]].map(([t, s]) => `<tr><td>${esc(t.abbr)}</td>${qs.map((_, i) => `<td>${esc((s || [])[i] ?? "")}</td>`).join("")}<td><b>${esc(t.score || 0)}</b></td></tr>`).join("")}</tbody></table>` : "";
+    const head = `<div class="ghead">
+      <div class="gteams"><span>${rank(a)}${esc(a.name || a.abbr)} <b>${started(g) ? esc(a.score || 0) : ""}</b></span>
+        <span>${rank(h)}${esc(h.name || h.abbr)} <b>${started(g) ? esc(h.score || 0) : ""}</b></span></div>
+      <div class="gstat"><span class="livepill ${isFinal(g) ? "final" : isLive(g) ? "on" : ""}">${isFinal(g) ? "FINAL" : isLive(g) ? "LIVE" : "PRE"}</span>${isFinal(g) ? "" : esc(liveStatusText(g, isLive(g)) || fmtKick(g))}</div>${line}</div>`;
+    if (!started(g)) { el.innerHTML = panel(head + `<div class="empty">Game detail opens at kickoff (${esc(fmtKick(g))}).</div>`); return; }
+    const tabs = [["scoring", "Scoring"], ["box", "Box"], ["leaders", "Leaders"], ["drives", "Drives"]];
+    const nav = `<div class="rowscroll gtabs">${tabs.map(([id, label]) => `<button class="fbtn ${sheet.tab === id ? "active" : ""}" data-gtab="${id}">${label}</button>`).join("")}</div>`;
+    let body;
+    if (d) body = gameBody(g, d);
+    else if (sheet.error) body = `<div class="empty">Couldn't load game detail. <button class="abtn" data-gretry>Retry</button></div>`;
+    else body = `<div class="empty">Loading…</div>`;
+    const scroll = el.querySelector(".gbody"), top = scroll ? scroll.scrollTop : 0;
+    el.innerHTML = panel(head + nav + `<div class="gbody">${body}</div>`);
+    const fresh = el.querySelector(".gbody"); if (fresh && sheet.data) fresh.scrollTop = top;   // live refresh keeps place
+  }
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && sheet) dismissGame(); });
   function toggleStar(id) {
     if (stars.has(id)) stars.delete(id); else stars.add(id);
     localStorage.setItem(STAR_KEY, JSON.stringify([...stars]));
@@ -327,6 +453,7 @@
         <div class="od"><div class="lab">Moneyline</div><div class="big">${h.abbr||"H"} ${juice(o.home_ml)}</div><div class="juice">${a.abbr||"A"} ${juice(o.away_ml)}</div></div>
       </div>
       <div class="actions">
+        ${showScore ? `<a class="abtn" href="#game/${g.id}">Game</a>` : ""}
         <button class="abtn" data-copy="${g.id}">Copy post</button>
         <a class="abtn" href="${mapsUrl(g)}" target="_blank" rel="noopener">Maps</a>
         ${g.gamecast?`<a class="abtn" href="${g.gamecast}" target="_blank" rel="noopener">ESPN</a>`:`<span class="abtn">ESPN</span>`}
@@ -515,7 +642,12 @@
     $("a2hs").hidden = false;
     $("a2hs-x").onclick = () => { localStorage.setItem(A2HS_KEY, "1"); $("a2hs").hidden = true; };
   }
-  function applyHash() {
+  function applyHash(e) {
+    const gid = gameHash(location.hash);
+    // e: reached by navigation, so Back closes it. Back to the hash it was opened from
+    // only closes the sheet; re-applying filters would scroll the board to the top.
+    if (gid) { openGame(gid, !!e, e && e.oldURL ? new URL(e.oldURL).hash : ""); return; }
+    if (sheet) { const back = location.hash === sheet.prevHash; closeGame(); if (back) return; }
     const f = hashFilters(location.hash);
     if (!f.known) return;
     liveOnly = f.liveOnly; starredOnly = f.starredOnly; view = f.view;

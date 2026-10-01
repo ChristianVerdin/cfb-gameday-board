@@ -94,6 +94,23 @@ games[]: { id, state, status, statusDetail, statusShort, period, clock,
            odds{...}, situation{text,lastPlay,possession,isRedZone} | null }
 ```
 
+### `/api/game?id=` response (game sheet)
+
+```
+{ ok, id, state, linescores{away[],home[]},
+  scoring[]: {period, clock, team, type, text, away, home},
+  box[]: [label, away, home],
+  leaders{away[],home[]}: {cat, name, line},
+  drives[]: {team, period, start, result, desc, score}, current: drive | null,
+  winprob{points[] (home %, ≤80), quarters[[q, index]]} }
+```
+
+`game_payload()` reads ESPN's per-game summary and deliberately drops `odds`,
+`pickcenter`, `againstTheSpread` and `predictor`; `check.py` runs it over
+`scripts/fixtures/summary_final.json` and fails on any wagering term. The client
+opens it as a bottom sheet at `#game/<id>` (live and final cards only) and
+escapes every ESPN string with `esc()`.
+
 ### Hosted variant (Vercel)
 
 `api/live.py` is a stateless Python function that imports `pull_date`,

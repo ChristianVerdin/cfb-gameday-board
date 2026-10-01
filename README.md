@@ -57,6 +57,7 @@ needs the server because the browser cannot call ESPN directly.
 | `scripts/promo_text.py` | Builds the week's App Store promotional text from `games.json`; `--apply` pushes it with `asc` |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
 | `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
+| `api/game.py` | Game sheet detail (scoring, box, leaders, drives, win probability) from ESPN's game summary |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
 | `ios/` | SwiftUI iPhone app: `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |
