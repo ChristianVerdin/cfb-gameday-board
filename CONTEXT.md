@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-09-23):** site live with Week 4 (snapshot forced 2026-09-23 09:12 CT via `gh workflow run`, 71 games, 58 with lines) · **iOS 1.0.1 (4) live on the App Store** (`READY_FOR_SALE` since 2026-09-18) · Week 4 promo text applied 2026-09-23 09:20 CT ("Rain risk at 1 kickoff"; `promo_text.py` now singularizes) · nothing waiting on Apple or cv
+**State (2026-09-30):** site live with Week 5 (Wed 1 PM cron created late, ran 2026-09-30 16:33 CT, 59 games Thu 10/1–Mon 10/5, all 59 enriched, 0 forecast failures) · **iOS 1.0.1 (4) live on the App Store** (`READY_FOR_SALE` since 2026-09-18) · Week 5 promo text applied 2026-09-30 ~19:30 CT with key FQRRWFFM28 (still unrotated, see below) · nothing waiting on Apple; key rotation waiting on cv
 
 
 ## ACTION FOR CV — rotate ASC key `FQRRWFFM28` (opened 2026-09-26)
