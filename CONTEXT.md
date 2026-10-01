@@ -199,6 +199,11 @@ Also note the build list lags several minutes behind a successful upload, so
 "not in the list" does not mean "not uploaded".
 
 **Open items**
+- **Game sheet shipped 2026-09-30** (web, so the iOS app has it with no build):
+  Game button on live/final cards → `#game/<id>` sheet with scoring, box, leaders,
+  drives and ESPN win probability, from `/api/game`. First real live test is
+  Thu 10/1. Next iOS version's description/What's New should mention it
+  (`ios/metadata/`). Spec: `docs/superpowers/specs/2026-09-30-game-view-design.md`.
 - Campaign links need the App Analytics provider token (`pt`); cv reads it from
   Analytics → Acquisition → Campaigns → Generate Campaign Link, then the links in
   `index.html`, `support.html`, `README.md`, the profile README, and the X bio get
