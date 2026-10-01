@@ -323,6 +323,140 @@ def live_payload(events: list, lines: "LineBook | None" = None) -> list:
     return live
 
 
+WINPROB_POINTS = 80
+LEADER_CATS = (("passingYards", "Passing"), ("rushingYards", "Rushing"), ("receivingYards", "Receiving"),
+               ("sacks", "Sacks"), ("totalTackles", "Tackles"))
+GAME_ID = re.compile(r"\d{6,12}")
+
+
+def valid_game_id(value) -> bool:
+    """/api/game must not become a general ESPN fetcher: ESPN event ids only."""
+    return isinstance(value, str) and bool(GAME_ID.fullmatch(value))
+
+
+def pull_summary(game_id: str) -> dict:
+    last = None
+    for host in ("site.api.espn.com", "site.web.api.espn.com"):
+        try:
+            return fetch_json(f"https://{host}/apis/site/v2/sports/football/college-football/summary?event={game_id}")
+        except Exception as exc:
+            last = exc
+    raise RuntimeError(f"summary unavailable: {last}")
+
+
+def game_payload(summary: dict) -> dict:
+    """Trim ESPN's ~450 KB game summary to what the game sheet renders.
+
+    Deliberately drops odds, pickcenter, againstTheSpread and predictor: the sheet
+    is a game record, not a market (CLAUDE.md product rules).
+    """
+    header = summary.get("header") or {}
+    comp = (header.get("competitions") or [{}])[0]
+    state = (((comp.get("status") or {}).get("type")) or {}).get("state")
+    side_of, linescores = {}, {"away": [], "home": []}
+    for team in comp.get("competitors") or []:
+        side = team.get("homeAway")
+        side_of[str(team.get("id"))] = side
+        linescores[side] = [str(x.get("displayValue", "")) for x in team.get("linescores") or []]
+
+    def abbr(obj):
+        return ((obj or {}).get("abbreviation")) or ""
+
+    scoring = [{
+        "period": ((p.get("period") or {}).get("number")),
+        "clock": ((p.get("clock") or {}).get("displayValue")),
+        "team": abbr(p.get("team")),
+        "type": ((p.get("type") or {}).get("text")),
+        "text": p.get("text"),
+        "away": p.get("awayScore"),
+        "home": p.get("homeScore"),
+    } for p in summary.get("scoringPlays") or []]
+
+    stats = {}
+    for team in (summary.get("boxscore") or {}).get("teams") or []:
+        side = team.get("homeAway") or side_of.get(str((team.get("team") or {}).get("id")))
+        for s in team.get("statistics") or []:
+            row = stats.setdefault(s.get("name"), [s.get("label") or s.get("name"), "", ""])
+            row[1 if side == "away" else 2] = s.get("displayValue", "")
+    box = list(stats.values())
+
+    leaders = {"away": [], "home": []}
+    for team in summary.get("leaders") or []:
+        side = side_of.get(str((team.get("team") or {}).get("id")))
+        if side not in leaders:
+            continue
+        cats = {c.get("name"): c for c in team.get("leaders") or []}
+        for key, label in LEADER_CATS:
+            top = ((cats.get(key) or {}).get("leaders") or [None])[0]
+            if top:
+                athlete = top.get("athlete") or {}
+                leaders[side].append({"cat": label, "name": athlete.get("shortName") or athlete.get("displayName"),
+                                      "line": top.get("displayValue")})
+
+    drives_raw = summary.get("drives") or {}
+    period_of = {}
+
+    def drive(d):
+        for play in d.get("plays") or []:
+            period_of[str(play.get("id"))] = (play.get("period") or {}).get("number")
+        return {
+            "team": abbr(d.get("team")),
+            "period": ((d.get("start") or {}).get("period") or {}).get("number"),
+            "start": (d.get("start") or {}).get("text"),
+            "result": d.get("displayResult") or d.get("shortDisplayResult"),
+            "desc": d.get("description"),
+            "score": bool(d.get("isScore")),
+        }
+    drives = [drive(d) for d in drives_raw.get("previous") or []]
+    current = drive(drives_raw["current"]) if drives_raw.get("current") else None
+    if current and drives and current == drives[-1]:
+        current = None
+
+    raw_wp = summary.get("winprobability") or []
+    pts, periods, period = [], [], 1
+    for w in raw_wp:
+        period = period_of.get(str(w.get("playId"))) or period
+        pts.append(round(100 * float(w.get("homeWinPercentage") or 0)))
+        periods.append(period)
+    keep = sorted({round(i * (len(pts) - 1) / (WINPROB_POINTS - 1)) for i in range(WINPROB_POINTS)}) if len(pts) > WINPROB_POINTS else list(range(len(pts)))
+    points = [pts[i] for i in keep]
+    kept_periods = [periods[i] for i in keep]
+    quarters = [[q, i] for i, q in enumerate(kept_periods) if i and q != kept_periods[i - 1]]
+
+    return {
+        "id": str(header.get("id") or ""),
+        "state": state,
+        "linescores": linescores,
+        "scoring": scoring,
+        "box": box,
+        "leaders": leaders,
+        "drives": drives,
+        "current": current,
+        "winprob": {"points": points, "quarters": quarters},
+    }
+
+
+class GameCache:
+    """Per-game summary cache: CACHE_TTL while live or pre, frozen once final."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.entries = {}   # id -> (payload, fetched)
+
+    def get(self, game_id: str) -> dict:
+        with self.lock:
+            hit = self.entries.get(game_id)
+            if hit and (hit[0].get("state") == "post" or time.time() - hit[1] < CACHE_TTL):
+                return hit[0]
+        payload = game_payload(pull_summary(game_id))
+        with self.lock:
+            self.entries[game_id] = (payload, time.time())
+        return payload
+
+
+GAMES = GameCache()
+
+
 def snapshot(dates: list[str] | None = None) -> dict:
     dates = dates or DATES
     events = []
@@ -389,6 +523,17 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(200, snapshot(parse_dates(query)))
             except Exception as exc:
                 print("LIVE ERROR:", exc)
+                self.send_json(502, {"ok": False, "error": str(exc)})
+            return
+        if path == "/api/game":
+            game_id = (urllib.parse.parse_qs(query).get("id") or [""])[0]
+            if not valid_game_id(game_id):
+                self.send_json(400, {"ok": False, "error": "bad id"})
+                return
+            try:
+                self.send_json(200, {"ok": True, **GAMES.get(game_id)})
+            except Exception as exc:
+                print("GAME ERROR:", exc)
                 self.send_json(502, {"ok": False, "error": str(exc)})
             return
         return super().do_GET()

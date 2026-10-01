@@ -25,10 +25,12 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 **Cost:** Vercel Pro plan already paid; function invocations are a rounding error at this traffic.
 **Guardrails:** max 5 dates per request, `YYYYMMDD` validated; 502 with `no-store` on ESPN failure; no state, no line book (closing lines live in the browser's localStorage via `chooseOdds()` in `app.js`).
 
+**Game sheet:** `api/game.py` (imports `pull_summary`, `game_payload`, `valid_game_id`). Fetched when someone opens `#game/<id>` on a live or final card, then every 30 s while that game is live. `s-maxage` 20 s live, 3600 s final, 300 s otherwise. Id must be 6-12 digits (400 otherwise). Trims ESPN's ~450 KB summary to ~5 KB and drops odds/pickcenter/ATS.
+
 ## 3. Live proxy, local (`server.py`)
 
 **Run:** `python3 server.py` → 127.0.0.1:8765. `PORT` env overrides the port; `BIND` stays loopback.
-**Does:** static files + `/api/live` with a per-date in-process cache (20 s, 5 min when idle, frozen once all games on a date are final) and a `LineBook` persisted to `lines.json`.
+**Does:** static files + `/api/game` (per-game cache, 20 s, frozen when final) + `/api/live` with a per-date in-process cache (20 s, 5 min when idle, frozen once all games on a date are final) and a `LineBook` persisted to `lines.json`.
 **Guardrails:** never bind 0.0.0.0 on a public network; it is an unauthenticated ESPN fetch-amplifier.
 
 ## 4. Vercel Git integration

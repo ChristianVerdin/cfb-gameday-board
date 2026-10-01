@@ -181,6 +181,17 @@ console.log(JSON.stringify(out));
     check("hashFilters", got[-1], [[True, False, True, "cards"], [False, True, True, "cards"], [False, False, True, "cards"],
                                    [False, False, True, "cards"], [True, False, True, "cards"], [False, False, False, "cards"],
                                    [False, False, True, "lines"]])
+    one = [re.search(rf"\n  function {n}\(.*?\n", src) for n in ("esc", "gameHash")]
+    if not all(one):
+        FAILS.append("could not extract esc/gameHash from app.js")
+    else:
+        js = "".join(m.group(0) for m in one) + """
+console.log(JSON.stringify([["#game/401858234", "#game/12", "#game/401858234x", "#live", "#game/", ""].map(gameHash),
+                            esc('<img src=x onerror="a">&\\''), esc(null)]));"""
+        res = subprocess.run([node, "-e", js], capture_output=True, text=True)
+        got = json.loads(res.stdout) if res.returncode == 0 else None
+        check("gameHash", got and got[0], ["401858234", None, None, None, None, None])
+        check("esc", got and got[1:], ["&lt;img src=x onerror=&quot;a&quot;&gt;&amp;&#39;", ""])
     src_dates = re.search(r"\n  function liveDatesFor\(.*?\n  }\n", src, re.S)
     check("liveDatesFor present", bool(src_dates), True)
 
@@ -282,6 +293,37 @@ def test_jsonld():
           data.get("week_label") or "College football slate")
 
 
+def test_game_payload():
+    import server  # noqa: E402
+    raw = json.loads((ROOT / "scripts/fixtures/summary_final.json").read_text("utf-8"))
+    p = server.game_payload(raw)
+    check("game id", p["id"], "401858234")
+    check("game state", p["state"], "post")
+    check("linescores", (p["linescores"]["away"], p["linescores"]["home"]), (["0", "10", "7", "7"], ["7", "0", "3", "0"]))
+    check("scoring count", len(p["scoring"]), 6)
+    first = p["scoring"][0]
+    check("scoring first", (first["period"], first["clock"], first["team"], first["away"], first["home"]), (1, "5:15", "CAL", 0, 7))
+    labels = [r[0] for r in p["box"]]
+    check("box has yards", "Total Yards" in labels, True)
+    check("box row shape", all(len(r) == 3 for r in p["box"]), True)
+    check("leaders cats", [x["cat"] for x in p["leaders"]["away"]][:3], ["Passing", "Rushing", "Receiving"])
+    check("leaders side", p["leaders"]["away"][0]["name"] != p["leaders"]["home"][0]["name"], True)
+    check("drives count", len(p["drives"]), 19)
+    check("drive shape", sorted(p["drives"][0]), ["desc", "period", "result", "score", "start", "team"])
+    wp = p["winprob"]
+    check("winprob capped", 2 <= len(wp["points"]) <= server.WINPROB_POINTS, True)
+    check("winprob range", all(0 <= v <= 100 for v in wp["points"]), True)
+    check("winprob ends final", wp["points"][-1], 0)
+    check("winprob quarters", [q for q, _ in wp["quarters"]], [2, 3, 4])
+    blob = json.dumps(p).lower()
+    bad = [t for t in ("pickcenter", "againstthespread", "overunder", "spread", "odds", "moneyline", "implied")
+           if t in blob]
+    check("no wagering terms in game payload", bad, [])
+    check("small payload", len(blob) < 20000, True)
+    check("id ok", [server.valid_game_id(x) for x in ("401858234", "12345", "40185823412345", "1;ls", "", None)],
+          [True, False, False, False, False, False])
+
+
 def test_pwa():
     try:
         m = json.loads((ROOT / "manifest.webmanifest").read_text("utf-8"))
@@ -296,6 +338,8 @@ def test_pwa():
     check("api/live.py exists", (ROOT / "api/live.py").is_file(), True)
     vj = json.loads((ROOT / "vercel.json").read_text("utf-8"))
     check("vercel functions", "api/live.py" in (vj.get("functions") or {}), True)
+    check("api/game.py exists", (ROOT / "api/game.py").is_file(), True)
+    check("vercel game function", "api/game.py" in (vj.get("functions") or {}), True)
     sw = (ROOT / "sw.js").read_text("utf-8")
     check("sw skips api", 'startsWith("/api/")' in sw, True)
     html = (ROOT / "index.html").read_text("utf-8")
@@ -304,7 +348,7 @@ def test_pwa():
 
 
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_pwa):
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_game_payload, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))

@@ -5,6 +5,10 @@
     "api/live.py": {
       "maxDuration": 15,
       "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest}"
+    },
+    "api/game.py": {
+      "maxDuration": 15,
+      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest}"
     }
   },
   "headers": [
