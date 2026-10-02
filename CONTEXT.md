@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-09-30):** site live with Week 5 (Wed 1 PM cron created late, ran 2026-09-30 16:33 CT, 59 games Thu 10/1–Mon 10/5, all 59 enriched, 0 forecast failures) · **iOS 1.0.1 (4) live on the App Store** (`READY_FOR_SALE` since 2026-09-18) · Week 5 promo text applied 2026-09-30 ~19:30 CT with key FQRRWFFM28 (still unrotated, see below) · nothing waiting on Apple; key rotation waiting on cv
+**State (2026-10-02):** site live with Week 5 (59 games Thu 10/1–Sat 10/3: 2 Thu, 3 Fri, 54 Sat; refreshed by the Thu and Fri crons, last 2026-10-02 12:37 CT, all 59 enriched, 0 forecast failures, 2 lines carried); Sat 4 AM + 8 AM crons still to run · game sheet verified on Thursday's two finals (`/api/game` 200, scoring/box/leaders/drives/winprob populated); mid-game polling not yet observed · **iOS 1.0.1 (4) live on the App Store** (`READY_FOR_SALE` since 2026-09-18) · Week 5 promo text applied 2026-09-30 with key FQRRWFFM28 (still unrotated, see below) · README refreshed 2026-10-02 (features list, game sheet) · nothing waiting on Apple; key rotation waiting on cv
 
 
 ## ACTION FOR CV — rotate ASC key `FQRRWFFM28` (opened 2026-09-26)
@@ -201,8 +201,8 @@ Also note the build list lags several minutes behind a successful upload, so
 **Open items**
 - **Game sheet shipped 2026-09-30** (web, so the iOS app has it with no build):
   Game button on live/final cards → `#game/<id>` sheet with scoring, box, leaders,
-  drives and ESPN win probability, from `/api/game`. First real live test is
-  Thu 10/1. Next iOS version's description/What's New should mention it
+  drives and ESPN win probability, from `/api/game`. Verified on Thu 10/1
+  finals; still to watch it refresh mid-game on a live Saturday game. Next iOS version's description/What's New should mention it
   (`ios/metadata/`). Spec: `docs/superpowers/specs/2026-09-30-game-view-design.md`.
 - Campaign links need the App Analytics provider token (`pt`); cv reads it from
   Analytics → Acquisition → Campaigns → Generate Campaign Link, then the links in

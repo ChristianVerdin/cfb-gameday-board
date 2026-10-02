@@ -1,18 +1,34 @@
 # CFB GameDay Board
 
-Local, single-user college football slate board. Built for scanning a Saturday
-slate in one place: venue, kickoff-hour weather, DraftKings lines (via ESPN),
-implied scores, TV/streams, then live score / cover / total state once games
-start.
+College football slate board. Built for scanning a Saturday slate in one
+place: venue, kickoff-hour weather, DraftKings lines (via ESPN), implied scores,
+TV/streams, then live score / cover / total state once games start, and a game
+sheet (scoring, box score, leaders, drives, ESPN win probability) for any game
+that has kicked off.
 
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
-Live site: https://cfbgameday.app. Deploys from `main` on every push. The
-snapshot rebuilds itself five times a week via GitHub Actions (Wed, Thu, Fri and
-two on Saturday), each well ahead of kickoff, and heals itself if a run drops
-kickoff forecasts.
-iPhone app: SwiftUI shell around the same board, in `ios/`. On the App Store
-since 2026-09-10: https://apps.apple.com/app/id6809035228
+- **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
+  snapshot rebuilds itself five times a week via GitHub Actions (Wed, Thu, Fri
+  and two on Saturday), each well ahead of kickoff, and heals itself if a run
+  drops kickoff forecasts.
+- **iPhone:** SwiftUI shell around the same board, in `ios/`. On the App Store
+  since 2026-09-10, currently 1.0.1: https://apps.apple.com/app/id6809035228
+
+## What's on the board
+
+- Every FBS game Thursday through Monday, kickoff in Central time, filterable by
+  day, window, conference, ranked, weather, starred, or a search.
+- Four views: Cards, Lines sheet (with CSV download), By TV, and a Blowouts
+  board for spreads of 28 or more.
+- Kickoff-hour forecast per venue, with a weather score that only counts what
+  suppresses scoring (wind, rain, cold). Heat is shown but never flagged UNDER.
+- Implied team scores from the spread and total, shown only before kickoff.
+- Live mode: score, clock, down and distance, last play, and whether each side
+  is covering the posted spread and total, polled every 30 s. A Live desk groups
+  the games in progress.
+- Game sheet: tap Game on a live or final card for the scoring summary, team box,
+  leaders, drives, and win probability. It never carries odds.
 
 ## No keys, no accounts
 
@@ -31,10 +47,10 @@ open http://127.0.0.1:8765/
 ```
 
 `server.py` is a stdlib `ThreadingHTTPServer` bound to `127.0.0.1:8765`. It
-serves the folder and exposes `GET /api/live`, which proxies the ESPN
-scoreboard for the slate's dates and returns scores, clock, situation, and
-current odds. The page polls it every 30 s and merges the result onto the
-snapshot in `games.js`.
+serves the folder and exposes two ESPN proxies. `GET /api/live` returns
+scores, clock, situation, and current odds for the slate's dates; the page polls
+it every 30 s and merges the result onto the snapshot in `games.js`.
+`GET /api/game?id=` returns one game's summary for the game sheet.
 
 Opening `index.html` directly as a file works for the snapshot only. Live mode
 needs the server because the browser cannot call ESPN directly.
@@ -47,10 +63,11 @@ needs the server because the browser cannot call ESPN directly.
 | `app.js` | All client logic: filters, views, live merge, cover/total math |
 | `games.js` | Snapshot payload as `window.CFB_DATA = {...}` (loaded by the page) |
 | `games.json` | Same payload as plain JSON |
-| `server.py` | Static server + `/api/live` ESPN proxy with per-date cache |
+| `server.py` | Static server + `/api/live` and `/api/game` ESPN proxies with per-date / per-game caches |
 | `CONTEXT.md`, `AGENTS.md` | Operator notes: live state and the map of everything that runs unattended. Not needed to run the board |
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range, plus the generated block in `index.html` and `sitemap.xml` |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
+| `docs/superpowers/` | Design specs and plans for larger features (e.g. the game sheet) |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math, snapshot shape, structured data |
 | `scripts/run_summary.py` | Prints the build's counts and warnings as Markdown for the GitHub Actions step summary |
 | `scripts/ci_heal.py` | Rebuilds once in CI when a run dropped kickoff forecasts, keeping the better result; `--verify` fails the job if still degraded |
@@ -67,7 +84,6 @@ needs the server because the browser cannot call ESPN directly.
 | `scripts/tunnel.sh` | Gameday Cloudflare quick tunnel for the local server (fallback only) |
 | `CLAUDE.md` | Rules and conventions for working in this repo with an AI agent |
 | `.vercelignore` | Keeps `ios/`, docs, scripts, and local state out of the Vercel upload |
-| `CONTEXT.md`, `AGENTS.md` | Live project state and open items; map of everything that runs unattended |
 | `docs/DEPLOY.md`, `deploy/` | Hosting: Vercel (live), tunnels, and self-host drafts |
 
 ## Install on iPhone (PWA)
@@ -162,7 +178,8 @@ posted line, not a live steam feed.
 - ESPN's scoreboard is an undocumented public feed. It 403s some hosts and
   changes without notice. `server.py` falls back across three ESPN hosts.
 - Weather is the Open-Meteo forecast for the venue city at the kickoff hour,
-  captured when the snapshot was built. It is not refreshed live.
+  captured when the snapshot was built. It updates with each scheduled rebuild
+  (the last one runs Saturday morning), not live.
 - Geocoding is by city name, not stadium coordinates. Elevation comes from the
   geocoder, so it is the city's elevation, not the field's.
 - Odds come only from what ESPN exposes (DraftKings). No sportsbook scraping.
