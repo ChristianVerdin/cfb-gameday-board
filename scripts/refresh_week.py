@@ -573,7 +573,34 @@ def pull(date: str, run: Run) -> tuple[list, dict, bool]:
 
 SEO_BLOCK = re.compile(r"(<!-- games:start -->).*?(<!-- games:end -->)", re.S)
 KICKER = re.compile(r'(<div class="kicker" id="kicker">).*?(</div>)', re.S)
+TITLE = re.compile(r"(<title>).*?(</title>)", re.S)
+DESCRIPTION = re.compile(r'(<meta name="description" content=")[^"]*(" />)')
 NEUTRAL_LABEL = "College football slate"
+BRAND = "CFB GameDay Board"
+
+
+def page_title(label: str | None) -> str:
+    """Week-aware <title>, so the one indexed URL matches how the slate is searched."""
+    m = re.match(r"Week (\d+)\b", label or "")
+    if m:
+        return f"College football Week {m.group(1)} schedule, kickoff weather & TV | {BRAND}"
+    if label and label != NEUTRAL_LABEL:
+        return f"{label.split(' · ')[0]} college football schedule, kickoff weather & TV | {BRAND}"
+    return BRAND
+
+
+def page_description(payload: dict) -> str:
+    games = payload.get("games") or []
+    days = []
+    for g in games:
+        day = (g.get("kick_ct") or "").split(" ")[0]
+        if day and day not in days:
+            days.append(day)
+    span = f" {days[0]}-{days[-1]}" if len(days) > 1 else (f" {days[0]}" if days else "")
+    label = payload.get("week_label") or NEUTRAL_LABEL
+    return (f"{label}: all {len(games)} FBS games{span} with venue, kickoff-hour stadium weather, "
+            "TV and streaming, publicly posted spread and total, then live scores and cover/total "
+            "state. Free, no ads, no account.")
 
 
 def event_ld(game: dict) -> dict | None:
@@ -650,6 +677,10 @@ def write_seo(root: Path, payload: dict) -> None:
     # lambda, never a replacement string: a backslash in a team name would corrupt it
     html = SEO_BLOCK.sub(lambda m: m.group(1) + body + m.group(2), html, count=1)
     html = KICKER.sub(lambda m: m.group(1) + label + m.group(2), html, count=1)
+    title = page_title(payload.get("week_label"))
+    desc = page_description(payload).replace("&", "&amp;").replace('"', "&quot;")
+    html = TITLE.sub(lambda m: m.group(1) + title.replace("&", "&amp;") + m.group(2), html, count=1)
+    html = DESCRIPTION.sub(lambda m: m.group(1) + desc + m.group(2), html, count=1)
     html_path.write_text(html, "utf-8")
 
     sm_path = root / "sitemap.xml"

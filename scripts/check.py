@@ -291,6 +291,17 @@ def test_jsonld():
     kicker = re.search(r'<div class="kicker" id="kicker">(.*?)</div>', html, re.S)
     check("kicker matches the snapshot", kicker.group(1) if kicker else None,
           data.get("week_label") or "College football slate")
+    from refresh_week import page_description, page_title
+    title = re.search(r"<title>(.*?)</title>", html, re.S)
+    check("title matches the snapshot", title.group(1) if title else None,
+          page_title(data.get("week_label")).replace("&", "&amp;"))
+    check("week title", page_title("Week 6 · 2026"),
+          "College football Week 6 schedule, kickoff weather & TV | CFB GameDay Board")
+    check("neutral title", page_title(None), "CFB GameDay Board")
+    desc = re.search(r'<meta name="description" content="([^"]*)"', html)
+    check("description counts the slate", bool(desc) and f"all {len(data.get('games') or [])} FBS games" in desc.group(1), True)
+    bad = [t for t in ("moneyline", "odds", "bet ") if t in page_description(data).lower()]
+    check("no wagering terms in description", bad, [])
 
 
 def test_game_payload():
