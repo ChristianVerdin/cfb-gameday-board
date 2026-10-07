@@ -31,6 +31,18 @@ Recommendations approved as a set. cv owns the ASC web clicks, key handling and 
 | 11 | Weekly X post (Thu board live, Sat weather), drafted Wednesdays with the promo text | cv posts | weekly |
 | 12 | Promo "rain risk" counts pop ≥60 to match the RAIN RISK flag (now ≥50) | Claude | with #6 |
 
+**Rev 3 approved 2026-10-07** (adds Apple's Oct 5 creative assets, custom product pages, iPhone Duo, Xcode Cloud test-only; full plan
+in the session, decisions summarized here):
+- **Search-results + header image** (universal 16:9, `docs/creative-asset.html` → `ios/screenshots/creative-universal-5244x2950.png`,
+  4+ content, no odds/URLs/teams): cv uploads in Asset Library and submits; once approved, Publish on the live 1.0.1 version page →
+  Header and Search Results (no new version needed; shows on iOS 27+).
+- **Accessibility labels published 2026-10-07** (iPhone): Dark Interface, Differentiate Without Color. Nothing else claimed until audited.
+- **Mac:** test from the Mac App Store, then Verify Compatibility (or uncheck). **Xcode 27.1** before the 1.0.2 build (iPhone Duo, out 10/23;
+  Duo screenshots required for submissions from April 2027).
+- **After 1.0.2:** three custom product pages with keywords (weather / TV / live); Xcode Cloud as a test-only "Verify" workflow (no archive,
+  no TestFlight, no paid plan; needs a shared scheme in `project.yml` and `ios/ci_scripts/ci_post_clone.sh` running xcodegen).
+- Optional later: 1.1 (universal links + widget), seasonal creative swaps for Rivalry Week / Championship / CFP.
+
 **Before Saturday's screenshots:** the simulator must not hold eligible ratings-prompt state, or the 1.0.2
 build shows the rating sheet mid-capture. Fresh install, or clear `review.*` with
 `xcrun simctl spawn <udid> defaults delete "$(xcrun simctl get_app_container <udid> com.hoynelabs.cfbgameday data)/Library/Preferences/com.hoynelabs.cfbgameday" review.days`
