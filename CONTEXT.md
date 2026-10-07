@@ -21,7 +21,7 @@
 | Sun 10/11 | 1.0.2: `release_ios.sh --bump 1.0.2` (ratings prompt is in; copy staged in `ios/metadata/version/1.0.2/`), `asc age-rating edit --app-info-id <editable> --age-rating-override-v2 EIGHTEEN_PLUS`, screenshots, `promo_text.py --apply --version 1.0.2`, release type AFTER_APPROVAL, `asc review doctor` → **cv's go** → submit. Build with the installed Xcode 27.0 | Claude, cv submits |
 | Wed 10/14 | Week 7 build + `promo_text.py --apply` (weekly) | Claude |
 | ~~Before Nov 1~~ | **Done 2026-10-07:** board window Tue–Mon (Tue 7 AM CT cron, 7-date live cap, empty dates skipped), promo rain clause at ≥60% | Claude |
-| Anytime (cv, ~10 min) | Mac listing: test from the Mac App Store, then Verify Compatibility, or uncheck it · review notifications on (App Store Connect app) · check the EU Digital Services Act trader contact info under Business | cv |
+| Anytime (cv, ~5 min) | ~~Mac listing~~ **done 2026-10-07** (tested in the Mac App Store build on an M4 Mac: all tabs, revisit, Tue final card, game sheet; Verify Compatibility clicked, stays available) · review notifications on (App Store Connect app) · check the EU Digital Services Act trader contact info under Business | cv |
 
 Done 2026-10-07: Week 6 live, Week 6 promo text, week-aware `<title>`/description, ESPN-text escaping fix,
 ratings prompt (`ReviewPrompt.swift`), ASC key rotated (`WUSAQJV85V`), accessibility labels published (Dark Interface,
