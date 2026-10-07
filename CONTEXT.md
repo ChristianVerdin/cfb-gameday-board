@@ -9,17 +9,42 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 (still key FQRRWFFM28, still unrotated) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), nothing built · open decisions for cv below (age rating, 1.0.2, Mac, key rotation)
+**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 (still key FQRRWFFM28, still unrotated) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), nothing built · approved plan below (cv, 2026-10-07)
 
-## Open decisions (2026-10-07 analytics pass)
+## Approved plan (cv, 2026-10-07)
 
-- **Age rating is 4+ on the store, not the documented 17+.** `asc age-rating view` shows every answer NONE and `ageRatingOverride`/`ageRatingOverrideV2` NONE, while `ios/APP_STORE.md` says to override to 17+ because the app shows posted lines. Either it was never saved or Apple's 2025 age-rating migration (4+/9+/13+/16+/18+, V2 override) dropped it. Fix rides the next version; cv decides 18+ (closest to the old 17+) or 16+.
+Recommendations approved as a set. cv owns the ASC web clicks, key handling and posting;
+**submitting 1.0.2 and submitting In-App Events / nominations still need cv's go at that moment.**
+
+| # | Decision | Owner | Status |
+|---|---|---|---|
+| 1 | Rotate ASC key `FQRRWFFM28` (steps below) | cv | open, gates the 1.0.2 upload |
+| 2 | Ship iOS 1.0.2: ratings prompt, age rating, new screenshots, game-sheet copy | Claude, cv submits | prompt done 10-07 (`ReviewPrompt.swift`); copy staged in `ios/metadata/version/1.0.2/`; screenshots Sat 10/10 3–5 PM CT; upload + submit Sun 10/11 |
+| 3 | Age rating 18+ via `--age-rating-override-v2 EIGHTEEN_PLUS` on the 1.0.2 app info | Claude | with 1.0.2 |
+| 4 | Uncheck Apple Silicon Mac availability (Pricing and Availability) | cv | open |
+| 5 | Keep the repo public; trim the key-incident section below to one line after #1 | Claude | after #1 |
+| 6 | Board window Tue–Mon (+ Tue 7 AM CT cron, `parse_dates` cap 7, `liveDatesFor` skips empty dates) | Claude | week of 10/12, before MACtion |
+| 7 | Cookieless Vercel Web Analytics on the web only, never inside the app (`window.cfbNative`), privacy.html updated | cv OKs cost, Claude | week of 10/12 |
+| 8 | Campaign links: cv generates the `pt` token, Claude applies the names in `ios/APP_STORE.md` | cv, Claude | waiting on token |
+| 9 | In-App Events + featuring nominations: Rivalry Week 11/28, Championship Sat 12/5, CFP | Claude drafts, cv submits | file by ~11/6 |
+| 10 | Campaign-tagged link from dailylocks.ai's NCAAF board (session in that repo) | Claude | after #8 |
+| 11 | Weekly X post (Thu board live, Sat weather), drafted Wednesdays with the promo text | cv posts | weekly |
+| 12 | Promo "rain risk" counts pop ≥60 to match the RAIN RISK flag (now ≥50) | Claude | with #6 |
+
+**Before Saturday's screenshots:** the simulator must not hold eligible ratings-prompt state, or the 1.0.2
+build shows the rating sheet mid-capture. Fresh install, or clear `review.*` with
+`xcrun simctl spawn <udid> defaults delete "$(xcrun simctl get_app_container <udid> com.hoynelabs.cfbgameday data)/Library/Preferences/com.hoynelabs.cfbgameday" review.days`
+(also `review.first`, `review.askedVersion`). Host-side `defaults` and `simctl spawn defaults <domain>` both miss the
+app's container prefs.
+
+### Findings behind it (2026-10-07 analytics pass)
+
+- **Age rating is 4+ on the store, not the documented 17+.** `asc age-rating view` shows every answer NONE and both overrides NONE. Either it was never saved or Apple's 2025 age-rating migration (4+/9+/13+/16+/18+, V2 override) dropped it.
 - **App Store funnel, Sep 10–Oct 5** (Analytics Reports, request 15cce5e9, `cfbgameday-reports`): 5 first-time downloads total, none since 9/21; 305 search impressions (~12/day, ~70% outside the US) → 21 product-page views → 4 Get taps. Impression→page view (~7%) is the leak. A search result shows only icon, name, subtitle, rating and the first screenshots, all of which need a new version; promo text appears on the product page, not in search. Sessions, crashes and deletions report nothing (below Apple's privacy thresholds). 1 rating (5.0), 0 written reviews.
-- **No web usage data exists.** No analytics on the site by design (privacy page + "Data Not Collected" label; the app loads this site, so adding a tracker changes the label). Vercel Pro keeps runtime logs 1 day, deeper metrics need Observability Plus. Google indexes only `/`. GitHub: 1 repo view in 14 days; topics widened 2026-10-07.
-- **1.0.2 candidate:** Week 6+ screenshots (the live set is Week 1 and shows "Version 1.0.0 (1)" on About), native ratings prompt, age rating fix, the staged game-sheet copy. Needs cv's go for build + submit.
-- **Mac listing** shows "Not verified for macOS"; the Apple Silicon checkbox decision is still open.
-- **Midweek games are off the board.** The Thu–Mon window missed Tue 10/6 USM @ TROY and Wed 10/7 JXST @ KENN, NMSU @ FIU. CUSA and MAC midweek games grow in Oct–Nov; widening the window means changing `default_dates()` and the Wed cron, not a one-off `--start`.
-- **Analytics download gotcha:** `asc analytics download` re-lists reports per segment, so 65 back-to-back downloads hit Apple's hourly limit (429, retry-after ~37 min). Space them or download per processing date.
+- **No web usage data exists.** No analytics on the site by design. Vercel Pro keeps runtime logs 1 day, deeper metrics need Observability Plus. Google indexes only `/`. GitHub: 1 repo view in 14 days; topics widened 2026-10-07.
+- **Mac listing** shows "Not verified for macOS".
+- **Midweek games are off the board.** The Thu–Mon window missed Tue 10/6 USM @ TROY and Wed 10/7 JXST @ KENN, NMSU @ FIU.
+- **Analytics download gotcha:** `asc analytics download` re-lists reports per segment, so 65 back-to-back downloads hit Apple's hourly limit (429, retry-after ~37 min, then a rolling few minutes). Space them or download per processing date.
 
 
 ## ACTION FOR CV — rotate ASC key `FQRRWFFM28` (opened 2026-09-26)
