@@ -15,10 +15,9 @@
 
 | When | What | Who |
 |---|---|---|
-| Thu 10/8 evening | Watch a live game sheet refresh mid-game (last unverified item from the 9/30 ship) | Claude |
+| Wed 10/7 6:25 PM CT | Live game-sheet check moved up to tonight's Wednesday games (background check of `/api/game` for JXST @ KENN and NMSU @ FIU, two pulls 45 s apart) | Claude |
 | Sat 10/10 morning | Confirm a Saturday refresh ran (`gh run list --workflow=refresh.yml`, live `generated_at`) | Claude |
-| Sat 10/10 3–5 PM CT | 1.0.2 screenshots (6.9", 6.5"): weather desk, Live desk, game sheet, Lines sheet, By TV. Fresh install first (see below) | Claude |
-| Sun 10/11 | 1.0.2: `release_ios.sh --bump 1.0.2` (ratings prompt is in; copy staged in `ios/metadata/version/1.0.2/`), `asc age-rating edit --app-info-id <editable> --age-rating-override-v2 EIGHTEEN_PLUS`, screenshots, `promo_text.py --apply --version 1.0.2`, release type AFTER_APPROVAL, `asc review doctor` → **cv's go** → submit. Build with the installed Xcode 27.0 | Claude, cv submits |
+| ~~Sun 10/11~~ Wed 10/7 | **1.0.2 (5) ready, waiting on cv's go to submit.** Version `31e0114f-722b-4c5b-810f-f516603279e8` (PREPARE_FOR_SUBMISSION, release AFTER_APPROVAL), build `45cfcb22-cede-417d-a6a6-6da5c79cffbd` attached; game-sheet description + What's New + keywords applied; promo text on 1.0.2; 5 new 6.5" screenshots (Sat board/weather desk, game sheet scoring, box score, Lines sheet, By TV; `ios/screenshots/1.0.2/`, gitignored) replaced the Week 1 set; age rating override V2 `EIGHTEEN_PLUS` on 1.0.2's declaration `e9c6a4d4-...`; `asc review doctor` 0 errors/0 warnings/0 blocking. Submit: `asc review submit --app 6809035228 --version-id 31e0114f-722b-4c5b-810f-f516603279e8 --build-id 45cfcb22-cede-417d-a6a6-6da5c79cffbd --confirm` | cv's go |
 | Wed 10/14 | Week 7 build + `promo_text.py --apply` + `asc reviews list --app 6809035228` (weekly; replaces review notifications for cv) | Claude |
 | ~~Before Nov 1~~ | **Done 2026-10-07:** board window Tue–Mon (Tue 7 AM CT cron, 7-date live cap, empty dates skipped), promo rain clause at ≥60% | Claude |
 | On hold (cv) | ~~Mac listing~~ done 2026-10-07 · EU DSA checked 2026-10-07: account is declared **not a trader**, so EU listings show no contact info. cv is changing the LLC's business address (Illinois SOS first, then D-U-N-S, then Apple membership → Update your information); revisit trader status only after that, since a trader listing displays the D-U-N-S address | cv |
