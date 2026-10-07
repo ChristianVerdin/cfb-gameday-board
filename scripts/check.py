@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from html import escape
 import shutil
 import subprocess
 import sys
@@ -290,11 +291,11 @@ def test_jsonld():
           [e.get("startDate") for e in graph if not iso.match(e.get("startDate") or "")][:3], [])
     kicker = re.search(r'<div class="kicker" id="kicker">(.*?)</div>', html, re.S)
     check("kicker matches the snapshot", kicker.group(1) if kicker else None,
-          data.get("week_label") or "College football slate")
+          escape(data.get("week_label") or "College football slate"))
     from refresh_week import page_description, page_title
     title = re.search(r"<title>(.*?)</title>", html, re.S)
     check("title matches the snapshot", title.group(1) if title else None,
-          page_title(data.get("week_label")).replace("&", "&amp;"))
+          escape(page_title(data.get("week_label"))))
     check("week title", page_title("Week 6 · 2026"),
           "College football Week 6 schedule, kickoff weather & TV | CFB GameDay Board")
     check("neutral title", page_title(None), "CFB GameDay Board")
@@ -302,6 +303,23 @@ def test_jsonld():
     check("description counts the slate", bool(desc) and f"all {len(data.get('games') or [])} FBS games" in desc.group(1), True)
     bad = [t for t in ("moneyline", "odds", "bet ") if t in page_description(data).lower()]
     check("no wagering terms in description", bad, [])
+
+
+def test_seo_escaping():
+    """ESPN text reaches index.html in four places; none may break out of its element."""
+    import tempfile
+    from refresh_week import write_seo
+    evil = '</title></script><img src=x onerror=alert(1)>'
+    game = {"id": "1", "name": evil, "date": "2026-10-10T19:30Z", "gameState": "pre", "kick_ct": "Sat 2:30 PM CT",
+            "home": {"full": evil}, "away": {"full": "A"}, "networks": []}
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "index.html").write_text((ROOT / "index.html").read_text("utf-8"), "utf-8")
+        write_seo(Path(tmp), {"week_label": evil, "games": [game], "generated_at": "2026-10-07T00:00:00Z"})
+        out = (Path(tmp) / "index.html").read_text("utf-8")
+    check("escaped: no raw injected tag", "<img src=x" in out, False)
+    check("escaped: one </title>", out.count("</title>"), 1)
+    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', out.split("<!-- games:start -->")[1], re.S)
+    check("escaped: ld+json still parses", bool(m) and json.loads(m.group(1))["@graph"][0]["name"] == evil, True)
 
 
 def test_game_payload():
@@ -359,7 +377,7 @@ def test_pwa():
 
 
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_game_payload, test_pwa):
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_seo_escaping, test_game_payload, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))

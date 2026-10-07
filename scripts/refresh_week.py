@@ -17,6 +17,7 @@ import sys
 import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
+from html import escape
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -671,15 +672,17 @@ def write_seo(root: Path, payload: dict) -> None:
     events = [e for e in (event_ld(g) for g in payload["games"]) if e]
     graph = {"@context": "https://schema.org", "@graph": events}
     body = ('<script type="application/ld+json">'
-            + json.dumps(graph, separators=(",", ":"), ensure_ascii=False)
+            # "<" as \u003c: a "</script>" inside an ESPN name must not close the block
+            + json.dumps(graph, separators=(",", ":"), ensure_ascii=False).replace("<", "\\u003c")
             + "</script>")
     label = payload.get("week_label") or NEUTRAL_LABEL
     # lambda, never a replacement string: a backslash in a team name would corrupt it
     html = SEO_BLOCK.sub(lambda m: m.group(1) + body + m.group(2), html, count=1)
-    html = KICKER.sub(lambda m: m.group(1) + label + m.group(2), html, count=1)
-    title = page_title(payload.get("week_label"))
-    desc = page_description(payload).replace("&", "&amp;").replace('"', "&quot;")
-    html = TITLE.sub(lambda m: m.group(1) + title.replace("&", "&amp;") + m.group(2), html, count=1)
+    # Everything below comes from ESPN text, so it is escaped before it touches markup.
+    html = KICKER.sub(lambda m: m.group(1) + escape(label) + m.group(2), html, count=1)
+    title = escape(page_title(payload.get("week_label")))
+    desc = escape(page_description(payload))
+    html = TITLE.sub(lambda m: m.group(1) + title + m.group(2), html, count=1)
     html = DESCRIPTION.sub(lambda m: m.group(1) + desc + m.group(2), html, count=1)
     html_path.write_text(html, "utf-8")
 
