@@ -19,9 +19,10 @@ FALLBACK = ("College football Saturdays on one screen: venue, kickoff weather, T
 def build(games, week):
     n = len(games)
     sat = sum(1 for g in games if g.get("kick_ct", "").startswith("Sat"))
-    rain = sum(1 for g in games if ((g.get("wx") or {}).get("pop") or 0) >= 50)
-    heat = sum(1 for g in games if (g.get("temp") or 0) > 85)
-    wind = sum(1 for g in games if ((g.get("wx") or {}).get("wind") or 0) >= 15)
+    outdoor = [g for g in games if not g.get("indoor")]   # indoor weather is off the board
+    rain = sum(1 for g in outdoor if ((g.get("wx") or {}).get("pop") or 0) >= 50)
+    heat = sum(1 for g in outdoor if (g.get("temp") or 0) > 85)
+    wind = sum(1 for g in outdoor if ((g.get("wx") or {}).get("wind") or 0) >= 15)
     lined = [g for g in games if (g.get("odds") or {}).get("spread") is not None]
     close = None
     if lined:
