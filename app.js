@@ -114,7 +114,8 @@
     if (real) return (state === "post" && stored) ? stored : incoming;
     return stored || current || null;
   }
-  // ESPN dates (Eastern calendar) that still have a game not yet final.
+  // ESPN dates (Eastern calendar) that still have a game not yet final. Dates with no games are skipped:
+  // api/live 502s when every date it is asked for is empty, and a Tue..Mon slate usually has empty days.
   function liveDatesFor(list, dates) {
     const byDate = {};
     list.forEach(g => {
@@ -123,7 +124,7 @@
       (byDate[key] = byDate[key] || []).push(g);
     });
     const known = (dates && dates.length) ? dates.map(String) : Object.keys(byDate).sort();
-    return known.filter(k => !byDate[k] || byDate[k].some(g => !isFinal(g)));
+    return known.filter(k => byDate[k] && byDate[k].some(g => !isFinal(g)));
   }
   // #live / #starred / #all in the URL set the filters (native app tabs and shareable links).
   function hashFilters(hash) {

@@ -44,15 +44,14 @@ def fetch_json(url: str, timeout: int = 20) -> dict:
 
 
 def fallback_dates(today: datetime | None = None) -> list[str]:
-    """Thu..Mon of the current or next slate, Eastern. Only reached when games.json
+    """Tue..Mon of the slate in progress, Eastern. Only reached when games.json
     is unreadable. Deliberately duplicates scripts/refresh_week.default_dates rather
     than importing it: vercel.json excludeFiles drops scripts/** from the api/live.py
     bundle, so that import would 502 every cold start.
     """
     d = (today or datetime.now(EASTERN)).date()
-    back = (d.weekday() - 3) % 7
-    thursday = d - timedelta(days=back) if back <= 4 else d + timedelta(days=7 - back)
-    return [(thursday + timedelta(days=i)).strftime("%Y%m%d") for i in range(5)]
+    tuesday = d - timedelta(days=(d.weekday() - 1) % 7)
+    return [(tuesday + timedelta(days=i)).strftime("%Y%m%d") for i in range(7)]
 
 
 def load_dates() -> list[str]:
@@ -266,7 +265,7 @@ DATE_RE = re.compile(r"^\d{8}$")
 
 
 def parse_dates(query: str) -> list[str] | None:
-    """?dates=20260912,20260913 -> validated list, max 5. None when absent."""
+    """?dates=20260912,20260913 -> validated list, max 7 (one Tue..Mon slate). None when absent."""
     raw = urllib.parse.parse_qs(query).get("dates")
     if not raw:
         return None
@@ -275,7 +274,7 @@ def parse_dates(query: str) -> list[str] | None:
         d = d.strip()
         if DATE_RE.match(d) and d not in found:
             found.append(d)
-    return found[:5] or None
+    return found[:7] or None
 
 
 def live_payload(events: list, lines: "LineBook | None" = None) -> list:

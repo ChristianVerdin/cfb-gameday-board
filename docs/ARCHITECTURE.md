@@ -154,7 +154,7 @@ server that only started after a game ended serves the snapshot line for it.
 - Which dates to poll comes from the snapshot: `games.json` carries a `dates`
   list written by the refresh script. If that is missing the server derives
   Eastern dates from each game's `date`. `fallback_dates()` is the final
-  fallback: it computes Thu..Mon of the current or next slate rather than a
+  fallback: it computes Tue..Mon of the slate in progress rather than a
   frozen list, which had silently stayed on Week 1's dates. It deliberately
   duplicates `refresh_week.default_dates` instead of importing it — `vercel.json`
   excludes `scripts/**` from the `api/live.py` bundle, so that import would 502
@@ -284,13 +284,13 @@ Done once per week by `scripts/refresh_week.py`, never live.
 ## Rebuilding `games.json` for a new week
 
 ```
-python3 scripts/refresh_week.py                      # Thu..Mon of the current/next slate
+python3 scripts/refresh_week.py                      # Tue..Mon of the slate in progress
 python3 scripts/refresh_week.py --start 20260911 --end 20260914
 ```
 
 - `--start` / `--end` are inclusive ESPN (Eastern) dates, `YYYYMMDD`. With no
-  arguments: the Thursday on or before today (Thu-Mon) or the coming Thursday
-  (Tue-Wed), through the following Monday. `--start` alone means that one day.
+  arguments: the Tuesday on or before today, through the following Monday
+  (midweek MAC/CUSA games are part of the slate; Monday stays with the ending week). `--start` alone means that one day.
 - `--out DIR` writes elsewhere (default: repo root). Useful to diff before
   overwriting.
 - `--no-enrich` skips the per-game ESPN summary pass; `--seo-only` rebuilds only

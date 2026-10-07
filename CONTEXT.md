@@ -15,20 +15,19 @@
 
 | When | What | Who |
 |---|---|---|
-| This week | Upload `ios/screenshots/creative-universal-5244x2950.png` in Asset Library (Upload Creative Assets) and submit; once approved, Publish it on the 1.0.1 version page → Header and Search Results (tick "Use header asset in search results"). No new version needed; shows on iOS 27+. Source: `docs/creative-asset.html` | cv |
 | Thu 10/8 evening | Watch a live game sheet refresh mid-game (last unverified item from the 9/30 ship) | Claude |
 | Sat 10/10 morning | Confirm a Saturday refresh ran (`gh run list --workflow=refresh.yml`, live `generated_at`) | Claude |
 | Sat 10/10 3–5 PM CT | 1.0.2 screenshots (6.9", 6.5"): weather desk, Live desk, game sheet, Lines sheet, By TV. Fresh install first (see below) | Claude |
 | Sun 10/11 | 1.0.2: `release_ios.sh --bump 1.0.2` (ratings prompt is in; copy staged in `ios/metadata/version/1.0.2/`), `asc age-rating edit --app-info-id <editable> --age-rating-override-v2 EIGHTEEN_PLUS`, screenshots, `promo_text.py --apply --version 1.0.2`, release type AFTER_APPROVAL, `asc review doctor` → **cv's go** → submit. Build with the installed Xcode 27.0 | Claude, cv submits |
 | Wed 10/14 | Week 7 build + `promo_text.py --apply` (weekly) | Claude |
-| Before Nov 1 | Board window Tue–Mon (`default_dates()`, `fallback_dates()`, `parse_dates` cap 7, `liveDatesFor` skips empty dates, Tue 7 AM CT cron, check.py) so MAC/CUSA midweek games are on the board; promo "rain risk" counts pop ≥60 to match the flag | Claude |
+| ~~Before Nov 1~~ | **Done 2026-10-07:** board window Tue–Mon (Tue 7 AM CT cron, 7-date live cap, empty dates skipped), promo rain clause at ≥60% | Claude |
 | Anytime (cv, ~10 min) | Mac listing: test from the Mac App Store, then Verify Compatibility, or uncheck it · review notifications on (App Store Connect app) · check the EU Digital Services Act trader contact info under Business | cv |
 
 Done 2026-10-07: Week 6 live, Week 6 promo text, week-aware `<title>`/description, ESPN-text escaping fix,
 ratings prompt (`ReviewPrompt.swift`), ASC key rotated (`WUSAQJV85V`), accessibility labels published (Dark Interface,
 Differentiate Without Color), search-results/header image made, 1.0.2 copy staged.
 
-**Parked** (revisit only if cv asks): promo video + AI pictures (pipeline committed: `scripts/app_video.py`,
+**Parked** (revisit only if cv asks): the search-results/header image (cv: don't use it; source stays in `docs/creative-asset.html`), promo video + AI pictures (pipeline committed: `scripts/app_video.py`,
 Eleven v4 wired, App Store 886x1920 cut tested offline), Xcode Cloud test-only workflow (needs a shared scheme in
 `project.yml` + `ios/ci_scripts/ci_post_clone.sh`), custom product pages, A/B tests, web analytics, campaign links,
 1.1 (universal links + widget), Xcode 27.1 / iPhone Duo (Duo screenshots required for submissions from April 2027),
@@ -47,7 +46,7 @@ app's container prefs.
 - **App Store funnel, Sep 10–Oct 5** (Analytics Reports, request 15cce5e9, `cfbgameday-reports`): 5 first-time downloads total, none since 9/21; 305 search impressions (~12/day, ~70% outside the US) → 21 product-page views → 4 Get taps. Impression→page view (~7%) is the leak. A search result shows only icon, name, subtitle, rating and the first screenshots, all of which need a new version; promo text appears on the product page, not in search. Sessions, crashes and deletions report nothing (below Apple's privacy thresholds). 1 rating (5.0), 0 written reviews.
 - **No web usage data exists.** No analytics on the site by design. Vercel Pro keeps runtime logs 1 day, deeper metrics need Observability Plus. Google indexes only `/`. GitHub: 1 repo view in 14 days; topics widened 2026-10-07.
 - **Mac listing** shows "Not verified for macOS".
-- **Midweek games are off the board.** The Thu–Mon window missed Tue 10/6 USM @ TROY and Wed 10/7 JXST @ KENN, NMSU @ FIU.
+- **Midweek games were off the board** (Thu–Mon window). Fixed 2026-10-07: the window is now Tue–Mon with a Tue 7 AM CT cron.
 - **Analytics download gotcha:** `asc analytics download` re-lists reports per segment, so 65 back-to-back downloads hit Apple's hourly limit (429, retry-after ~37 min, then a rolling few minutes). Space them or download per processing date.
 
 
@@ -270,7 +269,7 @@ a day-old weather clause is fine and not worth a local job or the `.p8` in CI.
 
 **If the Action fails or ESPN changes shape:**
 ```
-python3 scripts/refresh_week.py          # Thu..Mon of the current/next slate
+python3 scripts/refresh_week.py          # Tue..Mon of the slate in progress
 python3 scripts/check.py
 git add games.json games.js index.html sitemap.xml && git commit -m "Snapshot: ..." && git push
 ```

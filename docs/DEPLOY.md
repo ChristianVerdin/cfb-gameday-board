@@ -127,7 +127,7 @@ Gateway, no load balancer; Caddy on the instance is enough.
 ```
 cd /opt/cfb-gameday
 git pull
-python3 scripts/refresh_week.py      # Thu..Mon of the coming slate
+python3 scripts/refresh_week.py      # Tue..Mon of the slate in progress
 python3 scripts/check.py
 sudo systemctl restart cfb-gameday   # server reads dates from games.json at start
 ```

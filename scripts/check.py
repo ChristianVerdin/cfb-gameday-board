@@ -108,10 +108,11 @@ def test_time():
     check("kick_ct january", kick_ct(utc("2027-01-02T18:00Z")), "Sat 12:00 PM CT")
 
     day = lambda s: datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=CHICAGO)
-    check("default sat", default_dates(day("2026-09-05")), ("20260903", "20260907"))
-    check("default mon", default_dates(day("2026-09-07")), ("20260903", "20260907"))
-    check("default tue", default_dates(day("2026-09-08")), ("20260910", "20260914"))
-    check("default thu", default_dates(day("2026-09-10")), ("20260910", "20260914"))
+    check("default sat", default_dates(day("2026-09-05")), ("20260901", "20260907"))
+    check("default mon", default_dates(day("2026-09-07")), ("20260901", "20260907"))
+    check("default tue", default_dates(day("2026-09-08")), ("20260908", "20260914"))
+    check("default wed", default_dates(day("2026-10-07")), ("20261006", "20261012"))
+    check("default thu", default_dates(day("2026-09-10")), ("20260908", "20260914"))
 
     check("compass n", compass(0), "N")
     check("compass nw", compass(307), "NW")
@@ -123,9 +124,11 @@ def test_time():
     import server  # noqa: E402  - cheap now that the LineBook is built lazily
     est = ZoneInfo("America/New_York")
     check("fallback sat", server.fallback_dates(datetime(2026, 9, 5, 12, tzinfo=est)),
-          ["20260903", "20260904", "20260905", "20260906", "20260907"])
-    check("fallback tue rolls forward", server.fallback_dates(datetime(2026, 9, 8, 12, tzinfo=est))[0], "20260910")
-    check("fallback mon stays", server.fallback_dates(datetime(2026, 9, 21, 12, tzinfo=est))[0], "20260917")
+          ["20260901", "20260902", "20260903", "20260904", "20260905", "20260906", "20260907"])
+    check("fallback tue starts the week", server.fallback_dates(datetime(2026, 9, 8, 12, tzinfo=est))[0], "20260908")
+    check("fallback mon stays", server.fallback_dates(datetime(2026, 9, 21, 12, tzinfo=est))[0], "20260915")
+    week = ",".join(f"202610{d:02d}" for d in range(6, 14))
+    check("parse_dates caps at 7", server.parse_dates("dates=" + week), [f"202610{d:02d}" for d in range(6, 13)])
     check("no line book at import", server.LINES, None)
 
 

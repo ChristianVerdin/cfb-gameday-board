@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild games.json / games.js for a new slate.
 
-    python3 scripts/refresh_week.py                      # next Thu..Mon slate
+    python3 scripts/refresh_week.py                      # current/next Tue..Mon slate
     python3 scripts/refresh_week.py --start 20260911 --end 20260914
 
 Pulls the ESPN scoreboard per date, geocodes each venue city with Open-Meteo,
@@ -94,12 +94,12 @@ def date_range(start: str, end: str) -> list[str]:
 
 
 def default_dates(today: datetime | None = None) -> tuple[str, str]:
-    """Thursday through Monday of the slate that is current or next.
-    Tue/Wed roll forward to the coming Thursday; Thu-Mon stay on the slate in progress."""
+    """Tuesday through Monday of the slate in progress.
+    Midweek MAC/CUSA games belong to the week, so a new slate starts on Tuesday;
+    Monday still belongs to the slate that is ending (Labor Day, bowl Mondays)."""
     today = (today or datetime.now(CHICAGO)).date()
-    back = (today.weekday() - 3) % 7          # days since the last Thursday
-    thursday = today - timedelta(days=back) if back <= 4 else today + timedelta(days=7 - back)
-    return thursday.strftime("%Y%m%d"), (thursday + timedelta(days=4)).strftime("%Y%m%d")
+    tuesday = today - timedelta(days=(today.weekday() - 1) % 7)
+    return tuesday.strftime("%Y%m%d"), (tuesday + timedelta(days=6)).strftime("%Y%m%d")
 
 
 def parse_utc(iso: str) -> datetime:
@@ -714,8 +714,8 @@ def week_label(payload: dict, events: list) -> str | None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--start", help="first ESPN (Eastern) date, YYYYMMDD (default: this/next Thursday)")
-    ap.add_argument("--end", help="last ESPN date, inclusive, YYYYMMDD (default: start + 4 days, Monday)")
+    ap.add_argument("--start", help="first ESPN (Eastern) date, YYYYMMDD (default: this week's Tuesday)")
+    ap.add_argument("--end", help="last ESPN date, inclusive, YYYYMMDD (default: start + 6 days, Monday)")
     ap.add_argument("--out", default=str(ROOT), help="directory for games.json / games.js (default: repo root)")
     ap.add_argument("--sleep", type=float, default=0.2, help="seconds between Open-Meteo calls")
     ap.add_argument("--seo-only", action="store_true",
