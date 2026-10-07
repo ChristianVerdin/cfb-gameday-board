@@ -9,39 +9,31 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 · ASC key rotated 2026-10-07 (`FQRRWFFM28` revoked, now `WUSAQJV85V`) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), ratings prompt committed, nothing uploaded · approved plan below (cv, 2026-10-07)
+**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 · ASC key rotated 2026-10-07 (`FQRRWFFM28` revoked, now `WUSAQJV85V`) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), ratings prompt committed, nothing uploaded · trimmed plan below (cv, 2026-10-07)
 
-## Approved plan (cv, 2026-10-07)
+## Plan (trimmed by cv, 2026-10-07): only what's needed
 
-Recommendations approved as a set. cv owns the ASC web clicks, key handling and posting;
-**submitting 1.0.2 and submitting In-App Events / nominations still need cv's go at that moment.**
+| When | What | Who |
+|---|---|---|
+| This week | Upload `ios/screenshots/creative-universal-5244x2950.png` in Asset Library (Upload Creative Assets) and submit; once approved, Publish it on the 1.0.1 version page → Header and Search Results (tick "Use header asset in search results"). No new version needed; shows on iOS 27+. Source: `docs/creative-asset.html` | cv |
+| Thu 10/8 evening | Watch a live game sheet refresh mid-game (last unverified item from the 9/30 ship) | Claude |
+| Sat 10/10 morning | Confirm a Saturday refresh ran (`gh run list --workflow=refresh.yml`, live `generated_at`) | Claude |
+| Sat 10/10 3–5 PM CT | 1.0.2 screenshots (6.9", 6.5"): weather desk, Live desk, game sheet, Lines sheet, By TV. Fresh install first (see below) | Claude |
+| Sun 10/11 | 1.0.2: `release_ios.sh --bump 1.0.2` (ratings prompt is in; copy staged in `ios/metadata/version/1.0.2/`), `asc age-rating edit --app-info-id <editable> --age-rating-override-v2 EIGHTEEN_PLUS`, screenshots, `promo_text.py --apply --version 1.0.2`, release type AFTER_APPROVAL, `asc review doctor` → **cv's go** → submit. Build with the installed Xcode 27.0 | Claude, cv submits |
+| Wed 10/14 | Week 7 build + `promo_text.py --apply` (weekly) | Claude |
+| Before Nov 1 | Board window Tue–Mon (`default_dates()`, `fallback_dates()`, `parse_dates` cap 7, `liveDatesFor` skips empty dates, Tue 7 AM CT cron, check.py) so MAC/CUSA midweek games are on the board; promo "rain risk" counts pop ≥60 to match the flag | Claude |
+| Anytime (cv, ~10 min) | Mac listing: test from the Mac App Store, then Verify Compatibility, or uncheck it · review notifications on (App Store Connect app) · check the EU Digital Services Act trader contact info under Business | cv |
 
-| # | Decision | Owner | Status |
-|---|---|---|---|
-| 1 | Rotate ASC key `FQRRWFFM28` | cv | **done 10-07**: revoked; new key `WUSAQJV85V` installed and verified |
-| 2 | Ship iOS 1.0.2: ratings prompt, age rating, new screenshots, game-sheet copy | Claude, cv submits | prompt done 10-07 (`ReviewPrompt.swift`); copy staged in `ios/metadata/version/1.0.2/`; screenshots Sat 10/10 3–5 PM CT; upload + submit Sun 10/11 |
-| 3 | Age rating 18+ via `--age-rating-override-v2 EIGHTEEN_PLUS` on the 1.0.2 app info | Claude | with 1.0.2 |
-| 4 | Uncheck Apple Silicon Mac availability (Pricing and Availability) | cv | open |
-| 5 | Keep the repo public; trim the key-incident section after #1 | Claude | **done 10-07** |
-| 6 | Board window Tue–Mon (+ Tue 7 AM CT cron, `parse_dates` cap 7, `liveDatesFor` skips empty dates) | Claude | week of 10/12, before MACtion |
-| 7 | Cookieless Vercel Web Analytics on the web only, never inside the app (`window.cfbNative`), privacy.html updated | cv OKs cost, Claude | week of 10/12 |
-| 8 | Campaign links: cv generates the `pt` token, Claude applies the names in `ios/APP_STORE.md` | cv, Claude | waiting on token |
-| 9 | In-App Events + featuring nominations: Rivalry Week 11/28, Championship Sat 12/5, CFP | Claude drafts, cv submits | file by ~11/6 |
-| 10 | Campaign-tagged link from dailylocks.ai's NCAAF board (session in that repo) | Claude | after #8 |
-| 11 | Weekly X post (Thu board live, Sat weather), drafted Wednesdays with the promo text | cv posts | weekly |
-| 12 | Promo "rain risk" counts pop ≥60 to match the RAIN RISK flag (now ≥50) | Claude | with #6 |
+Done 2026-10-07: Week 6 live, Week 6 promo text, week-aware `<title>`/description, ESPN-text escaping fix,
+ratings prompt (`ReviewPrompt.swift`), ASC key rotated (`WUSAQJV85V`), accessibility labels published (Dark Interface,
+Differentiate Without Color), search-results/header image made, 1.0.2 copy staged.
 
-**Rev 3 approved 2026-10-07** (adds Apple's Oct 5 creative assets, custom product pages, iPhone Duo, Xcode Cloud test-only; full plan
-in the session, decisions summarized here):
-- **Search-results + header image** (universal 16:9, `docs/creative-asset.html` → `ios/screenshots/creative-universal-5244x2950.png`,
-  4+ content, no odds/URLs/teams): cv uploads in Asset Library and submits; once approved, Publish on the live 1.0.1 version page →
-  Header and Search Results (no new version needed; shows on iOS 27+).
-- **Accessibility labels published 2026-10-07** (iPhone): Dark Interface, Differentiate Without Color. Nothing else claimed until audited.
-- **Mac:** test from the Mac App Store, then Verify Compatibility (or uncheck). **Xcode 27.1** before the 1.0.2 build (iPhone Duo, out 10/23;
-  Duo screenshots required for submissions from April 2027).
-- **After 1.0.2:** three custom product pages with keywords (weather / TV / live); Xcode Cloud as a test-only "Verify" workflow (no archive,
-  no TestFlight, no paid plan; needs a shared scheme in `project.yml` and `ios/ci_scripts/ci_post_clone.sh` running xcodegen).
-- Optional later: 1.1 (universal links + widget), seasonal creative swaps for Rivalry Week / Championship / CFP.
+**Parked** (revisit only if cv asks): promo video + AI pictures (pipeline committed: `scripts/app_video.py`,
+Eleven v4 wired, App Store 886x1920 cut tested offline), Xcode Cloud test-only workflow (needs a shared scheme in
+`project.yml` + `ios/ci_scripts/ci_post_clone.sh`), custom product pages, A/B tests, web analytics, campaign links,
+1.1 (universal links + widget), Xcode 27.1 / iPhone Duo (Duo screenshots required for submissions from April 2027),
+Rivalry Week In-App Event + nominations (decide early November). Calendar: membership renews Feb 27, 2027; dev
+cert expires Mar 2, 2027 (Xcode renews it).
 
 **Before Saturday's screenshots:** the simulator must not hold eligible ratings-prompt state, or the 1.0.2
 build shows the rating sheet mid-capture. Fresh install, or clear `review.*` with
