@@ -15,7 +15,7 @@ ESPN, implied scores, TV, then live cover/total state. Owner: cv
 ## Run
 ```
 python3 server.py                 # http://127.0.0.1:8765/  (live mode needs this)
-python3 scripts/refresh_week.py   # rebuild games.json/games.js for the next Thu..Mon
+python3 scripts/refresh_week.py   # rebuild games.json/games.js for the current/next Tue..Mon
 python3 scripts/check.py          # offline smoke test, run after touching rules or liveMath
 scripts/tunnel.sh                 # gameday Cloudflare quick tunnel, prints the https URL
 scripts/release_ios.sh --bump X.Y.Z   # archive, export, upload, attach via asc; add --submit to send to review (see CONTEXT.md)
@@ -33,7 +33,7 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 ## Hosted
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
   Production: https://cfbgameday.app (alias cfb-gameday-board.vercel.app). `docs/DEPLOY.md`.
-- Snapshot refresh is a GitHub Action, five runs a week (Wed 1 PM, Thu 7 AM, Fri 7 AM,
+- Snapshot refresh is a GitHub Action, six runs a week (Tue 7 AM, Wed 1 PM, Thu 7 AM, Fri 7 AM,
   Sat 4 AM, Sat 8 AM backup CT), each scheduled hours early because GitHub fires scheduled runs late and
   can drop them. Manual: `gh workflow run refresh.yml`. It also regenerates `index.html`
   (SportsEvent block + kicker) and `sitemap.xml`, which are committed with the snapshot.

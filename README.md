@@ -9,7 +9,7 @@ that has kicked off.
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 - **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
-  snapshot rebuilds itself five times a week via GitHub Actions (Wed, Thu, Fri
+  snapshot rebuilds itself six times a week via GitHub Actions (Tue, Wed, Thu, Fri
   and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
 - **iPhone:** SwiftUI shell around the same board, in `ios/`. On the App Store
@@ -17,7 +17,7 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 ## What's on the board
 
-- Every FBS game Thursday through Monday, kickoff in Central time, filterable by
+- Every FBS game Tuesday through Monday, kickoff in Central time, filterable by
   day, window, conference, ranked, weather, starred, or a search.
 - Four views: Cards, Lines sheet (with CSV download), By TV, and a Blowouts
   board for spreads of 28 or more.
@@ -138,8 +138,8 @@ python3 scripts/refresh_week.py
 python3 scripts/promo_text.py --apply   # App Store promotional text for the week (needs asc)
 ```
 
-With no arguments it targets Thursday through Monday of the current or next
-slate (Tuesday and Wednesday roll forward). Pass `--start 20260911 --end
+With no arguments it targets Tuesday through Monday of the slate in progress
+(a new slate starts on Tuesday, so midweek MAC and CUSA games are included). Pass `--start 20260911 --end
 20260914` to pick dates. Rerun it on a game morning to refresh the forecast to
 same-day accuracy, then restart `server.py`.
 
@@ -149,7 +149,7 @@ block in `index.html` and the `sitemap.xml` lastmod from the committed
 `games.json`, with no network calls at all. A normal run writes all four files,
 so commit `games.json games.js index.html sitemap.xml` together.
 
-The Action runs it five times a week - Wed 1 PM, Thu 7 AM, Fri 7 AM, Sat 4 AM
+The Action runs it six times a week - Tue 7 AM, Wed 1 PM, Thu 7 AM, Fri 7 AM, Sat 4 AM
 and a Sat 8 AM backup. Each is scheduled hours ahead of when it is actually needed because
 GitHub creates scheduled runs late under load (measured 5h08m late once on this
 repo) and can drop them entirely.
