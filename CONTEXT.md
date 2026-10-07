@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 (still key FQRRWFFM28, still unrotated) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), nothing built · approved plan below (cv, 2026-10-07)
+**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 (still key FQRRWFFM28, still unrotated) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), ratings prompt committed, nothing uploaded · approved plan below (cv, 2026-10-07)
 
 ## Approved plan (cv, 2026-10-07)
 
