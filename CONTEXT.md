@@ -15,7 +15,7 @@
 
 | When | What | Who |
 |---|---|---|
-| Wed 10/7 6:25 PM CT | Live game-sheet check moved up to tonight's Wednesday games (background check of `/api/game` for JXST @ KENN and NMSU @ FIU, two pulls 45 s apart) | Claude |
+| ~~Wed 10/7 6:25 PM CT~~ | **Done:** game sheet verified live on JXST @ KENN (`/api/game` 200, state `in`, scoring/drives/win probability populated; win-probability points 30 → 33 between 6:25 and 6:27 PM, fresh from ESPN, cache MISS). Two pulls 45 s apart can match when no play is logged; that is not staleness. Closes the last open item from the 9/30 ship | Claude |
 | Sat 10/10 morning | Confirm a Saturday refresh ran (`gh run list --workflow=refresh.yml`, live `generated_at`) | Claude |
 | ~~Sun 10/11~~ Wed 10/7 | **1.0.2 (5) submitted 2026-10-07 14:34 CT on cv's go** (submission `03db7f99-14dc-44b9-a001-1b971376fb4b`; releases itself on approval). Version `31e0114f-722b-4c5b-810f-f516603279e8` (PREPARE_FOR_SUBMISSION, release AFTER_APPROVAL), build `45cfcb22-cede-417d-a6a6-6da5c79cffbd` attached; game-sheet description + What's New + keywords applied; promo text on 1.0.2; 5 new 6.5" screenshots (Sat board/weather desk, game sheet scoring, box score, Lines sheet, By TV; `ios/screenshots/1.0.2/`, gitignored) replaced the Week 1 set; age rating override V2 `EIGHTEEN_PLUS` on 1.0.2's declaration `e9c6a4d4-...`; `asc review doctor` 0 errors/0 warnings/0 blocking. Submit: `asc review submit --app 6809035228 --version-id 31e0114f-722b-4c5b-810f-f516603279e8 --build-id 45cfcb22-cede-417d-a6a6-6da5c79cffbd --confirm` | done |
 | Wed 10/14 | Week 7 build + `promo_text.py --apply` + `asc reviews list --app 6809035228` (weekly; replaces review notifications for cv) | Claude |
