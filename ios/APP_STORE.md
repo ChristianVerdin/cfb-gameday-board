@@ -156,7 +156,7 @@ Analytics needs an Admin API key. Two keys are registered with `asc`:
 
 | Profile | Key | Role | Use |
 | --- | --- | --- | --- |
-| `cfbgameday` (default) | FQRRWFFM28 | App Manager | uploads, metadata, review, TestFlight |
+| `cfbgameday` (default) | WUSAQJV85V (rotated 2026-10-07; FQRRWFFM28 revoked) | App Manager | uploads, metadata, review, TestFlight |
 | `cfbgameday-reports` | R79Z9DL337 | Admin | reports only, always by name |
 
 Ongoing analytics report request `15cce5e9-253a-459b-b969-a07eed348d67`

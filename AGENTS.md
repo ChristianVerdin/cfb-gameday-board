@@ -54,7 +54,7 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 
 **File:** `scripts/release_ios.sh` + `ios/ExportOptions.plist`
 **Does:** bumps the build number in `ios/project.yml`, `xcodegen generate`, Release archive, App Store IPA export, `altool --validate-app`, then `asc publish appstore` (upload, wait for processing, find or create the App Store version, apply `ios/metadata/version/<version>/en-US.json` if present, attach the build). `--submit` adds `--submit --confirm` and sends the version to review. Without `asc` on PATH it falls back to `altool --upload-app` and the build is attached by hand.
-**Auth:** `asc` profile `cfbgameday` in `~/.asc/config.json` (key FQRRWFFM28, App Manager); altool fallback reads `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`.
+**Auth:** `asc` profile `cfbgameday` in `~/.asc/config.json` (key WUSAQJV85V, App Manager; rotated from FQRRWFFM28 on 2026-10-07); altool fallback reads `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`.
 **Cost:** $0. **Guardrails:** never commits the key; `*.p8` is gitignored; `--no-upload` stops at the IPA; `--submit` is the only path that submits, and it is never the default.
 
 ## 8. iOS tab smoke test (manual, simulator)
