@@ -9,7 +9,7 @@
 **Repo:** https://github.com/ChristianVerdin/cfb-gameday-board (public, MIT) · local `/Users/cv/projects/cfb-gameday`
 **iOS:** bundle `com.hoynelabs.cfbgameday` · App Store Connect app id 6809035228 · Team ID 3V73W9NUZ6
 **Domain:** cfbgameday.app, Vercel-registered, free first year, renews 2027-09-05 at $15
-**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 (still key FQRRWFFM28, still unrotated) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), ratings prompt committed, nothing uploaded · approved plan below (cv, 2026-10-07)
+**State (2026-10-07):** site live with **Week 6** (55 games Thu 10/8–Sat 10/10: 4 Thu, 5 Fri, 46 Sat, none Sun/Mon), built locally Wed 10:11 CT ahead of the 1 PM cron: 55/55 forecasts, 55/55 enriched, 0 warnings, every game lined; IOWA @ WASH (Fri) has no network on ESPN yet and renders TBD · Week 6 promo text applied 2026-10-07 · ASC key rotated 2026-10-07 (`FQRRWFFM28` revoked, now `WUSAQJV85V`) · `<title>`/meta description are now generated per week (SEO) · **iOS 1.0.1 (4) live**, nothing waiting on Apple · 1.0.2 listing copy staged in `ios/metadata/version/1.0.2/` (game sheet; no `promotionalText` on purpose, so a release keeps the live weekly line), ratings prompt committed, nothing uploaded · approved plan below (cv, 2026-10-07)
 
 ## Approved plan (cv, 2026-10-07)
 
@@ -18,11 +18,11 @@ Recommendations approved as a set. cv owns the ASC web clicks, key handling and 
 
 | # | Decision | Owner | Status |
 |---|---|---|---|
-| 1 | Rotate ASC key `FQRRWFFM28` (steps below) | cv | open, gates the 1.0.2 upload |
+| 1 | Rotate ASC key `FQRRWFFM28` | cv | **done 10-07**: revoked; new key `WUSAQJV85V` installed and verified |
 | 2 | Ship iOS 1.0.2: ratings prompt, age rating, new screenshots, game-sheet copy | Claude, cv submits | prompt done 10-07 (`ReviewPrompt.swift`); copy staged in `ios/metadata/version/1.0.2/`; screenshots Sat 10/10 3–5 PM CT; upload + submit Sun 10/11 |
 | 3 | Age rating 18+ via `--age-rating-override-v2 EIGHTEEN_PLUS` on the 1.0.2 app info | Claude | with 1.0.2 |
 | 4 | Uncheck Apple Silicon Mac availability (Pricing and Availability) | cv | open |
-| 5 | Keep the repo public; trim the key-incident section below to one line after #1 | Claude | after #1 |
+| 5 | Keep the repo public; trim the key-incident section after #1 | Claude | **done 10-07** |
 | 6 | Board window Tue–Mon (+ Tue 7 AM CT cron, `parse_dates` cap 7, `liveDatesFor` skips empty dates) | Claude | week of 10/12, before MACtion |
 | 7 | Cookieless Vercel Web Analytics on the web only, never inside the app (`window.cfbNative`), privacy.html updated | cv OKs cost, Claude | week of 10/12 |
 | 8 | Campaign links: cv generates the `pt` token, Claude applies the names in `ios/APP_STORE.md` | cv, Claude | waiting on token |
@@ -47,41 +47,17 @@ app's container prefs.
 - **Analytics download gotcha:** `asc analytics download` re-lists reports per segment, so 65 back-to-back downloads hit Apple's hourly limit (429, retry-after ~37 min, then a rolling few minutes). Space them or download per processing date.
 
 
-## ACTION FOR CV — rotate ASC key `FQRRWFFM28` (opened 2026-09-26)
+## ASC key rotation — resolved 2026-10-07
 
-**What happened.** On 2026-09-25 a Claude Code session in `fanduel_scraping_agent`
-queried Chrome Canary's download history and selected `downloads_url_chains.url`.
-One row was a `data:text/plain` download whose URL *was* a private key, so the
-complete PKCS#8 EC key was printed into that session's transcript.
+`FQRRWFFM28` (App Manager, "release-script") was printed into a 2026-09-25 session transcript and was
+revoked by cv on 2026-10-07; Apple now rejects it. The replacement is **`WUSAQJV85V`** (App Manager),
+installed at `~/.appstoreconnect/private_keys/AuthKey_WUSAQJV85V.p8` (600), set as the `cfbgameday`
+profile and default key in `~/.asc/config.json`, and as `ASC_KEY_ID` in `~/.config/cfb-gameday.env`.
+Verified with `asc apps list` / `asc review status`; the old `.p8` is deleted. `R79Z9DL337`
+(`cfbgameday-reports`, Admin) was never exposed and is unchanged.
 
-**Which key.** Verified 2026-09-26 by matching a fragment of the printed key
-against both local files: it is **`AuthKey_FQRRWFFM28.p8`** — the `cfbgameday`
-profile in `~/.asc/config.json`, the default key this repo ships with
-(`scripts/release_ios.sh`, `scripts/promo_text.py`). `R79Z9DL337`
-(`cfbgameday-reports`) does **not** match and needs no action. Both keys are
-on issuer `46c99ca1-23b3-4982-9adc-e04c162c7e97`.
-
-**Blast radius.** The key can upload builds, edit metadata, manage submissions
-and pull sales/analytics reports for app id 6809035228. It cannot move money or
-change bank details. The transcript is local session history plus Anthropic's
-logs — not public — so the likely exposure is low, but the key should be treated
-as compromised.
-
-**Do this:**
-1. App Store Connect → Users and Access → Integrations → App Store Connect API
-   → revoke key `FQRRWFFM28`.
-2. Generate a replacement with the same role (Admin/App Manager, whichever
-   `FQRRWFFM28` had), download the new `.p8` once.
-3. `mv ~/Downloads/AuthKey_<NEW>.p8 ~/.appstoreconnect/private_keys/` and
-   `chmod 600` it.
-4. In `~/.asc/config.json`, update the `cfbgameday` entry (`key_id`,
-   `private_key_path`) and the top-level `key_id` / `private_key_path`.
-5. Verify: `asc apps list` (or `asc validate`) returns without an auth error.
-6. `rm ~/.appstoreconnect/private_keys/AuthKey_FQRRWFFM28.p8`.
-
-**Lesson for any session:** never select `downloads_url_chains.url` from a
-Chrome history DB — `data:` downloads embed their entire payload in that column.
-Select `target_path` and `tab_url` instead.
+**Lesson for any session:** never select `downloads_url_chains.url` from a Chrome history DB: `data:`
+downloads embed their entire payload in that column. Select `target_path` and `tab_url` instead.
 
 ---
 
@@ -322,7 +298,7 @@ The script regenerates the project, archives, exports an App Store IPA
 (`ios/ExportOptions.plist`), validates, and uploads through the App Store
 Connect API using `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`
 and the `.p8` in `~/.appstoreconnect/private_keys/`. Verified end to end on 2026-09-05:
-export plus `altool --validate-app` passed with the API key (key id FQRRWFFM28,
+export plus `altool --validate-app` passed with the API key (key id FQRRWFFM28, rotated 2026-10-07 to WUSAQJV85V,
 App Manager role; the `.p8` is in `~/.appstoreconnect/private_keys/`, never in git).
 `--no-upload` stops at the IPA, then `open ios/build/CFBGameDay.xcarchive` and
 upload from Organizer as a fallback. After upload: App Store Connect, add a new
