@@ -20,7 +20,7 @@
 | ~~Sun 10/11~~ Wed 10/7 | **1.0.2 (5) submitted 2026-10-07 14:34 CT on cv's go** (submission `03db7f99-14dc-44b9-a001-1b971376fb4b`; releases itself on approval). Version `31e0114f-722b-4c5b-810f-f516603279e8` (PREPARE_FOR_SUBMISSION, release AFTER_APPROVAL), build `45cfcb22-cede-417d-a6a6-6da5c79cffbd` attached; game-sheet description + What's New + keywords applied; promo text on 1.0.2; 5 new 6.5" screenshots (Sat board/weather desk, game sheet scoring, box score, Lines sheet, By TV; `ios/screenshots/1.0.2/`, gitignored) replaced the Week 1 set; age rating override V2 `EIGHTEEN_PLUS` on 1.0.2's declaration `e9c6a4d4-...`; `asc review doctor` 0 errors/0 warnings/0 blocking. Submit: `asc review submit --app 6809035228 --version-id 31e0114f-722b-4c5b-810f-f516603279e8 --build-id 45cfcb22-cede-417d-a6a6-6da5c79cffbd --confirm` | done |
 | Wed 10/14 | Week 7 build + `promo_text.py --apply` + `asc reviews list --app 6809035228` (weekly; replaces review notifications for cv) | Claude |
 | ~~Before Nov 1~~ | **Done 2026-10-07:** board window Tue–Mon (Tue 7 AM CT cron, 7-date live cap, empty dates skipped), promo rain clause at ≥60% | Claude |
-| On hold (cv) | ~~Mac listing~~ done 2026-10-07 · EU DSA checked 2026-10-07: account is declared **not a trader**, so EU listings show no contact info. cv is changing the LLC's business address (Illinois SOS first, then D-U-N-S, then Apple membership → Update your information); revisit trader status only after that, since a trader listing displays the D-U-N-S address | cv |
+| On hold (cv) | Business and account items (EU trader status, business address change): see `CONTEXT.private.md`, local only | cv |
 
 Done 2026-10-07: Week 6 live, Week 6 promo text, week-aware `<title>`/description, ESPN-text escaping fix,
 ratings prompt (`ReviewPrompt.swift`), ASC key rotated (`WUSAQJV85V`), accessibility labels published (Dark Interface,
@@ -42,9 +42,9 @@ app's container prefs.
 ### Findings behind it (2026-10-07 analytics pass)
 
 - **Age rating is 4+ on the store, not the documented 17+.** `asc age-rating view` shows every answer NONE and both overrides NONE. Either it was never saved or Apple's 2025 age-rating migration (4+/9+/13+/16+/18+, V2 override) dropped it.
-- **App Store funnel, Sep 10–Oct 5** (Analytics Reports, request 15cce5e9, `cfbgameday-reports`): 5 first-time downloads total, none since 9/21; 305 search impressions (~12/day, ~70% outside the US) → 21 product-page views → 4 Get taps. Impression→page view (~7%) is the leak. A search result shows only icon, name, subtitle, rating and the first screenshots, all of which need a new version; promo text appears on the product page, not in search. Sessions, crashes and deletions report nothing (below Apple's privacy thresholds). 1 rating (5.0), 0 written reviews.
-- **No web usage data exists.** No analytics on the site by design. Vercel Pro keeps runtime logs 1 day, deeper metrics need Observability Plus. Google indexes only `/`. GitHub: 1 repo view in 14 days; topics widened 2026-10-07.
-- **Mac listing** shows "Not verified for macOS".
+- **Analytics numbers, traffic and compliance details** live in `CONTEXT.private.md` (gitignored; this repo is public). Short version: the App Store search-to-page-view rate is the weak point, which 1.0.2's new screenshots and ratings prompt address.
+- **No web analytics, by design** (privacy page + "Data Not Collected" label; the app loads this site). Vercel Pro keeps runtime logs 1 day.
+- **Mac listing:** verified compatible 2026-10-07 after testing the Mac App Store build.
 - **Midweek games were off the board** (Thu–Mon window). Fixed 2026-10-07: the window is now Tue–Mon with a Tue 7 AM CT cron.
 - **Analytics download gotcha:** `asc analytics download` re-lists reports per segment, so 65 back-to-back downloads hit Apple's hourly limit (429, retry-after ~37 min, then a rolling few minutes). Space them or download per processing date.
 

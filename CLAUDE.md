@@ -5,7 +5,8 @@ ESPN, implied scores, TV, then live cover/total state. Owner: cv
 (@SportsBettingML). Public repo: https://github.com/ChristianVerdin/cfb-gameday-board
 
 ## Session start
-1. Read this file, then `CONTEXT.md` (live state, open items), then `README.md`.
+1. Read this file, then `CONTEXT.md` (live state, open items), then `CONTEXT.private.md` if it exists
+   (business/account notes, local only), then `README.md`.
    `docs/ARCHITECTURE.md` when touching data flow, ESPN, or weather; `AGENTS.md`
    for the map of everything that runs unattended.
 2. `git status` and `git log --oneline | head -5`.
@@ -79,6 +80,8 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - If a "known issues" list is given with a task, fix those before new work.
 - Commit after each completed step. Run `scripts/check.py` before committing rule changes.
 - Public repo: never commit `.env`, keys, cookies, tokens, Apple `.p8` / provisioning profiles, Vercel tokens, `.vercel/`. Scan the tree before `git add`.
+- Business and account details (download and traffic numbers, trader/compliance status, addresses, banking) go in
+  `CONTEXT.private.md` (gitignored), never in tracked files.
 - Never rebuild the snapshot in a way that drops lines: `refresh_week.py` carries the prior line forward when ESPN has none. Keep that.
 - Hosting is Vercel; `deploy/` holds self-host drafts only. Never deploy to EC2
   without "deploy to EC2" and a host. App Store upload and attach run from

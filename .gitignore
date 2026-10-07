@@ -28,6 +28,9 @@ ios/DerivedData/
 xcuserdata/
 ios/screenshots/
 
+# Business/account notes (analytics numbers, compliance, addresses): local only, this repo is public
+CONTEXT.private.md
+
 # App Review attachments (screen recordings, narration)
 ios/review/
 ios/video/
