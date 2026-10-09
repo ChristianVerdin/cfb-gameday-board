@@ -14,7 +14,8 @@ settings:
     CURRENT_PROJECT_VERSION: "5"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 3V73W9NUZ6   # Hoyne Labs LLC; keeps signing across xcodegen regenerations
-    TARGETED_DEVICE_FAMILY: "1"          # iPhone only; "1,2" would trigger the iPad multitasking orientation rule at upload
+    TARGETED_DEVICE_FAMILY: "1,2"        # iPhone + iPad. iPad needs all four orientations and no UIRequiresFullScreen
+                                         # (upload error 90474 otherwise); that same setup is what makes the Mac window resizable
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     SUPPORTS_MACCATALYST: NO
     SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
@@ -30,7 +31,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hoynelabs.cfbgameday
         PRODUCT_NAME: CFBGameDay
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_UILaunchScreen_Generation: NO
@@ -44,9 +45,15 @@ targets:
         LSApplicationCategoryType: public.app-category.sports
         ITSAppUsesNonExemptEncryption: false
         UIUserInterfaceStyle: Dark
-        UIRequiresFullScreen: true
+        # No UIRequiresFullScreen: deprecated in iPadOS 26, ignored for resizing from iOS 27 (TN3192),
+        # and a full-screen app gets a fixed-size window on Mac.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UILaunchScreen:
           UIColorName: LaunchBackground
         # The one URL the app loads.
