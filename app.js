@@ -502,14 +502,19 @@
       const a=g.away||{}, h=g.home||{}, o=g.odds||{}, impl=g.implied||{};
       const math=liveMath(g);
       // Cover/total state is live math; before kickoff it would grade a 0-0 score, so show the opener instead.
-      const openSp=o.home_spread&&o.home_spread.open&&o.home_spread.open!==o.home_spread.line?`open ${h.abbr||"HOME"} ${o.home_spread.open}`:"";
+      // In the same team's terms as the posted line above it ("IU -7.5" / "open -9.5").
+      const hs=o.home_spread||{}, openN=Number(hs.open);
+      const favHome=(o.details||"").startsWith(`${h.abbr} `);
+      const openV=Number.isFinite(openN)&&hs.open!==hs.line ? (favHome?openN:-openN) : null;
+      const openSp=openV==null?"":`open ${openV>0?"+":""}${openV===0?"PK":openV}`;
+      const kick=started(g)||day==="all" ? clockLabel(g) : fmtKick(g).replace(/^[A-Z][a-z]{2} /,"").replace(/ CT$/,"");
       const score = (isLive(g)||isFinal(g)) ? `${a.score||0}–${h.score||0}` : "";
       return `<tr>
-        <td>${clockLabel(g)}<div class="juice">${(g.networks||[]).join("/")}</div></td>
+        <td class="nw">${kick}<div class="juice">${(g.networks||[]).join("/")}</div></td>
         <td>${started(g)?`<a class="glink" href="#game/${g.id}">`:""}<b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}${started(g)?" ›</a>":""}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}</div></td>
         <td>${o.details||"—"}<div class="juice">${started(g) ? `${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}` : openSp}</div></td>
         <td>${o.total!=null?o.total:"—"}<div class="juice">${started(g) && math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
-        ${showProj ? `<td>${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
+        ${showProj ? `<td class="nw">${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
         <td>${g.temp!=null?Math.round(g.temp)+"°":"—"} ${g.wx_emoji||""}<div class="juice">${(g.flags||[]).join(" · ")}</div></td>
       </tr>`;
     }).join("");
