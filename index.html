@@ -42,10 +42,12 @@
       <div class="sub" id="updated">Venue, weather, implied score, CT kickoff</div>
     </header>
     <div class="rowscroll" id="days"></div>
-    <div class="searchwrap"><input id="q" type="search" placeholder="Search team, stadium, city, TV, conference…" /></div>
+    <div class="searchwrap"><input id="q" type="search" placeholder="Search team, stadium, city, TV…" aria-label="Search games" /><button class="fbtn ftoggle" id="ftoggle" type="button" aria-controls="filters" aria-expanded="false">Filters</button></div>
     <div class="rowscroll" id="views"></div>
-    <div class="rowscroll" id="toggles"></div>
-    <div class="rowscroll" id="windows"></div>
+    <div class="filters" id="filters" hidden>
+      <div class="rowscroll" id="toggles"></div>
+      <div class="rowscroll" id="windows"></div>
+    </div>
     <div class="stats" id="stats"></div>
     <div class="desk" id="desk"></div>
     <div id="main"></div>
