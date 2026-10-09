@@ -46,17 +46,37 @@
   let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, confOnly=false, group="all", q="", sort="time";
   let liveStatus = { ok:false, fromFile: location.protocol === "file:", last:null, error:null };
   // Filter panel: collapsed on phones so the first game is above the fold, open on wide screens.
+  // Until the viewer picks, follow the width: an app window can open phone-sized and be widened later.
   const FILTERS_KEY = "cfb_gameday_filters_open";
-  let filtersOpen = window.matchMedia("(min-width: 900px)").matches;
-  try { const s = localStorage.getItem(FILTERS_KEY); if (s !== null) filtersOpen = s === "1"; } catch (e) {}
+  const wideMq = window.matchMedia("(min-width: 900px)");
+  let filtersPref = null;
+  try { const s = localStorage.getItem(FILTERS_KEY); if (s !== null) filtersPref = s === "1"; } catch (e) {}
+  let filtersOpen = filtersPref ?? wideMq.matches;
+  if (wideMq.addEventListener) wideMq.addEventListener("change", () => { if (filtersPref === null) { filtersOpen = wideMq.matches; pills(); } });
+  // Live / Starred that come from the URL (the app's tabs) are the page itself, not a filter to count or reset.
   function activeFilters() {
-    return [group !== "all", confOnly, ranked, starredOnly, liveOnly, weatherOnly, win !== "all", sort !== "time"].filter(Boolean).length;
+    const f = hashFilters(location.hash);
+    return [group !== "all", confOnly, ranked, starredOnly && !f.starredOnly, liveOnly && !f.liveOnly,
+            weatherOnly, win !== "all", sort !== "time"].filter(Boolean).length;
   }
   function resetFilters() {
+    const f = hashFilters(location.hash);
     group = "all"; win = "all"; sort = "time"; q = "";
-    confOnly = ranked = starredOnly = liveOnly = weatherOnly = false;
+    confOnly = ranked = weatherOnly = false;
+    starredOnly = f.starredOnly; liveOnly = f.liveOnly;
     $("q").value = "";
     pills(); render();
+  }
+  function emptyHtml() {
+    const reset = activeFilters() || q ? `<br /><button class="fbtn" data-reset>Reset filters</button>` : "";
+    if (liveOnly && !games.some(isLive)) {
+      const next = games.filter(g => !started(g) && kickDate(g) && kickDate(g) > new Date())
+                        .sort((a, b) => kickDate(a) - kickDate(b))[0];
+      const when = next ? `<br />Next kickoff: <b>${esc(next.shortName)}</b> · ${esc(fmtKick(next))}` : "";
+      return `<div class="empty">No games are live right now.${when}</div>`;
+    }
+    if (starredOnly && !stars.size) return `<div class="empty">Tap ☆ on any game to star it. Starred games collect here.</div>`;
+    return `<div class="empty">No games match those filters.${reset}</div>`;
   }
 
   function kickMinutes(g) {
@@ -585,7 +605,7 @@
     if (view==="lines") html = linesSheet(list);
     else if (view==="tv") html = tvBoard(list);
     else if (view==="blowouts") html = blowoutBoard(list);
-    else html = `<div class="list cards">${list.map(card).join("")||`<div class="empty">No games match those filters.${activeFilters()||q?`<br /><button class="fbtn" data-reset>Reset filters</button>`:""}</div>`}</div>`;
+    else html = `<div class="list cards">${list.map(card).join("")||emptyHtml()}</div>`;
     $("main").innerHTML = html;
     const heat = games.filter(g => (g.flags||[]).some(f=>f.includes("HEAT")||f==="HOT")).length;
     const liveCount = games.filter(isLive).length;
@@ -649,7 +669,7 @@
   }
   $("q").addEventListener("input", e => { q=e.target.value; render(); });
   $("ftoggle").onclick = () => {
-    filtersOpen = !filtersOpen;
+    filtersOpen = filtersPref = !filtersOpen;
     try { localStorage.setItem(FILTERS_KEY, filtersOpen ? "1" : "0"); } catch (e) {}
     pills();
   };
