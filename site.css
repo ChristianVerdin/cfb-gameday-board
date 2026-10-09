@@ -15,14 +15,23 @@ h1 { margin: 2px 0 0; font-size: 22px; letter-spacing: -.02em; }
 .rowscroll::-webkit-scrollbar { display: none; }
 .fbtn { flex: 0 0 auto; min-height: 44px; min-width: 44px; border: 1px solid var(--line); background: var(--chip); color: var(--text); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; }
 .fbtn.active { background: var(--gold); color: #1a1406; border-color: var(--gold); }
-.searchwrap { padding: 0 14px 8px; }
+.searchwrap { padding: 0 14px; display: flex; gap: 8px; align-items: center; }
+.searchwrap input { flex: 1; min-width: 0; }
+.ftoggle.open:not(.active) { border-color: var(--gold); color: var(--gold2); }
+.fcount { display: inline-block; min-width: 18px; margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: #1a1406; color: var(--gold2); font-size: 11px; }
+.filters[hidden] { display: none; }
+.filters .rowscroll { flex-wrap: wrap; overflow-x: visible; }   /* opened on purpose: show every option, no hidden sideways scroll */
+.filters .rowscroll + .rowscroll { padding-top: 0; }
+.empty .fbtn { margin-top: 12px; }
+/* Wide windows (iPad, Mac, desktop): a mouse can't reach a hidden horizontal scroll, so wrap every row. */
+@media (min-width: 600px) { .rowscroll { flex-wrap: wrap; overflow-x: visible; } }
 input, select { width: 100%; background: var(--bg2); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 11px 12px; font-size: 16px; min-height: 44px; } /* 16px: iOS does not zoom on focus */
 select { width: auto; padding: 8px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
-.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 0 14px 10px; }
-@media (min-width: 480px) { .stats { grid-template-columns: repeat(4, 1fr); } }
-.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px; text-align: center; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 14px 10px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 6px 4px; text-align: center; }
 .stat b { display: block; font-size: 16px; color: var(--gold2); }
-.stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.stat span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; }
+@media (min-width: 480px) { .stats { gap: 8px; } .stat { padding: 8px; } .stat span { font-size: 10px; letter-spacing: .03em; } }
 .desk { padding: 0 14px 10px; }
 .desk h2 { margin: 4px 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
 .deskcard { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
@@ -92,6 +101,12 @@ td { padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
 .tag.alt { background:#1c2a1c; color:var(--green); }
 .list.cards { display:flex; flex-direction:column; gap:10px; }
 @media (min-width:900px) { .list.cards { display:grid; grid-template-columns:1fr 1fr; } }
+/* Big iPad / Mac / desktop windows: three columns instead of two stretched cards. */
+@media (min-width:1400px) {
+  .wrap { max-width: 1640px; }
+  .list.cards { grid-template-columns: repeat(3, 1fr); }
+  .desk-grid { grid-template-columns: repeat(3, 1fr); }
+}
 .card.is-live { border-color:#c9842a; }
 .livepill { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.06em; border-radius:999px; padding:3px 7px; margin-right:6px; background:#3a1b14; color:var(--orange); }
 .livepill.final { background:#1c2a1c; color:var(--green); }
@@ -114,6 +129,11 @@ body.gopen { overflow: hidden; }
 .gsheet { position: fixed; inset: 0; z-index: 50; background: rgba(4,8,16,.6); display: flex; align-items: flex-end; justify-content: center; }
 .gsheet[hidden] { display: none; }
 .gpanel { position: relative; width: 100%; max-width: 720px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--bg2); border: 1px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+/* Wide windows: a centred dialog reads better than a sheet glued to the bottom edge. */
+@media (min-width: 900px) {
+  .gsheet { align-items: center; padding: 24px; }
+  .gpanel { border-radius: 16px; border-bottom: 1px solid var(--line); max-height: 86dvh; padding-bottom: 0; }
+}
 .gx { position: absolute; top: 6px; right: 6px; min-width: 44px; min-height: 44px; background: none; border: 0; color: var(--muted); font-size: 24px; }
 .ghead, .gtabs { flex-shrink: 0; }
 .ghead { padding: 14px 52px 6px 14px; }

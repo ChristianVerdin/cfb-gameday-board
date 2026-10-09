@@ -45,6 +45,19 @@
   ];
   let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, confOnly=false, group="all", q="", sort="time";
   let liveStatus = { ok:false, fromFile: location.protocol === "file:", last:null, error:null };
+  // Filter panel: collapsed on phones so the first game is above the fold, open on wide screens.
+  const FILTERS_KEY = "cfb_gameday_filters_open";
+  let filtersOpen = window.matchMedia("(min-width: 900px)").matches;
+  try { const s = localStorage.getItem(FILTERS_KEY); if (s !== null) filtersOpen = s === "1"; } catch (e) {}
+  function activeFilters() {
+    return [group !== "all", confOnly, ranked, starredOnly, liveOnly, weatherOnly, win !== "all", sort !== "time"].filter(Boolean).length;
+  }
+  function resetFilters() {
+    group = "all"; win = "all"; sort = "time"; q = "";
+    confOnly = ranked = starredOnly = liveOnly = weatherOnly = false;
+    $("q").value = "";
+    pills(); render();
+  }
 
   function kickMinutes(g) {
     const d = kickDate(g);
@@ -572,7 +585,7 @@
     if (view==="lines") html = linesSheet(list);
     else if (view==="tv") html = tvBoard(list);
     else if (view==="blowouts") html = blowoutBoard(list);
-    else html = `<div class="list cards">${list.map(card).join("")||`<div class="empty">No games match those filters.</div>`}</div>`;
+    else html = `<div class="list cards">${list.map(card).join("")||`<div class="empty">No games match those filters.${activeFilters()||q?`<br /><button class="fbtn" data-reset>Reset filters</button>`:""}</div>`}</div>`;
     $("main").innerHTML = html;
     const heat = games.filter(g => (g.flags||[]).some(f=>f.includes("HEAT")||f==="HOT")).length;
     const liveCount = games.filter(isLive).length;
@@ -612,7 +625,14 @@
         <option value="temp"${sort==="temp"?" selected":""}>Sort: heat</option>
         <option value="wind"${sort==="wind"?" selected":""}>Sort: wind</option>
         <option value="rain"${sort==="rain"?" selected":""}>Sort: rain</option>
-      </select>`;
+      </select>
+      ${activeFilters()?`<button class="fbtn" data-reset>Reset</button>`:""}`;
+    const n = activeFilters(), ft = $("ftoggle");
+    ft.classList.toggle("active", n > 0);
+    ft.classList.toggle("open", filtersOpen);
+    ft.setAttribute("aria-expanded", String(filtersOpen));
+    ft.innerHTML = `Filters${n ? ` <span class="fcount">${n}</span>` : ""}`;
+    $("filters").hidden = !filtersOpen;
     $("days").onclick = e => { const b=e.target.closest("[data-day]"); if(!b)return; day=b.dataset.day; pills(); render(); };
     $("views").onclick = e => { const b=e.target.closest("[data-view]"); if(!b)return; view=b.dataset.view; pills(); render(); };
     $("windows").onclick = e => { const b=e.target.closest("[data-win]"); if(!b)return; win=b.dataset.win; pills(); render(); };
@@ -628,7 +648,13 @@
     $("sort").onchange = e => { sort=e.target.value; render(); };
   }
   $("q").addEventListener("input", e => { q=e.target.value; render(); });
+  $("ftoggle").onclick = () => {
+    filtersOpen = !filtersOpen;
+    try { localStorage.setItem(FILTERS_KEY, filtersOpen ? "1" : "0"); } catch (e) {}
+    pills();
+  };
   document.addEventListener("click", e => {
+    if (e.target.closest("[data-reset]")) { resetFilters(); return; }
     const s=e.target.closest("[data-star]"); if(s){ toggleStar(s.dataset.star); return; }
     const c=e.target.closest("[data-copy]"); if(c){ const g=games.find(x=>x.id===c.dataset.copy); if(g) copyText(blurb(g), c); }
   });
