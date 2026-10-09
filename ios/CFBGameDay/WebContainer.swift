@@ -112,6 +112,13 @@ final class WebContainer: NSObject, ObservableObject {
         webView.evaluateJavaScript("location.hash = '#\(fragment)';", completionHandler: nil)
     }
 
+    /// Command-F: put the cursor in the board's search box.
+    func focusSearch() {
+        webView.becomeFirstResponder()
+        webView.evaluateJavaScript("(function(){var q=document.getElementById('q');if(q){window.scrollTo(0,0);q.focus();q.select();}})()",
+                                   completionHandler: nil)
+    }
+
     func reload() {
         failure = nil
         if webView.url == nil { load(fragment: "all") } else { webView.reload() }

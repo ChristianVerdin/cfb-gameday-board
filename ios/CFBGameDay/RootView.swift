@@ -22,6 +22,15 @@ struct RootView: View {
             }
         }
         .tint(.yellow)
+        .focusedSceneValue(\.boardActions, BoardActions(
+            select: { tab = $0 },
+            reload: { container.reload() },
+            find: {
+                if tab.fragment == nil { tab = .board }
+                container.focusSearch()
+            }
+        ))
+        .onAppear { WindowSizing.apply() }
         .onChange(of: tab) { _, new in
             if let fragment = new.fragment { container.show(fragment: fragment) }
         }

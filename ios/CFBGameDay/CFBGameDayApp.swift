@@ -7,5 +7,6 @@ struct CFBGameDayApp: App {
             RootView()
                 .preferredColorScheme(.dark)
         }
+        .commands { BoardCommands() }
     }
 }
