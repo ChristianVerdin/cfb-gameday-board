@@ -76,7 +76,7 @@ select { width: auto; padding: 8px 10px; border-radius: 999px; font-size: 13px; 
 .flag.rain { background: #14263a; color: var(--blue); }
 .flag.wind { background: #1c2a1c; color: var(--green); }
 .flag.indoor { background: #24183a; color: var(--purple); }
-.empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+.empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 16px; line-height: 1.6; }
 footer { color: var(--dim); font-size: 11px; text-align: center; padding: 4px 16px 28px; line-height: 1.4; }
 .a2hs { margin: 0 14px 10px; background: #10192b; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 .a2hs[hidden] { display: none; }   /* display:flex above would otherwise override the hidden attribute */
@@ -102,7 +102,7 @@ td { padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
 .list.cards { display:flex; flex-direction:column; gap:10px; }
 @media (min-width:900px) { .list.cards { display:grid; grid-template-columns:1fr 1fr; } }
 /* Big iPad / Mac / desktop windows: three columns instead of two stretched cards. */
-@media (min-width:1400px) {
+@media (min-width:1280px) {
   .wrap { max-width: 1640px; }
   .list.cards { grid-template-columns: repeat(3, 1fr); }
   .desk-grid { grid-template-columns: repeat(3, 1fr); }
