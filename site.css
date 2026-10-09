@@ -98,6 +98,7 @@ footer { color: var(--dim); font-size: 11px; text-align: center; padding: 4px 16
 table { width:100%; border-collapse:collapse; font-size:12px; }
 th { text-align:left; color:var(--dim); font-size:10px; letter-spacing:.04em; text-transform:uppercase; padding:6px 4px; border-bottom:1px solid var(--line); }
 td { padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
+td.nw { white-space:nowrap; }
 .tag.alt { background:#1c2a1c; color:var(--green); }
 .list.cards { display:flex; flex-direction:column; gap:10px; }
 @media (min-width:900px) { .list.cards { display:grid; grid-template-columns:1fr 1fr; } }
