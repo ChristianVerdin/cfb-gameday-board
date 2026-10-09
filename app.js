@@ -501,12 +501,14 @@
     const rows = list.map(g=>{
       const a=g.away||{}, h=g.home||{}, o=g.odds||{}, impl=g.implied||{};
       const math=liveMath(g);
+      // Cover/total state is live math; before kickoff it would grade a 0-0 score, so show the opener instead.
+      const openSp=o.home_spread&&o.home_spread.open&&o.home_spread.open!==o.home_spread.line?`open ${h.abbr||"HOME"} ${o.home_spread.open}`:"";
       const score = (isLive(g)||isFinal(g)) ? `${a.score||0}–${h.score||0}` : "";
       return `<tr>
         <td>${clockLabel(g)}<div class="juice">${(g.networks||[]).join("/")}</div></td>
         <td>${started(g)?`<a class="glink" href="#game/${g.id}">`:""}<b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}${started(g)?" ›</a>":""}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}</div></td>
-        <td>${o.details||"—"}<div class="juice">${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}</div></td>
-        <td>${o.total!=null?o.total:"—"}<div class="juice">${math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
+        <td>${o.details||"—"}<div class="juice">${started(g) ? `${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}` : openSp}</div></td>
+        <td>${o.total!=null?o.total:"—"}<div class="juice">${started(g) && math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
         ${showProj ? `<td>${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
         <td>${g.temp!=null?Math.round(g.temp)+"°":"—"} ${g.wx_emoji||""}<div class="juice">${(g.flags||[]).join(" · ")}</div></td>
       </tr>`;
@@ -600,7 +602,8 @@
   }
   function render() {
     const list = filtered();
-    $("desk").innerHTML = deskHtml(list);
+    // The desk sits above the board; on Lines/TV/Blowouts it would push the chosen sheet off screen.
+    $("desk").innerHTML = view === "cards" ? deskHtml(list) : "";
     let html = "";
     if (view==="lines") html = linesSheet(list);
     else if (view==="tv") html = tvBoard(list);
