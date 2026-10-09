@@ -50,9 +50,9 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - `scripts/refresh_week.py` weekly snapshot builder: ESPN scoreboard + Open-Meteo, a
   per-game ESPN summary enrichment pass (`--no-enrich` to skip), and the generated
   `index.html` slate block (`--seo-only` rebuilds just that, no network).
-  `scripts/check.py` smoke test. `scripts/run_summary.py` CI digest.
+  `scripts/check.py` smoke test. `scripts/run_summary.py` CI digest. `scripts/store_shots.py` captioned App Store screenshots.
 - `manifest.webmanifest`, `sw.js`, `icons/` PWA. Shell-only cache; `/api/*` never cached. Bump `VERSION` in `sw.js` when the shell changes.
-- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`; live metadata JSON: `ios/metadata/` (applied by the release script). Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC. Review media (`ios/review/`) is gitignored.
+- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. iPhone + iPad from 1.0.3; the iPad setup (all orientations, no `UIRequiresFullScreen`) is what makes the Mac window resizable, so keep it. Mac run steps and screenshot sets: `ios/APP_STORE.md`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`; live metadata JSON: `ios/metadata/` (applied by the release script). Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC. Review media (`ios/review/`) is gitignored.
 - `privacy.html`, `support.html`, `site.css`: public pages App Review links to; keep them accurate when data sources change.
 
 ## Product rules
