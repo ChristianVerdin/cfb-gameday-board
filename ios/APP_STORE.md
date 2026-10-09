@@ -140,6 +140,47 @@ Plan (5 shots): Board with day pills and stats, a live card with cover/total,
 Lines sheet view, Weather desk with heat/wind flags, About tab. No device
 frames needed. Screenshots must show this app, not a mock.
 
+**Captioned sets (from 1.0.3).** The app supports iPad, so a 13" iPad set (2064×2752) is
+required as well. Capture raw shots as `<device>-<n>-<slug>.png` (`iphone` on the iOS 27
+iPhone 17 Pro Max, `ipad` on the iOS 27 iPad Pro 13-inch (M5); slugs board, weather, game,
+lines, tv, captions in `CAPTIONS`), then:
+
+```
+xcrun simctl status_bar <udid> override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3
+python3 scripts/store_shots.py ios/screenshots/<version>/raw ios/screenshots/<version>
+```
+
+That writes the 6.9" (`iphone-*`), 6.5" (`iphone65-*`) and 13" (`ipad-*`) sets, RGB, at
+Apple's exact sizes. The board's pills are web content AXe cannot see, so drive it with
+`axe tap -x -y` (points). `-fragment game/<id>` at launch opens the game sheet on a final.
+Captions follow Guideline 2.3.3 (the app stays the subject) and the asset best practices
+(no prices, URLs, betting language). `ios/screenshots/` is gitignored.
+
+## iPad and Mac (from 1.0.3)
+
+Apple: "iPhone apps always run in a fixed-size window" on Mac; an iPad app that supports
+multitasking gets a resizable one (developer.apple.com/documentation/apple-silicon/running-your-ios-apps-in-macos).
+So `project.yml` targets iPhone + iPad, iPad declares all four orientations, and there is no
+`UIRequiresFullScreen` (deprecated in iPadOS 26; from iOS 27 it no longer blocks resizing, TN3192).
+`WindowSizing` sets a 390×600 pt minimum through `UIWindowScene.sizeRestrictions` (the Mac
+shows iPad apps at 77%, so that reads as about 301×494 there). The Board menu (`BoardCommands.swift`)
+gives Command-1…4 for tabs, Command-F for search, Command-R for reload on the Mac menu bar,
+the iPadOS menu bar and hardware keyboards.
+
+Run it on this Mac as "Designed for iPad": the Mac is registered on the team (asc device
+`BY6D69H6KW`, 2026-10-09), then
+
+```
+cd ios && xcodebuild -scheme CFBGameDay -destination 'platform=macOS,variant=Designed for iPad' \
+  -derivedDataPath build/DerivedDataMac -allowProvisioningUpdates build
+W=build/MacRun/CFBGameDay.app; rm -rf build/MacRun; mkdir -p $W/Wrapper
+cp -R build/DerivedDataMac/Build/Products/Debug-iphoneos/CFBGameDay.app $W/Wrapper/
+ln -s Wrapper/CFBGameDay.app $W/WrappedBundle; open $W
+```
+
+(`open` on the bare `.app` fails with "incorrect executable format"; the Wrapper/WrappedBundle
+layout is what the App Store installs in /Applications.)
+
 ## Review notes (App Review Information)
 
 > CFB GameDay Board is an informational sports display: NCAA football scores, venues, kickoff weather, TV listings, and the publicly posted point spread and total for context. There are no accounts, no sign-in, no purchases, no deposits, and no way to place a wager. The app does not link to any sportsbook.
