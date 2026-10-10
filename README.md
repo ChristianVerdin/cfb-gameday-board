@@ -12,8 +12,9 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   snapshot rebuilds itself six times a week via GitHub Actions (Tue, Wed, Thu, Fri
   and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
-- **iPhone:** SwiftUI shell around the same board, in `ios/`. On the App Store
-  since 2026-09-10, currently 1.0.1: https://apps.apple.com/app/id6809035228
+- **iPhone, iPad and Mac:** SwiftUI shell around the same board, in `ios/`. On the App Store
+  since 2026-09-10, currently 1.0.3 (iPad and a resizable Mac window since 2026-10-10):
+  https://apps.apple.com/app/id6809035228
 
 ## What's on the board
 
@@ -77,7 +78,7 @@ needs the server because the browser cannot call ESPN directly.
 | `api/game.py` | Game sheet detail (scoring, box, leaders, drives, win probability) from ESPN's game summary |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
-| `ios/` | SwiftUI iPhone app: `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |
+| `ios/` | SwiftUI iPhone and iPad app (also runs on Apple silicon Macs): `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |
 | `scripts/release_ios.sh` | One-command iOS release: archive, export, validate, upload, attach (and `--submit`) via the `asc` CLI, altool fallback |
 | `scripts/ios_tab_check.sh` | Simulator smoke test: drives the tabs with AXe and fails on a blank revisit |
 | `scripts/review_mux.py` | Lays the narration lines over a phone screen recording at cue times, outputs H.264 for App Review |
