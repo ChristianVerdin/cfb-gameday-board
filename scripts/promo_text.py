@@ -19,11 +19,14 @@ FALLBACK = ("College football Saturdays on one screen: venue, kickoff weather, T
 def build(games, week):
     n = len(games)
     sat = sum(1 for g in games if g.get("kick_ct", "").startswith("Sat"))
-    outdoor = [g for g in games if not g.get("indoor")]   # indoor weather is off the board
-    rain = sum(1 for g in outdoor if ((g.get("wx") or {}).get("pop") or 0) >= 60)   # the RAIN RISK flag
-    heat = sum(1 for g in outdoor if (g.get("temp") or 0) > 85)
-    wind = sum(1 for g in outdoor if ((g.get("wx") or {}).get("wind") or 0) >= 15)
-    lined = [g for g in games if (g.get("odds") or {}).get("spread") is not None]
+    # The text stays up all week, so weather and the marquee only speak about kickoffs still
+    # to come, and they count the board's own flags (heat used to be >85F, the board's is 90F).
+    ahead = [g for g in games if g.get("gameState") != "post"]
+    outdoor = [g for g in ahead if not g.get("indoor")]   # indoor weather is off the board
+    flagged = lambda *names: sum(1 for g in outdoor if set(names) & set(g.get("flags") or []))
+    rain, heat, wind = flagged("RAIN RISK"), flagged("HOT", "EXTREME HEAT"), flagged("WIND", "HIGH WIND")
+    lined = [g for g in ahead if (g.get("odds") or {}).get("spread") is not None]
+    lined = [g for g in lined if g.get("kick_ct", "").startswith("Sat")] or lined
     close = None
     if lined:
         lo = min(abs(g["odds"]["spread"]) for g in lined)
