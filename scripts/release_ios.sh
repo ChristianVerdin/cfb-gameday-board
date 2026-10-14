@@ -10,6 +10,7 @@
 # Upload needs an App Store Connect API key (Users and Access > Integrations > App Store Connect API):
 #   ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8      (altool finds it there by itself)
 #   export ASC_KEY_ID=<KEY_ID> ASC_ISSUER_ID=<ISSUER_ID>       (put both in ~/.zshrc or ~/.config/cfb-gameday.env)
+#   export ASC_SIGNING_KEY_ID=<KEY_ID>                         (optional: export-signing key when Xcode has no account)
 # The .p8 never goes in the repo. .gitignore blocks *.p8.
 #
 # With the `asc` CLI installed and logged in (brew install asc; asc auth login ...), upload goes
@@ -41,15 +42,30 @@ fi
 version=$(sed -n 's/^ *MARKETING_VERSION: "\([^"]*\)".*/\1/p' project.yml | head -1)
 echo "==> CFBGameDay $version ($next_build)"
 
+# Export signs with the cloud-managed distribution certificate. Xcode does that through its signed-in
+# account; with no account (Xcode > Settings > Accounts empty: "No Accounts") set ASC_SIGNING_KEY_ID to an
+# API key allowed to cloud-sign. The App Manager key gets "Cloud signing permission error"; the Admin key
+# (R79Z9DL337) works. Its .p8 must be in ~/.appstoreconnect/private_keys/.
+AUTH=""
+if [ -n "${ASC_SIGNING_KEY_ID:-}" ]; then
+  : "${ASC_ISSUER_ID:?set ASC_ISSUER_ID to sign with ASC_SIGNING_KEY_ID}"
+  AUTH="-authenticationKeyPath $HOME/.appstoreconnect/private_keys/AuthKey_$ASC_SIGNING_KEY_ID.p8 -authenticationKeyID $ASC_SIGNING_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+fi
+
 xcodegen generate >/dev/null
 rm -rf build/CFBGameDay.xcarchive build/export
+# shellcheck disable=SC2086
 xcodebuild -project CFBGameDay.xcodeproj -scheme CFBGameDay -configuration Release \
   -destination 'generic/platform=iOS' -archivePath build/CFBGameDay.xcarchive \
-  -allowProvisioningUpdates archive 2>&1 | grep -E "error:|ARCHIVE (SUCCEEDED|FAILED)"
+  -allowProvisioningUpdates $AUTH archive 2>&1 | grep -E "error:|ARCHIVE (SUCCEEDED|FAILED)"
+[ -d build/CFBGameDay.xcarchive ] || { echo "==> archive failed"; exit 1; }
+# shellcheck disable=SC2086
 xcodebuild -exportArchive -archivePath build/CFBGameDay.xcarchive \
   -exportOptionsPlist ExportOptions.plist -exportPath build/export \
-  -allowProvisioningUpdates 2>&1 | grep -E "error:|EXPORT (SUCCEEDED|FAILED)"
-IPA=$(ls build/export/*.ipa | head -1)
+  -allowProvisioningUpdates $AUTH 2>&1 | grep -E "error:|EXPORT (SUCCEEDED|FAILED)"
+# The greps above swallow xcodebuild's status, so check for the IPA itself.
+IPA=$(ls build/export/*.ipa 2>/dev/null | head -1)
+[ -n "$IPA" ] || { echo "==> export failed, no IPA. 'No Accounts': sign in to Xcode or set ASC_SIGNING_KEY_ID (see above)."; exit 1; }
 echo "==> IPA: $IPA ($(du -h "$IPA" | cut -f1))"
 
 if [ "$UPLOAD" -eq 0 ]; then
