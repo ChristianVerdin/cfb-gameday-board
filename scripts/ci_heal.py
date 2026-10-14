@@ -23,9 +23,11 @@ FILES = ("games.json", "games.js", "index.html", "sitemap.xml")
 
 
 def failures(path=None):
+    # A geocode failure drops the forecast too, and reads exactly the same on the board.
     try:
         with open(path or os.path.join(ROOT, "games.json")) as f:
-            return int((json.load(f).get("counts") or {}).get("forecast_failed", 0))
+            counts = json.load(f).get("counts") or {}
+        return int(counts.get("forecast_failed", 0)) + int(counts.get("geocode_failed", 0))
     except Exception:
         return 0
 
@@ -44,7 +46,7 @@ def main():
     if not bad:
         return 0
 
-    print(f"::warning::{bad} forecast(s) failed; rebuilding once")
+    print(f"::warning::{bad} forecast or geocode failure(s); rebuilding once")
     backup = os.path.join(ROOT, ".heal-backup")
     os.makedirs(backup, exist_ok=True)
     for name in FILES:

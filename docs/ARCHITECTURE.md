@@ -175,7 +175,8 @@ Done once per week by `scripts/refresh_week.py`, never live.
    `lon`, `elev` (meters), `geo_name`, `admin1`, and the venue's IANA timezone.
    `elev_ft = round(elev * 3.28084)`. Cities are deduplicated per run, and any
    venue already present in the existing `games.json` reuses its stored `geo`
-   instead of hitting the geocoder again.
+   instead of hitting the geocoder again. A failed lookup is retried once from
+   the same whole-run retry budget as the forecasts, since no geo means no forecast.
 2. **Forecast** at the kickoff hour:
    `https://api.open-meteo.com/v1/forecast?latitude=..&longitude=..&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&start_date=..&end_date=..`.
    The kickoff UTC instant is shifted by the response's `utc_offset_seconds` to
