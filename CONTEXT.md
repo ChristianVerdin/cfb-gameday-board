@@ -217,17 +217,15 @@ Also note the build list lags several minutes behind a successful upload, so
 - **Game sheet shipped 2026-09-30** (web, so the iOS app has it with no build):
   Game button on live/final cards → `#game/<id>` sheet with scoring, box, leaders,
   drives and ESPN win probability, from `/api/game`. Verified on Thu 10/1
-  finals; still to watch it refresh mid-game on a live Saturday game. Next iOS version's description/What's New should mention it
-  (`ios/metadata/`). Spec: `docs/superpowers/specs/2026-09-30-game-view-design.md`.
+  finals; mid-game refresh verified 2026-10-07 (JXST @ KENN), and the listing has described it since 1.0.2. Spec: `docs/superpowers/specs/2026-09-30-game-view-design.md`.
 - Campaign links need the App Analytics provider token (`pt`); cv reads it from
   Analytics → Acquisition → Campaigns → Generate Campaign Link, then the links in
   `index.html`, `support.html`, `README.md`, the profile README, and the X bio get
   `?pt=…&ct=…&mt=8` (names listed in `ios/APP_STORE.md`).
 - Pin `cfb-gameday-board` on the GitHub profile by hand (no API).
-- Decide the Apple Silicon Mac checkbox (Pricing and Availability, defaults on).
+- ~~Decide the Apple Silicon Mac checkbox~~: kept on; Mac listing verified 2026-10-07, resizable window since 1.0.3.
 - ~~Ship 1.0.1~~ — submitted 2026-09-17, live by 2026-09-18. The **native
-  ratings prompt** that was bundled into this item was *not* built; it is still open
-  for a later version.
+  ratings prompt** that was bundled into this item shipped later, in 1.0.2 (`ReviewPrompt.swift`).
 - Featuring nominations / In-App Events for Rivalry Week, Championship Saturday, Playoff.
 - If a second rejection cites 4.2, the next native lever is a Starred list
   backed by `games.json`.
@@ -236,7 +234,7 @@ Also note the build list lags several minutes behind a successful upload, so
   surface on the card (`enrich.surface` is stored and rendered nowhere, cv declined),
   Telegram ping from the refresh Action (needs a chat ID declared in `CLAUDE.md`),
   starred-game props hook into `sportsbettingml_full_package`.
-- Refresh App Store screenshots — still the Week 1 set from 2026-09-05.
+- ~~Refresh App Store screenshots~~: replaced in 1.0.2, captioned iPhone + iPad sets in 1.0.3 (carried into 1.0.4).
 - The weekly `promo_text.py --apply` is the one genuinely manual step and is
   deliberately not in the Action, which would mean putting the `.p8` in repo
   secrets. It is cosmetic; skipping a week breaks nothing.
