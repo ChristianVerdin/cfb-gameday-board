@@ -28,6 +28,39 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.sports</string>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>dot.radiowaves.left.and.right</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Scores in progress</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Live Games</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.hoynelabs.cfbgameday.live</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>star</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Your games</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Starred</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.hoynelabs.cfbgameday.starred</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>tv</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Every game by network</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>By TV</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.hoynelabs.cfbgameday.tv</string>
+		</dict>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
