@@ -150,7 +150,7 @@ fail the build. `forecast()` now retries once against a whole-run budget of 20
 with a 10 s timeout, and the snapshot was rebuilt locally to 0 missing.
 
 **Expect this again.** The runner's network is flakier than this Mac's. If a
-gameday snapshot lands with `forecast_failed` in `counts`, rebuild locally and
+gameday snapshot lands with `forecast_failed` or `geocode_failed` in `counts`, rebuild locally and
 push rather than leaving it — the weather is the point of the board.
 
 ## iOS 1.0.1 (2026-09-17)

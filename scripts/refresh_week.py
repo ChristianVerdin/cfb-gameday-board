@@ -177,8 +177,18 @@ class Geocoder:
         if key in self.cache:
             return self.cache[key]
         geo = None
-        try:
-            rows = get(GEOCODE_URL, {"name": city, "count": 10, "language": "en", "format": "json"}).get("results") or []
+        # Same TLS handshake timeouts as forecast(), with the same cost: no geo means
+        # no forecast. Week 7's Tuesday run lost San Marcos and Buffalo this way.
+        for attempt in (1, 2):
+            try:
+                rows = get(GEOCODE_URL, {"name": city, "count": 10, "language": "en", "format": "json"}).get("results") or []
+            except Exception as exc:
+                if attempt == 1 and self.run.take_retry():
+                    time.sleep(max(self.sleep, 1.0))
+                    continue
+                self.run.warn(f"geocode {city}, {state}: {exc}")
+                self.run.bump("geocode_failed")
+                break
             us = [r for r in rows if r.get("country_code") == "US"]
             want = STATES.get((state or "").upper())
             pick = next((r for r in us if want and r.get("admin1") == want), None) or (us[0] if us else None)
@@ -188,9 +198,7 @@ class Geocoder:
                     "elev": pick.get("elevation"), "geo_name": pick.get("name"),
                     "admin1": pick.get("admin1"), "timezone": pick.get("timezone"),
                 }
-        except Exception as exc:
-            self.run.warn(f"geocode {city}, {state}: {exc}")
-            self.run.bump("geocode_failed")
+            break
         time.sleep(self.sleep)
         self.cache[key] = geo
         return geo
