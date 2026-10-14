@@ -70,7 +70,7 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 
 **File:** `scripts/promo_text.py` (stdlib; `--apply` shells out to `asc apps info edit`).
 Run after the Thursday snapshot refresh. Reads `games.json`, writes a ≤170-char line
-(game count, Saturday count, tightest line, rain-risk count) and pushes it as the
+(game count, Saturday count, tightest Saturday line, and the board's rain/heat/wind flag counts for games not yet final) and pushes it as the
 listing's promotional text, which Apple updates without review. Not wired into the
 GitHub Action because that would put the App Store Connect `.p8` key in repo secrets.
 
