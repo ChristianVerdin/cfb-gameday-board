@@ -13,7 +13,8 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
 - **iPhone, iPad and Mac:** SwiftUI shell around the same board, in `ios/`. On the App Store
-  since 2026-09-10, currently 1.0.3 (iPad and a resizable Mac window since 2026-10-10):
+  since 2026-09-10, currently 1.0.3 (iPad and a resizable Mac window since 2026-10-10);
+  1.0.4, in App Review since 2026-10-14, adds Home Screen quick actions:
   https://apps.apple.com/app/id6809035228
 
 ## What's on the board
@@ -30,6 +31,17 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   the games in progress.
 - Game sheet: tap Game on a live or final card for the scoring summary, team box,
   leaders, drives, and win probability. It never carries odds.
+
+## In the app
+
+- Native Board, Live, Starred and About tabs over the same board, pull to refresh,
+  an offline screen with Retry, and outside links (maps, ESPN) open outside the app.
+- Reloads by itself when you return to a slate that has gone stale.
+- iPad: any orientation, two or three columns on a wide screen. Mac (Apple silicon): a resizable window.
+- Board menu on iPad and Mac: Command-1 to 4 switch tabs, Command-F finds a game,
+  Command-R reloads.
+- Home Screen quick actions (from 1.0.4): long-press the icon for Live Games, Starred,
+  or By TV.
 
 ## No keys, no accounts
 
@@ -71,7 +83,7 @@ needs the server because the browser cannot call ESPN directly.
 | `docs/superpowers/` | Design specs and plans for larger features (e.g. the game sheet) |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math, snapshot shape, structured data |
 | `scripts/run_summary.py` | Prints the build's counts and warnings as Markdown for the GitHub Actions step summary |
-| `scripts/ci_heal.py` | Rebuilds once in CI when a run dropped kickoff forecasts, keeping the better result; `--verify` fails the job if still degraded |
+| `scripts/ci_heal.py` | Rebuilds once in CI when a run dropped kickoff forecasts (a forecast or venue-geocode failure), keeping the better result; `--verify` fails the job if still degraded |
 | `scripts/promo_text.py` | Builds the week's App Store promotional text from `games.json`; `--apply` pushes it with `asc` |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
 | `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
@@ -79,7 +91,7 @@ needs the server because the browser cannot call ESPN directly.
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
 | `ios/` | SwiftUI iPhone and iPad app (also runs on Apple silicon Macs): `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |
-| `scripts/release_ios.sh` | One-command iOS release: archive, export, validate, upload, attach (and `--submit`) via the `asc` CLI, altool fallback |
+| `scripts/release_ios.sh` | One-command iOS release: archive, export, validate, upload, attach (and `--submit`) via the `asc` CLI, altool fallback; stops if the archive or IPA is missing, and `ASC_SIGNING_KEY_ID` signs the export with an API key when Xcode has no account |
 | `scripts/ios_tab_check.sh` | Simulator smoke test: drives the tabs with AXe and fails on a blank revisit |
 | `scripts/review_mux.py` | Lays the narration lines over a phone screen recording at cue times, outputs H.264 for App Review |
 | `scripts/tunnel.sh` | Gameday Cloudflare quick tunnel for the local server (fallback only) |
@@ -156,7 +168,8 @@ GitHub creates scheduled runs late under load (measured 5h08m late once on this
 repo) and can drop them entirely.
 
 That pulls the ESPN scoreboard for each date, geocodes each venue city with
-Open-Meteo, pulls the hourly forecast at the local kickoff hour, computes the
+Open-Meteo, pulls the hourly forecast at the local kickoff hour (a failed lookup
+gets one retry from a per-run budget, since it leaves the game with no forecast), computes the
 derived fields (implied score, weather flags, impact notes, CT kickoff), and
 writes both `games.json` and `games.js`. Details in `docs/ARCHITECTURE.md`.
 

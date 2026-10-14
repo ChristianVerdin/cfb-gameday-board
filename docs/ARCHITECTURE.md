@@ -130,8 +130,9 @@ Closing lines on the hosted site live in the browser: `chooseOdds()` in
 prior snapshot's line forward when ESPN has none, so a mid-slate rebuild never
 strips lines.
 
-`#live`, `#starred`, `#all` in the URL set the filters (`hashFilters()`); the
-iOS app's tabs use that.
+`#live`, `#starred`, `#all` in the URL set the filters, and `#lines`, `#tv`,
+`#blowouts` the view (`hashFilters()`); the iOS app's tabs and Home Screen quick
+actions use that (By TV opens the Board tab on `#tv`).
 
 ### Closing line capture
 

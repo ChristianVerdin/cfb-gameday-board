@@ -54,7 +54,7 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 
 **File:** `scripts/release_ios.sh` + `ios/ExportOptions.plist`
 **Does:** bumps the build number in `ios/project.yml`, `xcodegen generate`, Release archive, App Store IPA export, `altool --validate-app`, then `asc publish appstore` (upload, wait for processing, find or create the App Store version, apply `ios/metadata/version/<version>/en-US.json` if present, attach the build). `--submit` adds `--submit --confirm` and sends the version to review. Without `asc` on PATH it falls back to `altool --upload-app` and the build is attached by hand.
-**Auth:** `asc` profile `cfbgameday` in `~/.asc/config.json` (key WUSAQJV85V, App Manager; rotated from FQRRWFFM28 on 2026-10-07); altool fallback reads `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`.
+**Auth:** `asc` profile `cfbgameday` in `~/.asc/config.json` (key WUSAQJV85V, App Manager; rotated from FQRRWFFM28 on 2026-10-07); altool fallback reads `ASC_KEY_ID` / `ASC_ISSUER_ID` from `~/.config/cfb-gameday.env`; `.p8` in `~/.appstoreconnect/private_keys/`. Export signing uses Xcode's signed-in account; if Xcode has none ("No Accounts"), set `ASC_SIGNING_KEY_ID=R79Z9DL337` (Admin key; the App Manager key cannot cloud-sign). The script stops if the archive or IPA is missing.
 **Cost:** $0. **Guardrails:** never commits the key; `*.p8` is gitignored; `--no-upload` stops at the IPA; `--submit` is the only path that submits, and it is never the default.
 
 ## 8. iOS tab smoke test (manual, simulator)
@@ -77,7 +77,7 @@ GitHub Action because that would put the App Store Connect `.p8` key in repo sec
 ## Not automated, on purpose
 
 - Pricing, age rating, screenshots, and replying to App Review messages (cv, in App Store Connect). Submitting is scripted (`asc review submit --app <id> --version-id <id> --build-id <id> --confirm`, or `release_ios.sh --submit`) but only run on cv's say-so.
-- Release after approval is **per version**. 1.0.1 was switched to `AFTER_APPROVAL` so it ships itself; 1.0.0 was `MANUAL`. A new version does not inherit this - set it again with `asc versions update --version-id <id> --release-type AFTER_APPROVAL` if the same behaviour is wanted.
+- Release after approval is **per version**. 1.0.0 was `MANUAL`; 1.0.1 was switched to `AFTER_APPROVAL` so it ships itself, and 1.0.2 through 1.0.4 carried that over from the previous version's record. Confirm it before submitting and set it explicitly with `asc versions update --version-id <id> --release-type AFTER_APPROVAL`. A new version does **not** carry the promotional text: run `promo_text.py --apply --version <v>` before submitting.
 - The weekly `promo_text.py --apply`. Automating it would put the App Store Connect `.p8` in repo secrets; it is cosmetic, so skipping a week breaks nothing.
 - Telegram alerts: no chat ID is declared for this project; do not send.
 - Player-prop posting: lives in `~/projects/sportsbettingml_full_package`, never here.
