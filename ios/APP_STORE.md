@@ -181,6 +181,17 @@ ln -s Wrapper/CFBGameDay.app $W/WrappedBundle; open $W
 (`open` on the bare `.app` fails with "incorrect executable format"; the Wrapper/WrappedBundle
 layout is what the App Store installs in /Applications.)
 
+## Home Screen quick actions (from 1.0.4)
+
+Long-press the icon: **Live Games**, **Starred**, **By TV**. The items are static
+`UIApplicationShortcutItems` in `project.yml`, so they show before the first launch;
+`QuickActions.swift` routes them (scene connection options on a cold launch, the scene
+delegate's `performActionFor` when running). By TV opens the Board tab on `#tv`; leaving the tab
+resets it, and a repeat action re-dispatches `hashchange` because the in-page view pills don't
+touch the hash. Not on Mac (no Home Screen there); About shows the Board menu keys instead.
+Test on a simulator with AXe: `axe touch -x X -y Y --down --up --delay 1.5` on the icon, then tap
+the item; `describe-ui` lists icons on other Home Screen pages with off-screen x, so swipe first.
+
 ## Review notes (App Review Information)
 
 > CFB GameDay Board is an informational sports display: NCAA football scores, venues, kickoff weather, TV listings, and the publicly posted point spread and total for context. There are no accounts, no sign-in, no purchases, no deposits, and no way to place a wager. The app does not link to any sportsbook.
