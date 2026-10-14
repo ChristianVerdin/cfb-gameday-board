@@ -56,6 +56,20 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UILaunchScreen:
           UIColorName: LaunchBackground
+        # Home Screen quick actions (long-press the icon), routed in QuickActions.swift.
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: com.hoynelabs.cfbgameday.live
+            UIApplicationShortcutItemTitle: Live Games
+            UIApplicationShortcutItemSubtitle: Scores in progress
+            UIApplicationShortcutItemIconSymbolName: dot.radiowaves.left.and.right
+          - UIApplicationShortcutItemType: com.hoynelabs.cfbgameday.starred
+            UIApplicationShortcutItemTitle: Starred
+            UIApplicationShortcutItemSubtitle: Your games
+            UIApplicationShortcutItemIconSymbolName: star
+          - UIApplicationShortcutItemType: com.hoynelabs.cfbgameday.tv
+            UIApplicationShortcutItemTitle: By TV
+            UIApplicationShortcutItemSubtitle: Every game by network
+            UIApplicationShortcutItemIconSymbolName: tv
         # The one URL the app loads.
         BoardURL: https://cfbgameday.app
         BoardHost: cfbgameday.app

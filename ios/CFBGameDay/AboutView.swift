@@ -25,6 +25,13 @@ struct AboutView: View {
                         .font(.subheadline)
                 }
 
+                Section("Shortcuts") {
+                    Text(ProcessInfo.processInfo.isiOSAppOnMac
+                         ? "Board menu: Command-1 to 4 switch tabs, Command-F finds a game, Command-R reloads."
+                         : "Long-press the app icon on the Home Screen for Live Games, Starred, or By TV.")
+                        .font(.subheadline)
+                }
+
                 Section("Data") {
                     LabeledContent("Scores, schedules, lines", value: "ESPN")
                     LabeledContent("Weather", value: "Open-Meteo")

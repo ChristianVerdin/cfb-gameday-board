@@ -106,10 +106,14 @@ final class WebContainer: NSObject, ObservableObject {
     }
 
     /// Native tabs drive the site's filters through the URL hash; app.js listens for hashchange.
-    func show(fragment: String) {
+    /// `reapply` re-runs the hash even when it is already set (the in-page pills don't change it).
+    func show(fragment: String, reapply: Bool = false) {
         guard webView.url != nil, failure == nil else { load(fragment: fragment); return }
         if webView.isLoading { load(fragment: fragment); return }   // hash set before app.js exists would be lost
-        webView.evaluateJavaScript("location.hash = '#\(fragment)';", completionHandler: nil)
+        let js = reapply
+            ? "if (location.hash === '#\(fragment)') window.dispatchEvent(new HashChangeEvent('hashchange')); else location.hash = '#\(fragment)';"
+            : "location.hash = '#\(fragment)';"
+        webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
     /// Command-F: put the cursor in the board's search box.
