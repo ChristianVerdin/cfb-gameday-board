@@ -27,11 +27,10 @@ asc review status --app 6809035228    # App Review state; asc is installed and l
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
 
 ## Status
-- Web live at https://cfbgameday.app. iOS **1.0.3 (6) live on the App Store** since
-  2026-10-10 (auto-released on approval; 1.0.0 went live 2026-09-10). It added iPad and a
-  resizable Mac window. **1.0.4 (7) in App Review** since 2026-10-14 (Home Screen quick actions,
-  AFTER_APPROVAL). Details: `CONTEXT.md`. Cross-project
-  playbook: `app-store-release` skill.
+- Web live at https://cfbgameday.app. iOS **1.0.4 (7) live on the App Store** since
+  2026-10-15 (auto-released on approval; 1.0.0 went live 2026-09-10). It added Home Screen
+  quick actions; 1.0.3 (2026-10-10) added iPad and a resizable Mac window. Details: `CONTEXT.md`.
+  Cross-project playbook: `app-store-release` skill.
 
 ## Hosted
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
