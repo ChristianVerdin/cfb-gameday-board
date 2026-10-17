@@ -13,8 +13,8 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
 - **iPhone, iPad and Mac:** SwiftUI shell around the same board, in `ios/`. On the App Store
-  since 2026-09-10, currently 1.0.3 (iPad and a resizable Mac window since 2026-10-10);
-  1.0.4, in App Review since 2026-10-14, adds Home Screen quick actions:
+  since 2026-09-10, currently 1.0.4 (Home Screen quick actions, since 2026-10-15); iPad
+  and a resizable Mac window since 1.0.3 (2026-10-10):
   https://apps.apple.com/app/id6809035228
 
 ## What's on the board
