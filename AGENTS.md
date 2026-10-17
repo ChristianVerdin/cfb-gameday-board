@@ -80,4 +80,4 @@ GitHub Action because that would put the App Store Connect `.p8` key in repo sec
 - Release after approval is **per version**. 1.0.0 was `MANUAL`; 1.0.1 was switched to `AFTER_APPROVAL` so it ships itself, and 1.0.2 through 1.0.4 carried that over from the previous version's record. Confirm it before submitting and set it explicitly with `asc versions update --version-id <id> --release-type AFTER_APPROVAL`. A new version does **not** carry the promotional text: run `promo_text.py --apply --version <v>` before submitting.
 - The weekly `promo_text.py --apply`. Automating it would put the App Store Connect `.p8` in repo secrets; it is cosmetic, so skipping a week breaks nothing.
 - Telegram alerts: no chat ID is declared for this project; do not send.
-- Player-prop posting: lives in `~/projects/sportsbettingml_full_package`, never here.
+- Player-prop posting: never here.

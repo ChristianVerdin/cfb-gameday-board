@@ -1,8 +1,8 @@
 /**
  * Render each line of ios/narration.txt to its own mp3 through the ElevenLabs
- * client in ~/projects/dailylocks-studio (its .env holds the key and voice).
+ * client in the local checkout named by ELEVENLABS_CLIENT_DIR (its .env holds the key and voice).
  *
- *   cd /Users/cv/projects/dailylocks-studio && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts [speed] [--only N]
+ *   cd "$ELEVENLABS_CLIENT_DIR" && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts [speed] [--only N]
  *
  * --only N re-renders one line and patches it into index.json.
  * NARRATION=<txt> LINES_DIR=<dir> render another script (scripts/app_video.py uses this).
@@ -14,9 +14,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
-import { synthesize } from "/Users/cv/projects/dailylocks-studio/src/lib/elevenlabs/index.ts";
-
-const STUDIO = "/Users/cv/projects/dailylocks-studio";
+const STUDIO = process.env.ELEVENLABS_CLIENT_DIR;
+if (!STUDIO) throw new Error("set ELEVENLABS_CLIENT_DIR to the local ElevenLabs client checkout");
+const { synthesize } = await import(join(STUDIO, "src/lib/elevenlabs/index.ts"));
 const HERE = "/Users/cv/projects/cfb-gameday/ios";
 
 for (const line of readFileSync(join(STUDIO, ".env"), "utf8").split("\n")) {

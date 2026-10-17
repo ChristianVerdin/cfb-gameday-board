@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 VID = ROOT / "ios" / "video"
 OUT = VID / "out"
-STUDIO = Path.home() / "projects" / "dailylocks-studio"
+STUDIO = os.environ.get("ELEVENLABS_CLIENT_DIR")   # local ElevenLabs client checkout, used by narrate
 APP = ROOT / "ios/build/DerivedData/Build/Products/Debug-iphonesimulator/CFBGameDay.app"
 BUNDLE = "com.hoynelabs.cfbgameday"
 UDID = os.environ.get("SIM_UDID", "1923BADE-293A-48EB-A4C8-B24767FA45D9")   # iPhone 17 Pro Max (3CD2868D crashed WebContent on 10/02)
@@ -74,6 +74,8 @@ def log(msg):
 # ---------------------------------------------------------------- narration
 
 def narrate(cuts):
+    if not STUDIO:
+        sys.exit("set ELEVENLABS_CLIENT_DIR to the local ElevenLabs client checkout")
     for cut in cuts:
         lines = LINES[cut]
         d = VID / cut

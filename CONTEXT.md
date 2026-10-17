@@ -232,8 +232,7 @@ Also note the build list lags several minutes behind a successful upload, so
 - Optional, unbuilt: line-movement chip on cards (offered 2026-09-17, cv declined;
   the open/current data is already in the snapshot so it stays cheap), playing
   surface on the card (`enrich.surface` is stored and rendered nowhere, cv declined),
-  Telegram ping from the refresh Action (needs a chat ID declared in `CLAUDE.md`),
-  starred-game props hook into `sportsbettingml_full_package`.
+  Telegram ping from the refresh Action (needs a chat ID declared in `CLAUDE.md`).
 - ~~Refresh App Store screenshots~~: replaced in 1.0.2, captioned iPhone + iPad sets in 1.0.3 (carried into 1.0.4).
 - The weekly `promo_text.py --apply` is the one genuinely manual step and is
   deliberately not in the Action, which would mean putting the `.p8` in repo

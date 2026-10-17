@@ -44,7 +44,7 @@ hold 8 quiet seconds at the end, stop. AirDrop to the Mac.
 ## Step 1c: narration (done 2026-09-07)
 
 Ten lines in `ios/narration.txt`, rendered by `ios/narrate.mts` through
-`dailylocks-studio`'s ElevenLabs client (voice Brian, speed 0.9) into
+a local ElevenLabs client (`ELEVENLABS_CLIENT_DIR`; voice Brian, speed 0.9) into
 `ios/review/lines/`. `ios/review/cues.txt` places each line at the second its
 beat is on screen; `scripts/review_mux.py` lays them over the recording and
 re-encodes to H.264 30 fps so it plays in any browser. Output:
@@ -54,7 +54,7 @@ To change a line: edit `ios/narration.txt`, re-render just that line
 (`--only N`, about 100 credits), then re-run the mux:
 
 ```
-cd /Users/cv/projects/dailylocks-studio && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts 0.9 --only 9
+cd "$ELEVENLABS_CLIENT_DIR" && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts 0.9 --only 9
 python3 scripts/review_mux.py ios/review/walkthrough-raw.mp4 ios/review/cues.txt
 ```
 
