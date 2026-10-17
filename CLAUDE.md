@@ -1,8 +1,8 @@
 # CLAUDE.md — cfb-gameday
 
 Local CFB slate board for Saturdays: venue, kickoff-hour weather, DK lines via
-ESPN, implied scores, TV, then live cover/total state. Owner: cv
-(@SportsBettingML). Public repo: https://github.com/ChristianVerdin/cfb-gameday-board
+ESPN, implied scores, TV, then live cover/total state. Owner: cv.
+Public repo: https://github.com/ChristianVerdin/cfb-gameday-board
 
 ## Session start
 1. Read this file, then `CONTEXT.md` (live state, open items), then `CONTEXT.private.md` if it exists
@@ -74,8 +74,8 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
   `generated_at` dates them; any future live weather refresh must stamp its own
   `fetched_at` per game (`docs/ARCHITECTURE.md`).
 - Do not scrape DraftKings/FanDuel HTML. Odds come only from ESPN's feed.
-- No player-prop posting here. That lives in `~/projects/sportsbettingml_full_package`
-  (`check_prop` gate, `post_hit.py`). Do not copy it in.
+- No player-prop posting here, and no code copied in from other projects' posting tools.
+- This repo is public: never name cv's other accounts, handles or private repos in tracked files.
 - Stdlib only. Ask before adding any dependency.
 
 ## Working conventions
