@@ -171,6 +171,7 @@ out.push([
   chooseOdds(undefined, {{ spread: null, total: null }}, "pre", null) === null,
 ]);
 out.push(["#live", "#starred", "#all", "", "#LIVE", "#bogus", "#lines"].map(h => {{ const f = hashFilters(h); return [f.liveOnly, f.starredOnly, f.known, f.view]; }}));
+out.push(["#rivalry", "#RIVALRY", "#live", ""].map(h => {{ const f = hashFilters(h); return [f.rivalryOnly, f.known, f.view]; }}));
 console.log(JSON.stringify(out));
 """
     res = subprocess.run([node, "-e", script], capture_output=True, text=True)
@@ -180,11 +181,13 @@ console.log(JSON.stringify(out));
     got = json.loads(res.stdout)
     for c, g in zip(cases, got):
         check(f"liveMath {c['a']}-{c['h']} {c['s']}/{c['t']}", g, c["want"])
-    check("betterRecord", got[-3], ["1-0", "1-1", "", "2-1"])
-    check("chooseOdds", got[-2], [True] * 6)
-    check("hashFilters", got[-1], [[True, False, True, "cards"], [False, True, True, "cards"], [False, False, True, "cards"],
+    check("betterRecord", got[-4], ["1-0", "1-1", "", "2-1"])
+    check("chooseOdds", got[-3], [True] * 6)
+    check("hashFilters", got[-2], [[True, False, True, "cards"], [False, True, True, "cards"], [False, False, True, "cards"],
                                    [False, False, True, "cards"], [True, False, True, "cards"], [False, False, False, "cards"],
                                    [False, False, True, "lines"]])
+    check("hashFilters rivalry", got[-1], [[True, True, "cards"], [True, True, "cards"], [False, True, "cards"],
+                                           [False, True, "cards"]])
     one = [re.search(rf"\n  function {n}\(.*?\n", src) for n in ("esc", "gameHash")]
     if not all(one):
         FAILS.append("could not extract esc/gameHash from app.js")
@@ -210,7 +213,7 @@ def test_snapshot_shape():
     check("count matches", data.get("count"), len(games))
     # Every game, not the first five: that slice is why a half-broken build passed.
     need = {"id", "date", "home", "away", "odds", "implied", "flags", "impact_level",
-            "under_score", "conf_game", "kick_ct", "gameState"}
+            "under_score", "conf_game", "kick_ct", "gameState", "rivalry"}
     bad = [(g.get("shortName"), need - set(g)) for g in games if need - set(g)]
     check("all games have the required fields", bad[:3], [])
     js = (ROOT / "games.js").read_text("utf-8")
@@ -255,6 +258,8 @@ def test_run_health():
         print(f"warn: {counts['games_skipped']} game(s) skipped during build")
     if counts.get("geocode_failed"):
         print(f"warn: {counts['geocode_failed']} geocode failure(s)")
+    if counts.get("geocode_unmatched"):
+        print(f"warn: {counts['geocode_unmatched']} venue city with no geocoder match (no forecast)")
 
 
 FORBIDDEN_LD = ("spread", "total", "odds", "moneyline", "implied", "offer", "price")
@@ -289,7 +294,7 @@ def test_jsonld():
     need = {"name", "startDate", "location", "homeTeam", "awayTeam"}
     check("events have the required fields",
           [e.get("name") for e in graph if need - set(e)][:3], [])
-    iso = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z)$")
+    iso = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z))?$")   # date only = kickoff TBA
     check("startDate carries an offset",
           [e.get("startDate") for e in graph if not iso.match(e.get("startDate") or "")][:3], [])
     kicker = re.search(r'<div class="kicker" id="kicker">(.*?)</div>', html, re.S)
@@ -303,7 +308,7 @@ def test_jsonld():
           "College football Week 6 schedule, kickoff weather & TV | CFB GameDay Board")
     check("neutral title", page_title(None), "CFB GameDay Board")
     desc = re.search(r'<meta name="description" content="([^"]*)"', html)
-    check("description counts the slate", bool(desc) and f"all {len(data.get('games') or [])} FBS games" in desc.group(1), True)
+    check("description counts the slate", bool(desc) and f"{len(data.get('games') or [])} FBS game" in desc.group(1), True)
     bad = [t for t in ("moneyline", "odds", "bet ") if t in page_description(data).lower()]
     check("no wagering terms in description", bad, [])
 
@@ -356,6 +361,146 @@ def test_game_payload():
           [True, False, False, False, False, False])
 
 
+def ev(stype=2, week=8, date="2026-10-24T16:00Z", note="", year=2026):
+    return {"season": {"year": year, "type": stype}, "week": {"number": week}, "date": date,
+            "competitions": [{"notes": [{"headline": note}] if note else []}]}
+
+
+def test_labels():
+    """Week labels come from the events: the postseason dry run (2026-10-20) found the league
+    field calls a finished season's Week 15 "Postseason"."""
+    from refresh_week import page_description, page_title, thanksgiving, week_label
+    post_league = {"leagues": [{"season": {"year": 2025, "type": {"type": 3, "name": "Postseason"}}}]}
+    check("label regular", week_label({}, [ev(), ev()]), "Week 8 · 2026")
+    check("label ignores league phase", week_label(post_league, [ev(week=15, year=2025, date="2025-12-06T17:00Z")] * 3),
+          "Week 15 · 2025")
+    champ = [ev(week=15, date="2026-12-05T20:00Z", note=f"{c} Championship") for c in ("SEC", "ACC", "Big Ten")]
+    check("label championship week", week_label({}, champ + [ev(week=15, date="2026-12-05T20:00Z")]),
+          "Championship Week · 2026")
+    check("label rivalry week", week_label({}, [ev(week=14, date="2026-11-28T17:00Z")]), "Rivalry Week · 2026")
+    check("label week 13 is not rivalry week", week_label({}, [ev(week=13, date="2026-11-21T17:00Z")]), "Week 13 · 2026")
+    check("thanksgiving", (str(thanksgiving(2026)), str(thanksgiving(2027))), ("2026-11-26", "2027-11-25"))
+    bowl = ev(3, 1, "2026-12-19T20:00Z", "StaffDNA Cure Bowl")
+    cfp1 = ev(3, 1, "2026-12-19T01:00Z", "College Football Playoff First Round Game")
+    check("label bowls", week_label({}, [bowl]), "Bowl season · 2026-27")
+    check("label bowls + playoff", week_label({}, [bowl, cfp1]), "Bowls & Playoff · 2026-27")
+    check("label cfp first round", week_label({}, [cfp1]), "CFP First Round · 2026-27")
+    semis = [ev(3, 1, "2027-01-14T01:00Z", f"College Football Playoff Semifinal at the {b}") for b in ("Orange Bowl", "Sugar Bowl")]
+    check("label semis", week_label({}, semis), "CFP Semifinals · 2026-27")
+    final = ev(3, 1, "2027-01-26T00:30Z", "College Football Playoff National Championship Presented by AT&T")
+    check("label title game", week_label({}, [final]), "National Championship · 2026-27")
+    check("label army-navy + bowl", week_label({}, [ev(week=16, date="2026-12-12T20:00Z"), bowl]), "Bowl season · 2026-27")
+    brand = " | CFB GameDay Board"
+    check("title bowls", page_title("Bowl season · 2026-27"), "College football bowl schedule, kickoff weather & TV" + brand)
+    check("title rivalry week", page_title("Rivalry Week · 2026"),
+          "College football Rivalry Week schedule, kickoff weather & TV" + brand)
+    check("title title game", page_title("National Championship · 2026-27"),
+          "College football national championship, kickoff weather & TV" + brand)
+    one = {"week_label": "National Championship · 2026-27", "games": [{"kick_ct": "Mon 6:30 PM CT"}]}
+    check("description singular", ("1 FBS game " in page_description(one), "1 FBS games" in page_description(one)), (True, False))
+
+
+def pg(away="Away", home="Home", kick="Sat 2:30 PM CT", spread=-7.0, **kw):
+    g = {"away": {"name": away, "rank": 99}, "home": {"name": home, "rank": 99}, "kick_ct": kick,
+         "date": "2026-10-24T19:30Z", "gameState": "pre", "indoor": False, "flags": [], "neutral": False,
+         "odds": {"spread": spread}, "group": "P4/P5"}
+    g.update(kw)
+    return g
+
+
+def test_promo():
+    from promo_text import LIMIT, build
+    week = [pg(spread=-10.5), pg("Iowa", "Minnesota", spread=-1.5), pg("Akron", "Kent St", kick="Sat 11:00 AM CT")]
+    text = build(week, "Week 9 · 2026")
+    check("promo week head", text.startswith("Week 9: 3 games, 3 on Saturday."), True)
+    check("promo tight line", "Iowa at Minnesota is a 1.5-point line." in text, True)
+    week[1]["neutral"] = True
+    check("promo neutral says vs", "Iowa vs Minnesota" in build(week, "Week 9 · 2026"), True)
+    week[1]["rivalry"] = "Floyd of Rosedale"
+    check("promo rivalry marquee", "Floyd of Rosedale: Iowa vs Minnesota" in build(week, "Week 9 · 2026"), True)
+    days = [pg(kick=k) for k in ("Tue 1:00 PM CT", "Wed 4:00 PM CT", "Sat 11:00 AM CT", "Mon 1:00 PM CT")]
+    check("promo bowl head", build(days, "Bowl season · 2026-27").startswith("Bowl season: 4 games, Tue to Mon."), True)
+    final = [pg("Miami", "Indiana", kick="Mon 6:30 PM CT", neutral=True)]
+    check("promo title game", build(final, "National Championship · 2026-27"),
+          "National Championship: Miami vs Indiana, Mon 6:30 PM CT. Venue, forecast, TV, and posted line.")
+    many = [pg(f"A{i}", f"H{i}", rivalry=f"Trophy {i}", flags=["RAIN RISK"]) for i in range(18)]
+    text = build(many, "Rivalry Week · 2026")
+    check("promo rivalry week", ("more trophy games" in text, "Rain risk" in text, len(text) <= LIMIT), (True, True, True))
+    bad = [t for t in (build(week, "Week 9 · 2026"), build(days, "Bowl season · 2026-27"), build(final, None), text)
+           if len(t) > LIMIT or "1 games" in t]
+    check("promo length and grammar", bad, [])
+
+
+def test_rivalries():
+    import refresh_week
+    rows = json.loads((ROOT / "data/rivalries.json").read_text("utf-8"))
+    pairs = [frozenset(r["ids"]) for r in rows]
+    check("rivalry ids are pairs of ints", [r["label"] for r in rows
+          if len(set(r["ids"])) != 2 or not all(isinstance(i, int) for i in r["ids"])], [])
+    check("rivalry pairs unique", len(pairs), len(set(pairs)))
+    check("rivalry labels short", [r["label"] for r in rows if not 0 < len(r["label"]) <= 30], [])
+    words = " ".join(f"{r['label']} {r.get('trophy') or ''}" for r in rows).lower()
+    check("no wagering terms in rivalry names", [t for t in FORBIDDEN_LD if t in words], [])
+    refresh_week._RIVALRIES = None
+    check("rivalry lookup", refresh_week.rivalry("2294", "135"), {"rivalry": "Floyd of Rosedale", "trophy": None})
+    check("rivalry lookup reversed", refresh_week.rivalry(135, 2294)["rivalry"], "Floyd of Rosedale")
+    check("rivalry trophy", refresh_week.rivalry(349, 2426), {"rivalry": "Army–Navy Game", "trophy": "Commander-in-Chief's Trophy"})
+    check("no rivalry", refresh_week.rivalry("2294", "333"), {"rivalry": None, "trophy": None})
+
+
+def test_geocode():
+    """An overseas venue matches its own country, never the US town with the same name."""
+    import refresh_week
+    rows = {"Dublin": [{"name": "Dublin", "country": "Ireland", "country_code": "IE", "admin1": "Leinster", "latitude": 53.3, "longitude": -6.2},
+                       {"name": "Dublin", "country": "United States", "country_code": "US", "admin1": "California", "latitude": 37.7, "longitude": -121.9},
+                       {"name": "Dublin", "country": "United States", "country_code": "US", "admin1": "Ohio", "latitude": 40.1, "longitude": -83.1}],
+            "Nowhere": []}
+    real = refresh_week.get
+    refresh_week.get = lambda url, params, timeout=20: {"results": rows[params["name"]]}
+    try:
+        run = refresh_week.Run()
+        geo = refresh_week.Geocoder({}, 0, run)
+        check("geocode abroad", (geo.lookup("Dublin", None, "Ireland") or {}).get("admin1"), "Leinster")
+        check("geocode US state", (geo.lookup("Dublin", "OH", "USA") or {}).get("admin1"), "Ohio")
+        check("geocode US default", (geo.lookup("Dublin", "CA") or {}).get("admin1"), "California")
+        check("geocode unmatched", (geo.lookup("Nowhere", "TX"), run.counts.get("geocode_unmatched")), (None, 1))
+    finally:
+        refresh_week.get = real
+
+
+def test_tba():
+    """An unannounced kickoff (timeValid false, parked at midnight ET) is a Saturday game with
+    no forecast and no invented hour, not a Friday 11 PM game with midnight weather."""
+    import refresh_week
+
+    class NoGeo:
+        def lookup(self, *a):
+            return {"lat": 32.6, "lon": -85.5, "elev": 200, "geo_name": "Auburn", "admin1": "Alabama"}
+
+    def team(tid, side):
+        return {"homeAway": side, "team": {"id": tid, "abbreviation": side.upper(), "conferenceId": "8"}}
+    event = {"id": "401999999", "name": "Auburn at Alabama", "shortName": "AUB @ ALA", "date": "2026-11-28T05:00Z",
+             "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+             "competitions": [{"timeValid": False, "venue": {"fullName": "Bryant-Denny Stadium",
+                                                             "address": {"city": "Tuscaloosa", "state": "AL"}},
+                               "competitors": [team("333", "home"), team("2", "away")]}]}
+    real = refresh_week.forecast
+    refresh_week.forecast = lambda *a, **k: FAILS.append("TBA game fetched a forecast") or None
+    try:
+        g = refresh_week.build_game(event, {"8": "SEC"}, {"8"}, NoGeo(), 0, refresh_week.Run())
+    finally:
+        refresh_week.forecast = real
+    check("tba kick_ct", (g["kick_ct"], g["time_tbd"], g["wx"], g["wx_label"]), ("Sat TBA", True, None, "Kickoff TBA"))
+    check("tba not clean", g["impact_notes"][0].startswith("Kickoff time TBA"), True)
+    check("tba rivalry", g["rivalry"], "Iron Bowl")
+    check("tba startDate is a date", refresh_week.event_ld(g)["startDate"], "2026-11-28")
+    bowl = json.loads(json.dumps(event))
+    bowl["season"] = {"year": 2026, "type": 3}
+    bowl["competitions"][0]["notes"] = [{"headline": "Some Bowl"}]
+    g = refresh_week.build_game(bowl, {"8": "SEC"}, {"8"}, NoGeo(), 0, refresh_week.Run())
+    check("no rivalry tag in a bowl", g["rivalry"], None)
+
+
 def test_pwa():
     try:
         m = json.loads((ROOT / "manifest.webmanifest").read_text("utf-8"))
@@ -380,7 +525,8 @@ def test_pwa():
 
 
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_seo_escaping, test_game_payload, test_pwa):
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_seo_escaping,
+              test_game_payload, test_labels, test_promo, test_rivalries, test_geocode, test_tba, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))

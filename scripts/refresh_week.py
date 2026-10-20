@@ -26,6 +26,8 @@ sys.path.insert(0, str(ROOT))
 from server import endpoints, events_from, fetch_json, parse_odds  # noqa: E402
 
 CHICAGO = ZoneInfo("America/Chicago")
+EASTERN = ZoneInfo("America/New_York")
+RIVALRIES_PATH = ROOT / "data" / "rivalries.json"
 CONFERENCES_URL = (
     "https://site.web.api.espn.com/apis/site/v2/sports/football/"
     "college-football/scoreboard/conferences"
@@ -168,12 +170,15 @@ class Geocoder:
         self.run = run
         for game in existing.get("games") or []:
             if game.get("geo") and game.get("city"):
-                self.cache[(game["city"], game.get("state"))] = game["geo"]
+                self.cache[(game["city"], game.get("country") or game.get("state"))] = game["geo"]
 
-    def lookup(self, city: str | None, state: str | None) -> dict | None:
+    def lookup(self, city: str | None, state: str | None, country: str | None = None) -> dict | None:
         if not city:
             return None
-        key = (city, state)
+        # ESPN gives an overseas venue a country and no state (Aviva Stadium: Dublin, Ireland).
+        # Matching it against US results put the Week 0 Dublin game on Dublin, Ohio's weather.
+        abroad = bool(country) and country.upper() not in ("USA", "US", "UNITED STATES")
+        key = (city, country if abroad else state)
         if key in self.cache:
             return self.cache[key]
         geo = None
@@ -189,9 +194,16 @@ class Geocoder:
                 self.run.warn(f"geocode {city}, {state}: {exc}")
                 self.run.bump("geocode_failed")
                 break
-            us = [r for r in rows if r.get("country_code") == "US"]
-            want = STATES.get((state or "").upper())
-            pick = next((r for r in us if want and r.get("admin1") == want), None) or (us[0] if us else None)
+            if abroad:
+                pick = next((r for r in rows if (r.get("country") or "").lower() == (country or "").lower()), None)
+            else:
+                us = [r for r in rows if r.get("country_code") == "US"]
+                want = STATES.get((state or "").upper())
+                pick = next((r for r in us if want and r.get("admin1") == want), None) or (us[0] if us else None)
+            if not pick:
+                # No exception, so not geocode_failed, but the result is the same: no forecast.
+                self.run.warn(f"geocode {city}, {country if abroad else state}: no matching place")
+                self.run.bump("geocode_unmatched")
             if pick:
                 geo = {
                     "lat": pick["latitude"], "lon": pick["longitude"],
@@ -379,6 +391,9 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
     venue = comp.get("venue") or {}
     addr = venue.get("address") or {}
     kick = parse_utc(event["date"])
+    # Kickoff not announced: ESPN parks the game at midnight Eastern (05:00Z), which read as
+    # "Fri 11:00 PM CT" with a midnight forecast. Seen across Rivalry Week a month out.
+    time_tbd = comp.get("timeValid") is False
     teams = {t.get("homeAway"): team_block(t, conf_names) for t in comp.get("competitors") or []}
     home, away = teams.get("home") or {}, teams.get("away") or {}
 
@@ -394,15 +409,17 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
                     "high": ew.get("highTemperature"), "link": (ew.get("link") or {}).get("href")} if ew else None
 
     indoor = bool(venue.get("indoor"))
-    city, state = addr.get("city"), addr.get("state")
-    geo = geocoder.lookup(city, state)
+    city, state, country = addr.get("city"), addr.get("state"), addr.get("country")
+    geo = geocoder.lookup(city, state, country)
     elev = geo.get("elev") if geo else None
     elev_ft = round(elev * 3.28084) if elev is not None else None
-    wx = forecast(geo, kick, sleep, run) if geo else None
+    wx = forecast(geo, kick, sleep, run) if geo and not time_tbd else None
 
     code = wx.get("weathercode") if wx else None
     if indoor:
         label, emoji = "Indoor climate", "\U0001f3df️"
+    elif time_tbd:
+        label, emoji = "Kickoff TBA", "\U0001f552"
     elif code is not None and int(code) in WMO:
         label, emoji = WMO[int(code)]
     else:
@@ -446,7 +463,9 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
         "state": state,
         "statusDetail": stype.get("detail"),
         "statusShort": stype.get("shortDetail"),
-        "neutral": bool(comp.get("neutralSite")),
+        # ESPN flagged the 2026 title game (Miami at its own Hard Rock Stadium) as not neutral,
+        # which read "Miami at Indiana". The CFP final is at a predetermined site by definition.
+        "neutral": bool(comp.get("neutralSite")) or any("playoff national championship" in n.lower() for n in notes),
         "notes": notes,
         "venue": venue.get("fullName"),
         "city": city,
@@ -466,7 +485,8 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
         "gamecast": gamecast,
         "tickets": tickets,
         "implied": implied,
-        "kick_ct": kick_ct(kick),
+        "kick_ct": f"{kick.astimezone(EASTERN).strftime('%a')} TBA" if time_tbd else kick_ct(kick),
+        "time_tbd": time_tbd,
         "elev": elev,
         "group": group,
         "conf_game": conf_game,
@@ -475,11 +495,43 @@ def build_game(event: dict, conf_names: dict, fbs_ids: set, geocoder: Geocoder, 
         "blowout": spread_abs >= 28,
         "networks": names,
         "venueState": state,
+        "country": country if country and country.upper() not in ("USA", "US") else None,
         "gameState": stype.get("state"),
         "elev_ft": elev_ft,
     }
+    # Rivalries are regular-season meetings: in a bowl, playoff or title game the event is its own
+    # identity and the trophy is usually not at stake. Army-Navy is regular season (week 16) on ESPN.
+    title_game = _event_type(event) == 3 or any("championship" in n.lower() for n in notes)
+    game.update({"rivalry": None, "trophy": None} if title_game else rivalry(home.get("id"), away.get("id")))
     game.update(impact(indoor, wx, elev_ft, label))
+    if time_tbd and not indoor:      # impact() would call a game with no forecast "clean"
+        game["impact_notes"] = ["Kickoff time TBA; the forecast follows once it is set"] + \
+            [n for n in game["impact_notes"] if n.startswith("Elevation")]
     return game
+
+
+_RIVALRIES: dict | None = None
+
+
+def rivalry(a_id, b_id) -> dict:
+    """{"rivalry": label, "trophy": name or None} for a named rivalry, from data/rivalries.json.
+
+    Keyed by the unordered pair of ESPN team ids, so home/away and neutral sites do not matter.
+    A missing or unreadable file only costs the tags, never the build.
+    """
+    global _RIVALRIES
+    if _RIVALRIES is None:
+        _RIVALRIES = {}
+        try:
+            rows = json.loads(RIVALRIES_PATH.read_text("utf-8"))
+            for r in rows:
+                ids = [str(i) for i in r.get("ids") or []]
+                if len(set(ids)) == 2 and r.get("label"):
+                    trophy = r.get("trophy") if r.get("trophy") and r.get("trophy") != r["label"] else None
+                    _RIVALRIES[frozenset(ids)] = {"rivalry": r["label"], "trophy": trophy}
+        except Exception as exc:
+            print(f"  rivalries unavailable ({exc}); games carry no rivalry tag")
+    return _RIVALRIES.get(frozenset({str(a_id), str(b_id)}), {"rivalry": None, "trophy": None})
 
 
 def _standing(summary: dict, team_id: str | None, stat: str) -> str | None:
@@ -588,11 +640,27 @@ NEUTRAL_LABEL = "College football slate"
 BRAND = "CFB GameDay Board"
 
 
+SPECIAL_TITLES = {   # week_label names that are not "Week N", phrased the way they are searched
+    "Rivalry Week": "College football Rivalry Week schedule",
+    "Championship Week": "College football Championship Week schedule",
+    "Bowl season": "College football bowl schedule",
+    "Bowls & Playoff": "College football bowl and playoff schedule",
+    "College Football Playoff": "College Football Playoff schedule",
+    "CFP First Round": "College Football Playoff first round schedule",
+    "CFP Quarterfinals": "College Football Playoff quarterfinal schedule",
+    "CFP Semifinals": "College Football Playoff semifinal schedule",
+    "National Championship": "College football national championship",
+}
+
+
 def page_title(label: str | None) -> str:
     """Week-aware <title>, so the one indexed URL matches how the slate is searched."""
     m = re.match(r"Week (\d+)\b", label or "")
     if m:
         return f"College football Week {m.group(1)} schedule, kickoff weather & TV | {BRAND}"
+    name = (label or "").split(" · ")[0]
+    if name in SPECIAL_TITLES:
+        return f"{SPECIAL_TITLES[name]}, kickoff weather & TV | {BRAND}"
     if label and label != NEUTRAL_LABEL:
         return f"{label.split(' · ')[0]} college football schedule, kickoff weather & TV | {BRAND}"
     return BRAND
@@ -607,7 +675,8 @@ def page_description(payload: dict) -> str:
             days.append(day)
     span = f" {days[0]}-{days[-1]}" if len(days) > 1 else (f" {days[0]}" if days else "")
     label = payload.get("week_label") or NEUTRAL_LABEL
-    return (f"{label}: all {len(games)} FBS games{span} with venue, kickoff-hour stadium weather, "
+    count = f"all {len(games)} FBS games" if len(games) != 1 else "1 FBS game"   # title-game week has one
+    return (f"{label}: {count}{span} with venue, kickoff-hour stadium weather, "
             "TV and streaming, publicly posted spread and total, then live scores and cover/total "
             "state. Free, no ads, no account.")
 
@@ -623,7 +692,9 @@ def event_ld(game: dict) -> dict | None:
         return None                      # do not assert "scheduled" about a played game
     wx = game.get("wx") or {}
     local, offset = wx.get("kick_local"), wx.get("utc_offset_seconds")
-    if local and offset is not None:
+    if game.get("time_tbd"):
+        start = parse_utc(game["date"]).astimezone(EASTERN).strftime("%Y-%m-%d")   # a date, never a made-up hour
+    elif local and offset is not None:
         sign = "+" if offset >= 0 else "-"
         mins = abs(int(offset)) // 60
         start = f"{local.replace(' ', 'T')}:00{sign}{mins // 60:02d}:{mins % 60:02d}"
@@ -633,6 +704,7 @@ def event_ld(game: dict) -> dict | None:
         "@type": "SportsEvent",
         "@id": f"https://cfbgameday.app/#game-{game.get('id')}",
         "name": game.get("name"),
+        **({"alternateName": game["rivalry"]} if game.get("rivalry") else {}),   # "Iron Bowl" is how it is searched
         "startDate": start,
         "eventStatus": "https://schema.org/EventScheduled",
         "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
@@ -645,7 +717,7 @@ def event_ld(game: dict) -> dict | None:
                 "@type": "PostalAddress",
                 "addressLocality": game.get("city"),
                 "addressRegion": game.get("venueState"),
-                "addressCountry": "US",
+                "addressCountry": game.get("country") or "US",
             },
         },
         "homeTeam": {"@type": "SportsTeam", "name": (game.get("home") or {}).get("full")},
@@ -707,17 +779,63 @@ def write_seo(root: Path, payload: dict) -> None:
     print(f"  index.html: {len(events)} SportsEvent entries, kicker '{label}'")
 
 
+def _event_type(event: dict):
+    t = (event.get("season") or {}).get("type")      # an int on events, a dict on leagues[0].season
+    return t.get("type") if isinstance(t, dict) else t
+
+
+def _headline(event: dict) -> str:
+    notes = (event.get("competitions") or [{}])[0].get("notes") or []
+    return " ".join(n.get("headline") or "" for n in notes).lower()
+
+
+def thanksgiving(year: int):
+    nov1 = datetime(year, 11, 1).date()
+    return nov1 + timedelta(days=(3 - nov1.weekday()) % 7 + 21)   # fourth Thursday
+
+
 def week_label(payload: dict, events: list) -> str | None:
-    lg = (payload.get("leagues") or [{}])[0]
-    season = lg.get("season") or {}
-    year = season.get("year") or (events[0].get("season") or {}).get("year") if events else None
-    number = (payload.get("week") or {}).get("number") or (events[0].get("week") or {}).get("number") if events else None
-    stype = (season.get("type") or {})
-    if stype.get("type") not in (None, 2):
-        return f"{stype.get('name') or 'Postseason'} · {year}" if year else None
-    if number and year:
+    """Kicker, <title> and promo label for the whole slate, read from its events.
+
+    leagues[0].season is the season's phase now, not on the slate's dates: once a season
+    has moved on it says Postseason even for Week 15, which labelled Championship Week
+    "Postseason" in the 2026-10-20 postseason dry run. Each event carries its own season
+    type and week, so those win and the league fields are only the fallback.
+    """
+    season = ((payload.get("leagues") or [{}])[0]).get("season") or {}
+    year = next((e["season"]["year"] for e in events if (e.get("season") or {}).get("year")), None) \
+        or season.get("year")
+    if not year:
+        return None
+    post = [e for e in events if _event_type(e) == 3]
+    if post:
+        span = f"{year}-{(int(year) + 1) % 100:02d}"      # January games belong to the prior season
+        heads = [_headline(e) for e in post]
+        cfp = [h for h in heads if "college football playoff" in h]
+        if cfp and len(cfp) == len(post):
+            for key, name in (("national championship", "National Championship"), ("semifinal", "CFP Semifinals"),
+                              ("quarterfinal", "CFP Quarterfinals"), ("first round", "CFP First Round")):
+                if all(key in h for h in cfp):
+                    return f"{name} · {span}"
+            return f"College Football Playoff · {span}"
+        return f"{'Bowls & Playoff' if cfp else 'Bowl season'} · {span}"
+    days = set()
+    for e in events:
+        try:
+            days.add(parse_utc(e["date"]).astimezone(CHICAGO).date())
+        except Exception:
+            pass
+    tg = thanksgiving(int(year))
+    if days & {tg, tg + timedelta(days=1), tg + timedelta(days=2)}:
+        return f"Rivalry Week · {year}"
+    if events and 2 * sum("championship" in _headline(e) for e in events) >= len(events):
+        return f"Championship Week · {year}"
+    weeks = [(e.get("week") or {}).get("number") for e in events]
+    weeks = [w for w in weeks if w]
+    number = max(set(weeks), key=weeks.count) if weeks else (payload.get("week") or {}).get("number")
+    if number:
         return f"Week {number} · {year}"
-    return f"{year} season" if year else None
+    return f"{year} season"
 
 
 def main() -> int:
@@ -753,7 +871,7 @@ def main() -> int:
     end = args.end or (end if not args.start else args.start)
     dates = date_range(start, end)
     print(f"ESPN scoreboard for {', '.join(dates)}")
-    events, seen, label = [], set(), None
+    events, seen, league = [], set(), None
     conf_names, fbs_ids = load_conferences()   # needed inside the loop to refilter a groups-less pull
     for date in dates:
         try:
@@ -771,7 +889,7 @@ def main() -> int:
                             for c in ((e.get("competitions") or [{}])[0].get("competitors") or []))]
             run.bump("no_groups_fallback")
             run.warn(f"{date}: fallback URL has no groups=80; filtered {before} -> {len(batch)} to FBS")
-        label = label or week_label(payload, batch)
+        league = league or (payload if batch else None)
         for event in batch:
             if event.get("id") and event["id"] not in seen:
                 seen.add(event["id"])
@@ -779,6 +897,7 @@ def main() -> int:
     if not events:
         print("no games found; nothing written")
         return 1
+    label = week_label(league or {}, events)   # whole slate: Tuesday's bowls alone would hide Saturday's CFP
 
     geocoder = Geocoder(existing, args.sleep, run)
     prior = {g["id"]: g.get("odds") for g in existing.get("games") or [] if g.get("id")}
