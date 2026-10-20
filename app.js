@@ -436,15 +436,15 @@
   }
   function card(g) {
     const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
-    const tv=(g.networks||g.broadcasts||[]).join(" / ") || "TBD";
+    const tv=esc((g.networks||g.broadcasts||[]).join(" / ") || "TBD");
     const flags=(g.flags||[]).map(f=>`<span class="flag ${flagClass(f)}">${f}</span>`).join("");
-    const spreadHome=(o.home_spread&&o.home_spread.line)?`${h.abbr||"HOME"} ${o.home_spread.line}`:(o.details||"—");
-    const spreadJuice=o.home_spread&&o.home_spread.odds?o.home_spread.odds:"";
-    const openSp=o.home_spread&&o.home_spread.open&&o.home_spread.open!==o.home_spread.line?`open ${o.home_spread.open}`:"";
+    const spreadHome=esc((o.home_spread&&o.home_spread.line)?`${h.abbr||"HOME"} ${o.home_spread.line}`:(o.details||"—"));
+    const spreadJuice=esc(o.home_spread&&o.home_spread.odds?o.home_spread.odds:"");
+    const openSp=esc(o.home_spread&&o.home_spread.open&&o.home_spread.open!==o.home_spread.line?`open ${o.home_spread.open}`:"");
     const wind=wx.wind!=null?`${Math.round(wx.wind)} mph ${g.wind_dir||""}`.trim():"—";
     const gust=wx.gusts!=null?` · gust ${Math.round(wx.gusts)}`:"";
-    const venue=[g.venue,[g.city,g.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
-    const conf=[a.conference,h.conference].filter(Boolean).filter((v,i,arr)=>arr.indexOf(v)===i).join(" / ");
+    const venue=esc([g.venue,[g.city,g.state].filter(Boolean).join(", ")].filter(Boolean).join(" · "));
+    const conf=esc([a.conference,h.conference].filter(Boolean).filter((v,i,arr)=>arr.indexOf(v)===i).join(" / "));
     const on=stars.has(g.id);
     const elev=g.elev_ft?` · ${g.elev_ft.toLocaleString()} ft`:"";
     const math=liveMath(g);
@@ -457,54 +457,54 @@
       const coverCls = math.coverState==="HOME COVER" ? "cover-home" : math.coverState==="AWAY COVER" ? "cover-away" : "cover-push";
       const totCls = math.totalState==="OVER" ? "cover-home" : math.totalState==="UNDER" ? "cover-away" : "cover-push";
       liveRow = `<div class="liverow">
-        <div><span class="livepill ${done?"final":"on"}">${done?"FINAL":"LIVE"}</span> ${liveStatusText(g, live)}</div>
+        <div><span class="livepill ${done?"final":"on"}">${done?"FINAL":"LIVE"}</span> ${esc(liveStatusText(g, live))}</div>
         <div class="livemath">
           ${math.coverState?`<span class="${coverCls}">${math.coverState}${math.coverBy!=null?` ${math.coverBy>0?"+":""}${math.coverBy}`:""}</span>`:""}
           ${math.total!=null?`<span class="${totCls}">${math.combined} / ${math.total} · need ${math.overNeed} for OVER</span>`:""}
         </div>
-        ${sit.text || sit.lastPlay ? `<div class="sit">${sit.isRedZone?"🔴 RZ · ":""}${sit.text||""}${sit.lastPlay?" · "+sit.lastPlay:""}</div>`:""}
+        ${sit.text || sit.lastPlay ? `<div class="sit">${sit.isRedZone?"🔴 RZ · ":""}${esc(sit.text||"")}${sit.lastPlay?" · "+esc(sit.lastPlay):""}</div>`:""}
       </div>`;
     }
     return `<article class="card ${live?"is-live":""} ${done?"is-final":""}">
       <div class="meta">
-        <span>${clockLabel(g)}${conf?" · "+conf:""}</span>
-        <span><span class="tv">${tv}</span><button class="star ${on?"on":""}" data-star="${g.id}">${on?"★":"☆"}</button></span>
+        <span>${esc(clockLabel(g))}${conf?" · "+conf:""}</span>
+        <span><span class="tv">${tv}</span><button class="star ${on?"on":""}" data-star="${esc(g.id)}">${on?"★":"☆"}</button></span>
       </div>
       ${g.rivalry?`<div class="rival">🏆 ${esc(g.rivalry)}${g.trophy?`<span> · ${esc(g.trophy)}</span>`:""}</div>`:""}
       ${liveRow}
       <div class="teams">
         <div class="trow">
-          <img src="${a.logo||""}" alt="" onerror="this.style.opacity=0" />
-          <div class="name">${rank(a)}${a.name||"TBD"}<span class="rec">${a.record||""}</span></div>
+          <img src="${esc(a.logo||"")}" alt="" onerror="this.style.opacity=0" />
+          <div class="name">${rank(a)}${esc(a.name||"TBD")}<span class="rec">${esc(a.record||"")}</span></div>
           ${implCell(impl.away, live || done)}
-          <div class="score">${showScore ? (a.score||"0") : ""}</div>
+          <div class="score">${showScore ? esc(a.score||"0") : ""}</div>
         </div>
         <div class="trow">
-          <img src="${h.logo||""}" alt="" onerror="this.style.opacity=0" />
-          <div class="name">${rank(h)}${h.name||"TBD"}<span class="rec">${h.record||""}</span></div>
+          <img src="${esc(h.logo||"")}" alt="" onerror="this.style.opacity=0" />
+          <div class="name">${rank(h)}${esc(h.name||"TBD")}<span class="rec">${esc(h.record||"")}</span></div>
           ${implCell(impl.home, live || done)}
-          <div class="score">${showScore ? (h.score||"0") : ""}</div>
+          <div class="score">${showScore ? esc(h.score||"0") : ""}</div>
         </div>
       </div>
-      <div class="venue"><b>${g.neutral?"Neutral · ":""}<a href="${mapsUrl(g)}" target="_blank" rel="noopener">${venue||"Venue TBD"}</a></b>${elev}${g.tickets?" · "+g.tickets:""}</div>
-      ${(g.notes&&g.notes[0])?`<div class="venue">${g.notes[0]}</div>`:""}
+      <div class="venue"><b>${g.neutral?"Neutral · ":""}<a href="${mapsUrl(g)}" target="_blank" rel="noopener">${venue||"Venue TBD"}</a></b>${elev}${g.tickets?" · "+esc(g.tickets):""}</div>
+      ${(g.notes&&g.notes[0])?`<div class="venue">${esc(g.notes[0])}</div>`:""}
       <div class="wx">
-        <div class="cond"><span>${g.wx_emoji||""} ${g.wx_label||"Weather"}</span><b>${g.temp!=null?Math.round(g.temp)+"°":"—"}F</b></div>
+        <div class="cond"><span>${g.wx_emoji||""} ${esc(g.wx_label||"Weather")}</span><b>${g.temp!=null?Math.round(g.temp)+"°":"—"}F</b></div>
         <div><div class="mini">Wind</div><div class="val">${wind}${gust}</div></div>
         <div><div class="mini">Rain</div><div class="val">${wx.pop!=null?wx.pop+"%":"—"}</div></div>
         <div><div class="mini">Humidity</div><div class="val">${wx.humidity!=null?wx.humidity+"%":"—"}</div></div>
-        <div class="note">${(g.impact_notes||[]).join(" · ")}</div>
+        <div class="note">${esc((g.impact_notes||[]).join(" · "))}</div>
       </div>
       <div class="odds">
         <div class="od"><div class="lab">Spread</div><div class="big">${spreadHome}</div><div class="juice">${spreadJuice}${openSp?" · "+openSp:""}</div></div>
-        <div class="od"><div class="lab">Total</div><div class="big">${o.total!=null?o.total:"—"}</div><div class="juice">${o.over&&o.over.odds?"o/u "+o.over.odds:""}</div></div>
-        <div class="od"><div class="lab">Moneyline</div><div class="big">${h.abbr||"H"} ${juice(o.home_ml)}</div><div class="juice">${a.abbr||"A"} ${juice(o.away_ml)}</div></div>
+        <div class="od"><div class="lab">Total</div><div class="big">${o.total!=null?o.total:"—"}</div><div class="juice">${esc(o.over&&o.over.odds?"o/u "+o.over.odds:"")}</div></div>
+        <div class="od"><div class="lab">Moneyline</div><div class="big">${esc(h.abbr||"H")} ${esc(juice(o.home_ml))}</div><div class="juice">${esc(a.abbr||"A")} ${esc(juice(o.away_ml))}</div></div>
       </div>
       <div class="actions">
-        ${showScore ? `<a class="abtn" href="#game/${g.id}">Game</a>` : ""}
-        <button class="abtn" data-copy="${g.id}">Copy post</button>
+        ${showScore ? `<a class="abtn" href="#game/${esc(g.id)}">Game</a>` : ""}
+        <button class="abtn" data-copy="${esc(g.id)}">Copy post</button>
         <a class="abtn" href="${mapsUrl(g)}" target="_blank" rel="noopener">Maps</a>
-        ${g.gamecast?`<a class="abtn" href="${g.gamecast}" target="_blank" rel="noopener">ESPN</a>`:`<span class="abtn">ESPN</span>`}
+        ${/^https:\/\//.test(g.gamecast||"")?`<a class="abtn" href="${esc(g.gamecast)}" target="_blank" rel="noopener">ESPN</a>`:`<span class="abtn">ESPN</span>`}
       </div>
       ${flags?`<div class="flags">${flags}</div>`:""}
     </article>`;
@@ -524,9 +524,9 @@
       const kick=started(g)||day==="all" ? clockLabel(g) : fmtKick(g).replace(/^[A-Z][a-z]{2} /,"").replace(/ CT$/,"");
       const score = (isLive(g)||isFinal(g)) ? `${a.score||0}–${h.score||0}` : "";
       return `<tr>
-        <td class="nw">${kick}<div class="juice">${(g.networks||[]).join("/")}</div></td>
-        <td>${started(g)?`<a class="glink" href="#game/${g.id}">`:""}<b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}${started(g)?" ›</a>":""}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}${g.rivalry?` · 🏆 ${esc(g.rivalry)}`:""}</div></td>
-        <td>${o.details||"—"}<div class="juice">${started(g) ? `${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}` : openSp}</div></td>
+        <td class="nw">${esc(kick)}<div class="juice">${esc((g.networks||[]).join("/"))}</div></td>
+        <td>${started(g)?`<a class="glink" href="#game/${esc(g.id)}">`:""}<b>${esc(a.abbr||"")}</b> ${g.neutral?"vs":"@"} <b>${esc(h.abbr||"")}</b> ${esc(score)}${started(g)?" ›</a>":""}<div class="juice">${esc([g.city,g.state].filter(Boolean).join(", "))}${g.rivalry?` · 🏆 ${esc(g.rivalry)}`:""}</div></td>
+        <td>${esc(o.details||"—")}<div class="juice">${started(g) ? `${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}` : openSp}</div></td>
         <td>${o.total!=null?o.total:"—"}<div class="juice">${started(g) && math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
         ${showProj ? `<td class="nw">${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
         <td>${g.temp!=null?Math.round(g.temp)+"°":"—"} ${g.wx_emoji||""}<div class="juice">${(g.flags||[]).join(" · ")}</div></td>
@@ -549,8 +549,8 @@
     const order = ["ABC","NBC","CBS","FOX","ESPN","ESPNU","FS1","BTN","SEC Network","SECN+","ACC Network","ACCNX","CBSSN","TNT","CW","USA Net","ESPN+","Disney+","MW+","UConn+","ERADM","Unlisted"];
     const keys = [...new Set([...order.filter(k=>map[k]), ...Object.keys(map)])];
     return `<div class="section"><h2>By network</h2>${keys.map(n=>`
-      <div class="netblock"><div class="t">${n} · ${map[n].length}</div>
-        ${map[n].map(g=>`<div class="netgame"><b>${g.shortName}</b><span>${fmtKick(g)} · ${[g.city,g.state].filter(Boolean).join(", ")} · ${g.odds&&g.odds.details?g.odds.details:""} · ${g.odds&&g.odds.total!=null?"o/u "+g.odds.total:""}</span></div>`).join("")}
+      <div class="netblock"><div class="t">${esc(n)} · ${map[n].length}</div>
+        ${map[n].map(g=>`<div class="netgame"><b>${esc(g.shortName)}</b><span>${esc(`${fmtKick(g)} · ${[g.city,g.state].filter(Boolean).join(", ")} · ${g.odds&&g.odds.details?g.odds.details:""} · ${g.odds&&g.odds.total!=null?"o/u "+g.odds.total:""}`)}</span></div>`).join("")}
       </div>`).join("")}</div>`;
   }
   function blowoutBoard(list) {
@@ -564,9 +564,9 @@
         bits.push(`total ${o.total??"—"}`);
         if (g.temp != null) bits.push(`${Math.round(g.temp)}°`);
         bits.push(`${g.city}, ${g.state}`);
-        const tag = started(g) ? `a href="#game/${g.id}"` : "div";
-        return `<${tag} class="deskcard"><div class="t">${g.shortName} · ${o.details||""}</div>
-          <div class="d">${bits.filter(Boolean).join(" · ")}</div></${tag.split(" ")[0]}>`;
+        const tag = started(g) ? `a href="#game/${esc(g.id)}"` : "div";
+        return `<${tag} class="deskcard"><div class="t">${esc(g.shortName)} · ${esc(o.details||"")}</div>
+          <div class="d">${esc(bits.filter(Boolean).join(" · "))}</div></${tag.split(" ")[0]}>`;
       }).join(""):`<div class="empty">No 28-point spreads in this filter.</div>`}
     </div>`;
   }
@@ -587,8 +587,8 @@
       liveGames.forEach(g => {
         const math = liveMath(g);
         const sit = g.situation || {};
-        html += `<a class="deskcard" href="#game/${g.id}"><div class="t"><span class="tag heat">LIVE</span>${g.shortName} ${g.away&&g.away.score||0}–${g.home&&g.home.score||0} ›</div>
-          <div class="d">${liveStatusText(g, true)} · ${math.coverState||""} ${math.coverBy!=null?math.coverBy:""} · ${math.combined}/${math.total??"—"} total · ${sit.text||sit.lastPlay||""}</div></a>`;
+        html += `<a class="deskcard" href="#game/${esc(g.id)}"><div class="t"><span class="tag heat">LIVE</span>${esc(g.shortName)} ${esc(g.away&&g.away.score||0)}–${esc(g.home&&g.home.score||0)} ›</div>
+          <div class="d">${esc(liveStatusText(g, true))} · ${math.coverState||""} ${math.coverBy!=null?math.coverBy:""} · ${math.combined}/${math.total??"—"} total · ${esc(sit.text||sit.lastPlay||"")}</div></a>`;
       });
       html += `</div>`;
     }
@@ -597,11 +597,11 @@
     if (rivals.length) {
       html += `<h2>Rivalry desk · ${rivals.length}</h2><div class="desk-grid">`;
       rivals.slice(0, RIVAL_DESK_MAX).forEach(g => {
-        const tag = started(g) ? `a href="#game/${g.id}"` : "div";
-        const score = started(g) ? ` ${g.away&&g.away.score||0}–${g.home&&g.home.score||0} ›` : "";
+        const tag = started(g) ? `a href="#game/${esc(g.id)}"` : "div";
+        const score = started(g) ? ` ${esc(g.away&&g.away.score||0)}–${esc(g.home&&g.home.score||0)} ›` : "";
         const state = isFinal(g) ? "FINAL" : isLive(g) ? liveStatusText(g, true) : fmtKick(g);
         const bits = [g.trophy, state, (g.networks||[]).join("/")].filter(Boolean);
-        html += `<${tag} class="deskcard"><div class="t"><span class="tag rival">🏆 ${esc(g.rivalry)}</span>${g.shortName}${score}</div>
+        html += `<${tag} class="deskcard"><div class="t"><span class="tag rival">🏆 ${esc(g.rivalry)}</span>${esc(g.shortName)}${score}</div>
           <div class="d">${esc(bits.join(" · "))}</div></${tag.split(" ")[0]}>`;
       });
       html += `</div>`;
@@ -610,13 +610,13 @@
     if (!unders.length && !heat.length && !alt.length && !liveGames.length) return html;
     html += `<h2>Weather / travel desk</h2><div class="desk-grid">`;
     unders.forEach(g => {
-      html += `<div class="deskcard"><div class="t"><span class="tag ${g.impact_level==="UNDER"?"under":"watch"}">${g.impact_level}</span>${g.shortName}</div><div class="d">${(g.impact_notes||[]).join(" · ")} · total ${g.odds&&g.odds.total!=null?g.odds.total:"n/a"}</div></div>`;
+      html += `<div class="deskcard"><div class="t"><span class="tag ${g.impact_level==="UNDER"?"under":"watch"}">${g.impact_level}</span>${esc(g.shortName)}</div><div class="d">${esc((g.impact_notes||[]).join(" · "))} · total ${g.odds&&g.odds.total!=null?esc(g.odds.total):"n/a"}</div></div>`;
     });
     heat.forEach(g => {
-      html += `<div class="deskcard"><div class="t"><span class="tag heat">HEAT ${Math.round(g.temp)}°</span>${g.shortName}</div><div class="d">${g.city}, ${g.state} · ${fmtKick(g)}</div></div>`;
+      html += `<div class="deskcard"><div class="t"><span class="tag heat">HEAT ${Math.round(g.temp)}°</span>${esc(g.shortName)}</div><div class="d">${esc(`${g.city}, ${g.state} · ${fmtKick(g)}`)}</div></div>`;
     });
     alt.forEach(g => {
-      html += `<div class="deskcard"><div class="t"><span class="tag alt">${g.elev_ft.toLocaleString()} ft</span>${g.shortName}</div><div class="d">${g.city}, ${g.state} · ${fmtKick(g)}</div></div>`;
+      html += `<div class="deskcard"><div class="t"><span class="tag alt">${g.elev_ft.toLocaleString()} ft</span>${esc(g.shortName)}</div><div class="d">${esc(`${g.city}, ${g.state} · ${fmtKick(g)}`)}</div></div>`;
     });
     html += `</div>`;
     if (indoor.length) html += `<div class="d" style="color:var(--muted);font-size:12px;margin-top:6px">${indoor.length} indoor site${indoor.length>1?"s":""} on this slate.</div>`;
