@@ -25,13 +25,15 @@
   const etDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: ET, year:"numeric", month:"2-digit", day:"2-digit" });
   const ctDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: CT, year:"numeric", month:"2-digit", day:"2-digit" });
   const ctTimeFmt = new Intl.DateTimeFormat("en-US", { timeZone: CT, hour:"2-digit", minute:"2-digit", hourCycle:"h23" });
-  const ctDayFmt = new Intl.DateTimeFormat("en-US", { timeZone: CT, weekday:"short" });
   function kickDate(g) { const d = new Date(g.date || ""); return isNaN(d) ? null : d; }
-  function slateDay(g) { const d = kickDate(g); return d ? ctDateFmt.format(d) : (g.date || "").slice(0,10); }
+  // A kickoff ESPN hasn't announced (time_tbd) sits at midnight Eastern, which is the evening
+  // before in CT: its day is the Eastern calendar date.
+  function slateDay(g) { const d = kickDate(g); return d ? (g.time_tbd ? etDateFmt : ctDateFmt).format(d) : (g.date || "").slice(0,10); }
   const slateDays = [...new Set(games.map(slateDay))].filter(Boolean).sort();
+  const dateDayFmt = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" });
   const days = [{ id:"all", label:"All" }, ...slateDays.map(id => {
-    const g = games.find(x => slateDay(x) === id);
-    return { id, label: g && kickDate(g) ? ctDayFmt.format(kickDate(g)) : id.slice(5) };
+    const noon = new Date(id + "T12:00:00Z");
+    return { id, label: isNaN(noon) ? id.slice(5) : dateDayFmt.format(noon) };
   })];
   const todayCT = ctDateFmt.format(new Date());
   const busiestDay = slateDays.slice().sort((a,b) => games.filter(g=>slateDay(g)===b).length - games.filter(g=>slateDay(g)===a).length)[0];
@@ -43,7 +45,9 @@
     { id:"cards", label:"Cards" }, { id:"lines", label:"Lines sheet" },
     { id:"tv", label:"By TV" }, { id:"blowouts", label:"Blowouts" }
   ];
-  let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, confOnly=false, group="all", q="", sort="time";
+  let day = slateDays.includes(todayCT) ? todayCT : (busiestDay || "all"), win="all", view="cards", ranked=false, starredOnly=false, weatherOnly=false, liveOnly=false, confOnly=false, rivalryOnly=false, group="all", q="", sort="time";
+  const hasRivalries = games.some(g => g.rivalry);
+  const RIVAL_DESK_MAX = 6;   // Rivalry Week has 15+; past this the desk links to the filter instead
   let liveStatus = { ok:false, fromFile: location.protocol === "file:", last:null, error:null };
   // Filter panel: collapsed on phones so the first game is above the fold, open on wide screens.
   // Until the viewer picks, follow the width: an app window can open phone-sized and be widened later.
@@ -56,13 +60,14 @@
   // Live / Starred that come from the URL (the app's tabs) are the page itself, not a filter to count or reset.
   function activeFilters() {
     const f = hashFilters(location.hash);
-    return [group !== "all", confOnly, ranked, starredOnly && !f.starredOnly, liveOnly && !f.liveOnly,
+    return [group !== "all", confOnly, ranked, rivalryOnly, starredOnly && !f.starredOnly, liveOnly && !f.liveOnly,
             weatherOnly, win !== "all", sort !== "time"].filter(Boolean).length;
   }
   function resetFilters() {
     const f = hashFilters(location.hash);
     group = "all"; win = "all"; sort = "time"; q = "";
-    confOnly = ranked = weatherOnly = false;
+    confOnly = ranked = weatherOnly = rivalryOnly = false;
+    if (f.rivalryOnly) history.replaceState(null, "", location.pathname + location.search);
     starredOnly = f.starredOnly; liveOnly = f.liveOnly;
     $("q").value = "";
     pills(); render();
@@ -70,12 +75,13 @@
   function emptyHtml() {
     const reset = activeFilters() || q ? `<br /><button class="fbtn" data-reset>Reset filters</button>` : "";
     if (liveOnly && !games.some(isLive)) {
-      const next = games.filter(g => !started(g) && kickDate(g) && kickDate(g) > new Date())
+      const next = games.filter(g => !started(g) && !g.time_tbd && kickDate(g) && kickDate(g) > new Date())
                         .sort((a, b) => kickDate(a) - kickDate(b))[0];
       const when = next ? `<br />Next kickoff: <b>${esc(next.shortName)}</b> · ${esc(fmtKick(next))}` : "";
       return `<div class="empty">No games are live right now.${when}</div>`;
     }
     if (starredOnly && !stars.size) return `<div class="empty">Tap ☆ on any game to star it. Starred games collect here.</div>`;
+    if (rivalryOnly && !hasRivalries) return `<div class="empty">No trophy games on this week's slate.${reset}</div>`;
     return `<div class="empty">No games match those filters.${reset}</div>`;
   }
 
@@ -86,11 +92,14 @@
     return (parseInt(parts.hour,10) % 24) * 60 + parseInt(parts.minute,10);
   }
   function windowOf(g) {
+    if (g.time_tbd) return "tbd";      // only under "All times" until ESPN sets it
     const m = kickMinutes(g);          // CT minutes
     if (m < 13*60+30) return "early";  // through 1:30 PM CT kicks
     if (m < 18*60) return "aft";       // through 5:59 PM CT
     return "night";
   }
+  // Day, then CT kickoff; an unannounced time goes last on its day, not first at "midnight".
+  function timeKey(g) { return `${slateDay(g)} ${g.time_tbd ? "9999" : String(kickMinutes(g)).padStart(4, "0")}`; }   // digits: localeCompare puts "~" first
   function fmtKick(g) { return g.kick_ct || (g.statusShort || "").replace(/^\d{1,2}\/\d{1,2}\s+-\s+/, ""); }
   function rank(t) { return (t && t.rank && t.rank < 30) ? `<span class="rank">#${t.rank}</span>` : ""; }
   // Conference game: the snapshot's flag when the pipeline has emitted it, else same
@@ -160,11 +169,13 @@
     return known.filter(k => byDate[k] && byDate[k].some(g => !isFinal(g)));
   }
   // #live / #starred / #all in the URL set the filters (native app tabs and shareable links).
+  // #rivalry is a shareable link to the week's trophy games (the App Store event points here).
   function hashFilters(hash) {
     const h = String(hash || "").replace(/^#/, "").toLowerCase();
     const views = ["lines", "tv", "blowouts"];
-    return { liveOnly: h === "live", starredOnly: h === "starred", view: views.includes(h) ? h : "cards",
-             known: ["", "all", "live", "starred", ...views].includes(h) };
+    return { liveOnly: h === "live", starredOnly: h === "starred", rivalryOnly: h === "rivalry",
+             view: views.includes(h) ? h : "cards",
+             known: ["", "all", "live", "starred", "rivalry", ...views].includes(h) };
   }
   // ESPN sometimes serves "0-0" on the live scoreboard after games were played; keep the real one.
   function betterRecord(current, incoming) {
@@ -238,6 +249,7 @@
     const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
     return [
       `${teamLabel(a)} ${g.neutral?"vs":"@"} ${teamLabel(h)}`,
+      g.rivalry ? `🏆 ${g.rivalry}${g.trophy ? ` (${g.trophy})` : ""}` : "",
       `${fmtKick(g)} · ${(g.networks||g.broadcasts||[]).join("/")}`,
       [g.venue, [g.city,g.state].filter(Boolean).join(", ")].filter(Boolean).join(" · "),
       [g.wx_emoji, g.temp!=null?Math.round(g.temp)+"°":"", g.wx_label, wx.wind!=null?`wind ${Math.round(wx.wind)} ${g.wind_dir||""}`:"", wx.pop!=null?`rain ${wx.pop}%`:""].filter(Boolean).join(" · "),
@@ -390,11 +402,12 @@
         const ar=g.away&&g.away.rank&&g.away.rank<30;
         if (!hr && !ar) return false;
       }
+      if (rivalryOnly && !g.rivalry) return false;
       if (starredOnly && !stars.has(g.id)) return false;
       if (liveOnly && !isLive(g) && !isFinal(g)) return false;
       if (weatherOnly && !(g.flags&&g.flags.length) && g.impact_level==="CLEAR") return false;
       if (q) {
-        const blob=[g.name,g.shortName,g.venue,g.city,g.state,...(g.networks||[]),g.home&&g.home.conference,g.away&&g.away.conference].join(" ").toLowerCase();
+        const blob=[g.name,g.shortName,g.venue,g.city,g.state,...(g.networks||[]),g.home&&g.home.conference,g.away&&g.away.conference,g.rivalry,g.trophy].join(" ").toLowerCase();
         if (!blob.includes(q.toLowerCase())) return false;
       }
       return true;
@@ -406,7 +419,7 @@
       if (sort==="temp") return (b.temp||-99)-(a.temp||-99);
       if (sort==="wind") return ((b.wx&&b.wx.wind)||0)-((a.wx&&a.wx.wind)||0);
       if (sort==="rain") return ((b.wx&&b.wx.pop)||0)-((a.wx&&a.wx.pop)||0);
-      return (a.date||"").localeCompare(b.date||"");
+      return timeKey(a).localeCompare(timeKey(b));
     });
     return list;
   }
@@ -457,6 +470,7 @@
         <span>${clockLabel(g)}${conf?" · "+conf:""}</span>
         <span><span class="tv">${tv}</span><button class="star ${on?"on":""}" data-star="${g.id}">${on?"★":"☆"}</button></span>
       </div>
+      ${g.rivalry?`<div class="rival">🏆 ${esc(g.rivalry)}${g.trophy?`<span> · ${esc(g.trophy)}</span>`:""}</div>`:""}
       ${liveRow}
       <div class="teams">
         <div class="trow">
@@ -511,7 +525,7 @@
       const score = (isLive(g)||isFinal(g)) ? `${a.score||0}–${h.score||0}` : "";
       return `<tr>
         <td class="nw">${kick}<div class="juice">${(g.networks||[]).join("/")}</div></td>
-        <td>${started(g)?`<a class="glink" href="#game/${g.id}">`:""}<b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}${started(g)?" ›</a>":""}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}</div></td>
+        <td>${started(g)?`<a class="glink" href="#game/${g.id}">`:""}<b>${a.abbr||""}</b> ${g.neutral?"vs":"@"} <b>${h.abbr||""}</b> ${score}${started(g)?" ›</a>":""}<div class="juice">${[g.city,g.state].filter(Boolean).join(", ")}${g.rivalry?` · 🏆 ${esc(g.rivalry)}`:""}</div></td>
         <td>${o.details||"—"}<div class="juice">${started(g) ? `${math.coverState||""} ${math.coverBy!=null?math.coverBy:""}` : openSp}</div></td>
         <td>${o.total!=null?o.total:"—"}<div class="juice">${started(g) && math.total!=null?`${math.combined} pts · ${math.overNeed} to over`:""}</div></td>
         ${showProj ? `<td class="nw">${(started(g) || impl.away==null) ? "—" : `${impl.away}–${impl.home}`}</td>` : ""}
@@ -578,6 +592,21 @@
       });
       html += `</div>`;
     }
+    // Trophy games on the chosen day. With the Rivalry filter on, the cards below already are this list.
+    const rivals = rivalryOnly ? [] : list.filter(g => g.rivalry);
+    if (rivals.length) {
+      html += `<h2>Rivalry desk · ${rivals.length}</h2><div class="desk-grid">`;
+      rivals.slice(0, RIVAL_DESK_MAX).forEach(g => {
+        const tag = started(g) ? `a href="#game/${g.id}"` : "div";
+        const score = started(g) ? ` ${g.away&&g.away.score||0}–${g.home&&g.home.score||0} ›` : "";
+        const state = isFinal(g) ? "FINAL" : isLive(g) ? liveStatusText(g, true) : fmtKick(g);
+        const bits = [g.trophy, state, (g.networks||[]).join("/")].filter(Boolean);
+        html += `<${tag} class="deskcard"><div class="t"><span class="tag rival">🏆 ${esc(g.rivalry)}</span>${g.shortName}${score}</div>
+          <div class="d">${esc(bits.join(" · "))}</div></${tag.split(" ")[0]}>`;
+      });
+      html += `</div>`;
+      if (rivals.length > RIVAL_DESK_MAX) html += `<button class="fbtn deskmore" data-rivalry>All ${rivals.length} trophy games</button>`;
+    }
     if (!unders.length && !heat.length && !alt.length && !liveGames.length) return html;
     html += `<h2>Weather / travel desk</h2><div class="desk-grid">`;
     unders.forEach(g => {
@@ -594,11 +623,11 @@
     return html;
   }
   function downloadCsv(list) {
-    const headers = ["kick_ct","away","home","venue","city","state","tv","spread","total","proj_away","proj_home","temp","wind","rain","flags","notes"];
+    const headers = ["kick_ct","away","home","venue","city","state","tv","spread","total","proj_away","proj_home","temp","wind","rain","flags","notes","rivalry"];
     const rows = list.map(g=>{
       const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
       const pa = started(g) ? "" : impl.away, ph = started(g) ? "" : impl.home;
-      return [fmtKick(g), a.name, h.name, g.venue, g.city, g.state, (g.networks||[]).join("|"), o.details, o.total, pa, ph, g.temp, wx.wind, wx.pop, (g.flags||[]).join("|"), (g.impact_notes||[]).join("; ")].map(v => `"${String(v??"").replaceAll('"','""')}"`).join(",");
+      return [fmtKick(g), a.name, h.name, g.venue, g.city, g.state, (g.networks||[]).join("|"), o.details, o.total, pa, ph, g.temp, wx.wind, wx.pop, (g.flags||[]).join("|"), (g.impact_notes||[]).join("; "), g.rivalry].map(v => `"${String(v??"").replaceAll('"','""')}"`).join(",");
     });
     const blob = new Blob([[headers.join(","),...rows].join("\n")], {type:"text/csv"});
     const url = URL.createObjectURL(blob);
@@ -642,6 +671,7 @@
       <button class="fbtn ${group==="Big 12"?"active":""}" data-group="Big 12">Big 12</button>
       <button class="fbtn ${confOnly?"active":""}" id="confonly">Conf game</button>
       <button class="fbtn ${ranked?"active":""}" id="ranked">Ranked</button>
+      ${hasRivalries || rivalryOnly ? `<button class="fbtn ${rivalryOnly?"active":""}" id="rivalonly">Rivalry</button>` : ""}
       <button class="fbtn ${starredOnly?"active":""}" id="starred">Starred</button>
       <button class="fbtn ${liveOnly?"active":""}" id="liveonly">Live</button>
       <button class="fbtn" id="refresh">Refresh</button>
@@ -669,6 +699,7 @@
     };
     $("confonly").onclick = () => { confOnly=!confOnly; pills(); render(); };
     $("ranked").onclick = () => { ranked=!ranked; pills(); render(); };
+    if ($("rivalonly")) $("rivalonly").onclick = () => { rivalryOnly=!rivalryOnly; pills(); render(); };
     $("starred").onclick = () => { starredOnly=!starredOnly; pills(); render(); };
     $("liveonly").onclick = () => { liveOnly=!liveOnly; pills(); render(); };
     $("refresh").onclick = () => { pollLive(); };
@@ -683,6 +714,7 @@
   };
   document.addEventListener("click", e => {
     if (e.target.closest("[data-reset]")) { resetFilters(); return; }
+    if (e.target.closest("[data-rivalry]")) { rivalryOnly = true; pills(); render(); window.scrollTo(0, 0); return; }
     const s=e.target.closest("[data-star]"); if(s){ toggleStar(s.dataset.star); return; }
     const c=e.target.closest("[data-copy]"); if(c){ const g=games.find(x=>x.id===c.dataset.copy); if(g) copyText(blurb(g), c); }
   });
@@ -707,6 +739,9 @@
     const f = hashFilters(location.hash);
     if (!f.known) return;
     liveOnly = f.liveOnly; starredOnly = f.starredOnly; view = f.view;
+    // Sets, never clears: Rivalry is a filter chip, so switching app tabs keeps it like Ranked.
+    // All days, since trophy games span Thanksgiving to Saturday in Rivalry Week.
+    if (f.rivalryOnly) { rivalryOnly = true; day = "all"; }
     pills(); render();
     if (f.view !== "cards") { const m = $("main"); if (m) m.scrollIntoView({ block: "start" }); }
     else window.scrollTo(0, 0);
