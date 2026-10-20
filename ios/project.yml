@@ -70,6 +70,15 @@ targets:
             UIApplicationShortcutItemTitle: By TV
             UIApplicationShortcutItemSubtitle: Every game by network
             UIApplicationShortcutItemIconSymbolName: tv
+          - UIApplicationShortcutItemType: com.hoynelabs.cfbgameday.rivalry
+            UIApplicationShortcutItemTitle: Rivalry Games
+            UIApplicationShortcutItemSubtitle: This week's trophy games
+            UIApplicationShortcutItemIconSymbolName: trophy
+        # cfbgameday://rivalry, ://live, ://starred, ://tv, ://board, ://game/<id>
+        # (App Store in-app event deep links; routed in QuickActions.swift).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hoynelabs.cfbgameday
+            CFBundleURLSchemes: [cfbgameday]
         # The one URL the app loads.
         BoardURL: https://cfbgameday.app
         BoardHost: cfbgameday.app

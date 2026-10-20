@@ -22,6 +22,17 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.hoynelabs.cfbgameday</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cfbgameday</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -59,6 +70,16 @@
 			<string>By TV</string>
 			<key>UIApplicationShortcutItemType</key>
 			<string>com.hoynelabs.cfbgameday.tv</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>trophy</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>This week's trophy games</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Rivalry Games</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.hoynelabs.cfbgameday.rivalry</string>
 		</dict>
 	</array>
 	<key>UILaunchScreen</key>
