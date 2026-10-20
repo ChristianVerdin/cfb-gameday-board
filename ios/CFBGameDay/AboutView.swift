@@ -28,7 +28,7 @@ struct AboutView: View {
                 Section("Shortcuts") {
                     Text(ProcessInfo.processInfo.isiOSAppOnMac
                          ? "Board menu: Command-1 to 4 switch tabs, Command-F finds a game, Command-R reloads."
-                         : "Long-press the app icon on the Home Screen for Live Games, Starred, or By TV.")
+                         : "Long-press the app icon on the Home Screen for Live Games, Starred, By TV, or Rivalry Games.")
                         .font(.subheadline)
                 }
 
