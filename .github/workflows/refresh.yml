@@ -1,10 +1,13 @@
 name: Refresh slate snapshot
 
-# Six runs a week, each with hours of lead time before it is needed.
+# Seven runs a week, each with hours of lead time before it is needed.
 # GitHub creates scheduled runs late under load - measured 5h08m and 2h52m late
 # on this repo in Sept 2026 - and may drop them entirely, so every cron sits well
 # ahead of its deadline rather than close to it.
-#   Tue 7 AM CT  build the new Tue..Mon slate (midweek MAC/CUSA games kick Tue/Wed nights)
+#   Tue 4 AM CT  build the new Tue..Mon slate (midweek MAC/CUSA games kick Tue/Wed nights;
+#                bowl Tuesdays kick as early as 1 PM CT)
+#   Tue 10 AM CT backup for the 4 AM run, like Saturday's: a dropped Tuesday run left
+#                Tuesday's games off the board until the Wednesday run
 #   Wed 1 PM CT  lines and weather before Thursday night kickoff
 #   Thu 7 AM CT  Thursday weather and any games ESPN has added
 #   Fri 7 AM CT  Friday weather
@@ -14,7 +17,8 @@ name: Refresh slate snapshot
 # Commits games.json/games.js/index.html/sitemap.xml when they change; Vercel deploys the push.
 on:
   schedule:
-    - cron: "0 12 * * 2"
+    - cron: "0 9 * * 2"
+    - cron: "0 15 * * 2"
     - cron: "0 18 * * 3"
     - cron: "0 12 * * 4"
     - cron: "0 12 * * 5"
@@ -41,8 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Build snapshot
