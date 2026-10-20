@@ -192,6 +192,53 @@ touch the hash. Not on Mac (no Home Screen there); About shows the Board menu ke
 Test on a simulator with AXe: `axe touch -x X -y Y --down --up --delay 1.5` on the icon, then tap
 the item; `describe-ui` lists icons on other Home Screen pages with off-screen x, so swipe first.
 
+1.0.5 adds a fourth item, **Rivalry Games** (`#rivalry`), and `cfbgameday://` deep links on the
+same routing (`Route` in `QuickActions.swift`, `onOpenURL` in `RootView`): `rivalry`, `live`,
+`starred`, `tv`, `board`, and `game/<ESPN id>`. A game link from Live or Starred first resets the
+shared page to `#all`, so closing the sheet lands on all games. Test with
+`xcrun simctl openurl <udid> cfbgameday://rivalry` (the simulator asks "Open in CFB GameDay?"
+first; event links do not).
+
+## In-app events and nominations (drafted 2026-10-20)
+
+Apple requires every in-app event to deep-link into the app itself, which is why 1.0.5 exists.
+Six events are drafts in App Store Connect, USA only, purpose all users, text kept generic (no
+"College Football Playoff" or trophy-game marks in event text; those names appear only as board data):
+
+| Event (display name) | id | Badge | Publish | Runs (CT) | Deep link |
+|---|---|---|---|---|---|
+| Rivalry Saturdays | 6825048877 | Special Event | Oct 21 | Oct 24 - Nov 22 | `cfbgameday://rivalry` |
+| Rivalry Week | 6825049405 | Live Event, high | Nov 10 | Nov 24 - Nov 29 | `cfbgameday://rivalry` |
+| Championship Week | 6825049467 | Live Event | Nov 17 | Dec 1 - Dec 6 | `cfbgameday://board` |
+| Bowl Season | 6825049670 | Special Event | Nov 28 | Dec 12 - Jan 11 | `cfbgameday://board` |
+| Playoff Season | 6825049981 | Live Event | Dec 4 | Dec 18 - Jan 16 | `cfbgameday://board` |
+| National Championship | 6825049993 | Live Event, high | Jan 4 | Jan 18 - Jan 26 | `cfbgameday://board` |
+
+Rules (Apple): 15 min to 31 days, publish at most 14 days before start, 10 published / 15 approved
+at once, reviewed independently of a version (or in the same submission), name 30 / short 50 /
+long 120 characters, media opaque JPG/PNG, card 16:9 (1920x1080 to 3840x2160), details 9:16. A
+territory is required (`--territories USA`; without it asc's create fails and deletes the event).
+
+Media: `ios/screenshots/events/` (gitignored). `compose.html?layout=card|details&back=..&front=..`
+frames board screenshots (390 pt @3x, captured with the sticky header accounted for) on a dark
+field, no added text and no posted lines; render at 1920x1080 / 1080x1920 in headless Chrome, then
+`ffmpeg -i raw.png -pix_fmt rgb24 out.png` to drop alpha. The Rivalry Week shots come from a
+`--start 20261124 --end 20261130 --out <scratch>` preview served by a copy of `server.py`.
+
+Nominations (drafts, NEW_CONTENT, USA): "Rivalry Week 2026" (`d88131cc-2e00-4597-b8d0-f5b455f59db9`,
+Nov 24-29) and "Postseason 2026-27" (`29768088-c2c0-4a7c-86c7-03fe2eb922b2`, Dec 1 - Jan 26).
+The API rejects draft event ids in `--in-app-events`; link them once the events are approved
+(`asc nominations update --id .. --in-app-events .. --submitted=false`), then submit with
+`--submitted=true`. Apple asks for about three weeks of lead time.
+
+Submitting 1.0.5 with the events in one review submission, so Review tests the links on the new build:
+```
+asc review submissions-create --app 6809035228 --platform IOS
+asc review items-add --submission SUB --item-type appStoreVersions --item-id 2064e46f-b3c0-4966-b352-5303d7fc6da8
+asc review items-add --submission SUB --item-type appEvents --item-id 6825048877   # and each other event id
+asc review submissions-submit --id SUB --confirm
+```
+
 ## Review notes (App Review Information)
 
 > CFB GameDay Board is an informational sports display: NCAA football scores, venues, kickoff weather, TV listings, and the publicly posted point spread and total for context. There are no accounts, no sign-in, no purchases, no deposits, and no way to place a wager. The app does not link to any sportsbook.
