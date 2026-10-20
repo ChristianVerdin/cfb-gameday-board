@@ -172,7 +172,11 @@ Done once per week by `scripts/refresh_week.py`, never live.
 1. **Geocode** the venue city:
    `https://geocoding-api.open-meteo.com/v1/search?name=<city>&count=10&language=en&format=json`.
    Results are filtered to `country_code == "US"` and, when ESPN gives a state,
-   to the matching `admin1`. First match wins. The result supplies `lat`,
+   to the matching `admin1`. First match wins. An overseas venue arrives with a
+   `country` and no state (Aviva Stadium: Dublin, Ireland) and is matched against
+   that country instead; matching it against US results put the Week 0 Dublin game
+   on Dublin, Ohio's weather. A city with no match at all is counted as
+   `geocode_unmatched` and warned, since it leaves the game with no forecast too. The result supplies `lat`,
    `lon`, `elev` (meters), `geo_name`, `admin1`, and the venue's IANA timezone.
    `elev_ft = round(elev * 3.28084)`. Cities are deduplicated per run, and any
    venue already present in the existing `games.json` reuses its stored `geo`
@@ -184,6 +188,10 @@ Done once per week by `scripts/refresh_week.py`, never live.
    get `kick_local`, and the hourly row whose time equals that hour (minutes
    dropped) becomes `wx`. Open-Meteo forecasts 16 days out; beyond that `wx`
    is null and the ESPN text forecast (`espn_weather`) is used for the label.
+   A kickoff ESPN has not announced (`timeValid: false`) is parked at midnight
+   Eastern; it gets no forecast (there is no kickoff hour), `wx_label` "Kickoff TBA",
+   `kick_ct` like "Sat TBA", `time_tbd: true`, and an impact note saying the
+   forecast follows, never "Clean outdoor conditions".
    The call has a 10 s timeout and **one retry**, drawn from a whole-run budget
    of 20 so a bad Open-Meteo day cannot blow the Action's 20-minute cap. The
    retry exists because a dropped forecast is not a visible gap: `impact()` then
@@ -275,13 +283,50 @@ Done once per week by `scripts/refresh_week.py`, never live.
    schema.org `@graph` of one `SportsEvent` per unplayed game, and rewrites the
    kicker div with `week_label` (or a neutral string, since `week_label()` can
    return None). `startDate` is venue-local with a real offset derived from
-   `wx.utc_offset_seconds`, never the raw UTC. TV uses
+   `wx.utc_offset_seconds`, never the raw UTC; a TBA kickoff gets a date-only
+   `startDate`. A rivalry game carries its name as `alternateName` ("Iron Bowl" is
+   how it is searched). TV uses
    `publication` → `BroadcastEvent` → `publishedOn`. `sitemap.xml` gets
    `<lastmod>` from `generated_at`. Runs only when `--out` is the repo root;
    `--seo-only` rebuilds just this from the committed `games.json`, no network.
    **No odds, spread, total, implied, offers or potentialAction, ever** — this
    must never read as a sportsbook, and `check.py`'s `test_jsonld` enforces it
    with a forbidden-substring scan.
+
+## Week labels and rivalries
+
+`week_label()` reads each event's own `season.type` and `week.number`, never
+`leagues[0].season`: once a season has moved on, the league field says
+Postseason even for a Week 15 date, which mislabelled Championship Week in the
+2026-10-20 postseason dry run (the 2025 postseason run through the real build).
+The label covers the whole Tue..Mon window, not its first day.
+
+| Window | Label |
+|---|---|
+| Regular week | `Week N · 2026` |
+| Has a game Thanksgiving through Saturday | `Rivalry Week · 2026` |
+| At least half the games are conference title games | `Championship Week · 2026` |
+| Bowls only | `Bowl season · 2026-27` |
+| Bowls plus playoff games | `Bowls & Playoff · 2026-27` |
+| Playoff games only | `CFP First Round` / `CFP Quarterfinals` / `CFP Semifinals` / `College Football Playoff` |
+| The final | `National Championship · 2026-27` |
+
+Postseason labels use the season span, since January games belong to the prior
+season. Each non-week label has its own `<title>` phrase (`SPECIAL_TITLES`).
+`promo_text.py` leads with the label, drops "on Saturday" when Saturday is not
+most of the slate, says "vs" for neutral sites, and uses the matchup itself for
+a one-game week. The CFP final is treated as neutral even when ESPN says
+otherwise (it flagged Miami at its own Hard Rock Stadium as a home game).
+
+`data/rivalries.json` holds named FBS rivalries keyed by the unordered pair of
+ESPN team ids: `label` (the rivalry's proper name, else its trophy) and
+`trophy` (only when it adds something). `build_game()` sets `rivalry`/`trophy`
+on regular-season meetings only; bowls, playoff and conference title games are
+their own identity. The client shows a banner on the card, a rivalry desk in
+Cards view (six, then an "All N trophy games" button), a Rivalry filter chip,
+search by trophy name, `#rivalry` as a shareable link, and the name in Copy
+post and the CSV. Labels are public text: check new ones against Wikipedia and
+the schools, and skip sponsor names and fan nicknames.
 
 ## Rebuilding `games.json` for a new week
 
@@ -308,7 +353,7 @@ python3 scripts/refresh_week.py --start 20260911 --end 20260914
   `impact()` then reported "Clean outdoor conditions" for a game it knew nothing
   about. It now records geocode, forecast, per-game skip and enrichment failures
   too (capped at 50), and `counts{}` carries `geocode_failed`, `forecast_failed`,
-  `forecast_missing`, `games_skipped`, `lines_carried`, `dates_failed`,
+  `forecast_missing`, `geocode_unmatched`, `games_skipped`, `lines_carried`, `dates_failed`,
   `fallback_url_used`, `no_groups_fallback`, `enriched`, `enrich_failed`, plus
   `games` and `events`.
 - The fourth scoreboard URL above has no `groups=80`, so a date served by it
@@ -328,7 +373,12 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
 ## Client notes
 
 - Day pills, default day, and time-window buckets are computed from the game
-  dates in America/Chicago, so the client has no per-week constants. The
+  dates in America/Chicago, so the client has no per-week constants. A TBA game
+  (`time_tbd`) belongs to its Eastern calendar date, sits in no time window, sorts
+  last on its day and is never the "next kickoff". Day pill labels come from the
+  date itself, not from a game on it.
+- Every ESPN string reaches `innerHTML` through `esc()`, and the ESPN link becomes
+  an `href` only when it is https. The
   header kicker reads `week_label` from the payload.
 - The header kicker also exists as static text in `index.html`, rewritten by the
   refresh script, so a crawler and the pre-hydration paint see the real week.
