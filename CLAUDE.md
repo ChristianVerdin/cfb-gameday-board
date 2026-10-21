@@ -22,6 +22,8 @@ scripts/tunnel.sh                 # gameday Cloudflare quick tunnel, prints the 
 scripts/release_ios.sh --bump X.Y.Z   # archive, export, upload, attach via asc; add --submit to send to review (see CONTEXT.md)
                                       # Xcode signed out ("No Accounts"): prefix ASC_SIGNING_KEY_ID=R79Z9DL337
 scripts/ios_tab_check.sh              # simulator tab smoke test (AXe); run before every iOS upload
+cd ios && xcodebuild -project CFBGameDay.xcodeproj -scheme CFBGameDay -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath build/DerivedData test   # routing + widget tests; TEST_RUNNER_SNAPSHOT_DIR=<dir> also renders every widget size
 asc review status --app 6809035228    # App Review state; asc is installed and logged in (profile cfbgameday)
 ```
 Restart `server.py` after a refresh; it reads `dates` from `games.json` at startup.
@@ -56,7 +58,7 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
   `index.html` slate block (`--seo-only` rebuilds just that, no network).
   `scripts/check.py` smoke test. `scripts/run_summary.py` CI digest. `scripts/store_shots.py` captioned App Store screenshots.
 - `manifest.webmanifest`, `sw.js`, `icons/` PWA. Shell-only cache; `/api/*` never cached. Bump `VERSION` in `sw.js` when the shell changes.
-- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. iPhone + iPad from 1.0.3; the iPad setup (all orientations, no `UIRequiresFullScreen`) is what makes the Mac window resizable, so keep it. Home Screen quick actions (from 1.0.4) are static in `project.yml`, routed in `QuickActions.swift`; `cfbgameday://` deep links (from 1.0.5, what in-app events open) parse there too (`Route`). Mac run steps and screenshot sets: `ios/APP_STORE.md`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`; live metadata JSON: `ios/metadata/` (applied by the release script). Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC. Review media (`ios/review/`) is gitignored.
+- `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. iPhone + iPad from 1.0.3; the iPad setup (all orientations, no `UIRequiresFullScreen`) is what makes the Mac window resizable, so keep it. Home Screen quick actions (from 1.0.4) are static in `project.yml`, routed in `QuickActions.swift`; `cfbgameday://` deep links (from 1.0.5, what in-app events open) parse there too (`Route`), and from 1.1 so do universal links to the board (`applinks:cfbgameday.app` in the entitlements; the site's `.well-known/apple-app-site-association` claims only `/` and `/index.html`, checked by `check.py`). `CFBGameDayWidget/` is the WidgetKit extension (from 1.1): `games.json` + `/api/live`, never odds or implied scores, Central times, cached in its own Caches dir. `CFBGameDayTests/` compiles the widget's model and views directly and reads a frozen Week 8 snapshot (`Fixtures/week8.json`). Mac run steps and screenshot sets: `ios/APP_STORE.md`. The `.xcodeproj` is generated and gitignored. Listing copy: `ios/APP_STORE.md`; live metadata JSON: `ios/metadata/` (applied by the release script). Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC. Review media (`ios/review/`) is gitignored.
 - `privacy.html`, `support.html`, `site.css`: public pages App Review links to; keep them accurate when data sources change.
 
 ## Product rules

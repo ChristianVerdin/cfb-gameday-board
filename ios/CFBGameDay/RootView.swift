@@ -44,6 +44,9 @@ struct RootView: View {
             open(route)
         }
         .onOpenURL { quick.handle($0) }   // cfbgameday:// deep links, cold or warm launch
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in   // universal links
+            if let url = activity.webpageURL { quick.handle(url) }
+        }
         .onChange(of: phase, initial: true) { _, new in
             guard new == .active, ReviewPrompt.shouldAsk() else { return }
             ReviewPrompt.markAsked()                        // before the delay: launch can flip phase twice

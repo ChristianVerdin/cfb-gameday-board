@@ -27,6 +27,18 @@ targets:
     platform: iOS
     sources:
       - path: CFBGameDay
+    dependencies:
+      - target: CFBGameDayWidget        # embedded in PlugIns
+    # Universal links (from 1.1): cfbgameday.app/#... opens the app; the site serves
+    # .well-known/apple-app-site-association for this app id.
+    entitlements:
+      path: CFBGameDay/CFBGameDay.entitlements
+      properties:
+        com.apple.developer.associated-domains:
+          - applinks:cfbgameday.app
+    scheme:
+      testTargets:
+        - CFBGameDayTests
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hoynelabs.cfbgameday
@@ -82,3 +94,41 @@ targets:
         # The one URL the app loads.
         BoardURL: https://cfbgameday.app
         BoardHost: cfbgameday.app
+
+  # Home Screen and Lock Screen widget (from 1.1): the day's games from games.json + /api/live.
+  CFBGameDayWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CFBGameDayWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hoynelabs.cfbgameday.widget
+        PRODUCT_NAME: CFBGameDayWidget
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: CFBGameDayWidget/Info.plist
+      properties:
+        CFBundleDisplayName: CFB GameDay
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # Unit tests: routing, plus the widget's model and views compiled in directly.
+  # TEST_RUNNER_SNAPSHOT_DIR=<dir> on xcodebuild test writes rendered widget previews there.
+  CFBGameDayTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CFBGameDayTests
+        excludes:
+          - Fixtures
+      - path: CFBGameDayWidget/SlateModel.swift
+      - path: CFBGameDayWidget/SlateViews.swift
+    dependencies:
+      - target: CFBGameDay
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hoynelabs.cfbgameday.tests
+        GENERATE_INFOPLIST_FILE: YES

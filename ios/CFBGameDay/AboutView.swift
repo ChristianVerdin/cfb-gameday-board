@@ -30,6 +30,10 @@ struct AboutView: View {
                          ? "Board menu: Command-1 to 4 switch tabs, Command-F finds a game, Command-R reloads."
                          : "Long-press the app icon on the Home Screen for Live Games, Starred, By TV, or Rivalry Games.")
                         .font(.subheadline)
+                    if !ProcessInfo.processInfo.isiOSAppOnMac {
+                        Text("Widget: touch and hold the Home Screen, tap Edit, then Add Widget and pick CFB GameDay. Touch and hold the widget, then Edit Widget, to show only the Top 25 or rivalry games.")
+                            .font(.subheadline)
+                    }
                 }
 
                 Section("Data") {
