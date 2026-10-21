@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["3V73W9NUZ6.com.hoynelabs.cfbgameday"],
+        "components": [
+          { "/": "/", "comment": "the board, with any #fragment: #rivalry, #live, #starred, #tv, #game/<id>" },
+          { "/": "/index.html" }
+        ]
+      }
+    ]
+  }
+}

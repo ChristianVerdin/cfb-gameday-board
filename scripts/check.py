@@ -522,6 +522,14 @@ def test_pwa():
     html = (ROOT / "index.html").read_text("utf-8")
     check("manifest linked", 'rel="manifest"' in html, True)
     check("apple icon linked", 'rel="apple-touch-icon"' in html, True)
+    # Universal links (iOS 1.1): Apple's CDN fetches this; a bad file silently turns the links back into web pages.
+    aasa = json.loads((ROOT / ".well-known/apple-app-site-association").read_text("utf-8"))
+    details = aasa["applinks"]["details"]
+    check("aasa app id", [d["appIDs"] for d in details], [["3V73W9NUZ6.com.hoynelabs.cfbgameday"]])
+    check("aasa claims only the board", sorted(c["/"] for d in details for c in d["components"]), ["/", "/index.html"])
+    check("aasa served as json", any(h.get("source") == "/.well-known/apple-app-site-association"
+                                     and {"key": "Content-Type", "value": "application/json"} in h["headers"]
+                                     for h in vj.get("headers") or []), True)
 
 
 if __name__ == "__main__":
