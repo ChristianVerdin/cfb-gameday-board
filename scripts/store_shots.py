@@ -31,6 +31,8 @@ CAPTIONS = {
               "Spread, total and opener from ESPN's feed"),
     "tv": ("By network", "Find any game on TV",
            "Every game grouped by channel and streaming service"),
+    "widget": ("Widgets", "The slate on your Home Screen",
+               "Live scores, kickoffs and TV, for every game, the Top 25 or rivalry games"),
 }
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><style>
