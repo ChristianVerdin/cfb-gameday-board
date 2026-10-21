@@ -138,7 +138,7 @@ Store page live ~15:56 CT: https://apps.apple.com/us/app/cfb-gameday-board/id680
 Release-day marketing pass (same afternoon): store badge + README link pushed, Smart App
 Banner / Open Graph / Twitter card / JSON-LD / robots / sitemap on the site, share image
 `icons/og.png`, `scripts/promo_text.py` with the Week 2 promotional text applied, Wall of
-Apps PR #2481, GitHub profile README section, dailylocks.ai footer link. Details and the
+Apps PR #2481, GitHub profile README section. Details and the
 manual follow-ups: `ios/APP_STORE.md` § Marketing surfaces.
 
 ## First CI run of the new pipeline (2026-09-17, run 35282517054)
