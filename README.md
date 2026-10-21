@@ -13,8 +13,8 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   Thu, Fri and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
 - **iPhone, iPad and Mac:** SwiftUI shell around the same board, in `ios/`. On the App Store
-  since 2026-09-10, currently 1.0.5 (Rivalry Games quick action and `cfbgameday://`
-  links, since 2026-10-20); iPad and a resizable Mac window since 1.0.3 (2026-10-10):
+  since 2026-09-10, currently 1.1 (Today's Games widget and universal links, since
+  APPROVAL_DATE); iPad and a resizable Mac window since 1.0.3 (2026-10-10):
   https://apps.apple.com/app/id6809035228
 
 ## What's on the board
@@ -47,6 +47,13 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   By TV, or Rivalry Games (from 1.0.5).
 - `cfbgameday://` links (from 1.0.5) open the app on a view: `rivalry`, `live`, `starred`,
   `tv`, `board`, or `game/<ESPN id>`. The App Store's in-app event cards use them.
+- Today's Games widget (from 1.1): small, medium and large on the Home Screen, plus the
+  Lock Screen. Live scores, kickoff times, TV and the kickoff forecast for the day's games;
+  Edit Widget picks All games, Top 25 or Rivalry games, and a live or final game opens its
+  game sheet. It reads `games.json` and `/api/live`, never odds or implied scores.
+- Links to the board (from 1.1) open in the app when it is installed: `cfbgameday.app` and
+  its `#rivalry`, `#live`, `#starred`, `#tv` and `#game/<ESPN id>` views. Other pages
+  (`/privacy`, `/support`) stay in Safari.
 
 ## No keys, no accounts
 
