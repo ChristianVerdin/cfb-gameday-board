@@ -30,25 +30,43 @@ enum QuickAction: String {
 }
 
 extension Route {
-    /// cfbgameday://<quick action>, cfbgameday://board, cfbgameday://game/<ESPN id>.
-    /// App Store in-app events require a link that opens the app itself, not the website.
+    /// cfbgameday://<quick action>, cfbgameday://board, cfbgameday://game/<ESPN id> (in-app events and widgets),
+    /// and from 1.1 universal links to the board itself: https://cfbgameday.app/#rivalry, /#game/<id>, ...
+    /// (claimed in .well-known/apple-app-site-association; /privacy and /support stay on the web).
     init?(url: URL) {
-        guard url.scheme?.lowercased() == "cfbgameday" else { return nil }
-        let host = (url.host ?? "").lowercased()
-        if let action = QuickAction(rawValue: host) {
+        switch url.scheme?.lowercased() {
+        case "cfbgameday":
+            // cfbgameday://game/401234567 parses as host "game", path "/401234567".
+            let parts = [url.host ?? ""] + url.pathComponents.dropFirst()
+            self.init(link: parts.joined(separator: "/"))
+        case "https":
+            let host = (url.host ?? "").lowercased()
+            let board = AppConfig.boardHost.lowercased()
+            guard host == board || host == "www." + board, ["", "/", "/index.html"].contains(url.path) else { return nil }
+            self.init(link: url.fragment ?? "")
+        default:
+            return nil
+        }
+    }
+
+    /// A link's target in app.js hash terms: a quick action, a board view, or game/<ESPN id>.
+    init?(link: String) {
+        let link = link.lowercased()
+        if let action = QuickAction(rawValue: link) {
             self = action.route
             return
         }
-        switch host {
+        switch link {
         case "", "board", "all":
             self = Route(tab: .board, fragment: "all")
-        case "game":
+        case "lines", "blowouts":
+            self = Route(tab: .board, fragment: link)
+        default:
             // Same shape app.js accepts for #game/<id>: 6 to 12 digits, nothing else reaches the page.
-            let id = url.pathComponents.dropFirst().first ?? ""
+            guard link.hasPrefix("game/") else { return nil }
+            let id = link.dropFirst("game/".count)
             guard (6...12).contains(id.count), id.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
             self = Route(tab: .board, fragment: "game/\(id)")
-        default:
-            return nil
         }
     }
 }

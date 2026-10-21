@@ -199,6 +199,32 @@ shared page to `#all`, so closing the sheet lands on all games. Test with
 `xcrun simctl openurl <udid> cfbgameday://rivalry` (the simulator asks "Open in CFB GameDay?"
 first; event links do not).
 
+## Widgets and universal links (1.1)
+
+**Widget** (`CFBGameDayWidget/`, bundle `com.hoynelabs.cfbgameday.widget`): one widget, "Today's Games", in
+small, medium (4 games), large (12), Lock Screen rectangular and inline. Edit Widget offers Show: All games /
+Top 25 / Rivalry games (`SlateIntent`). It reads `games.json` and, once a game on the shown day may have kicked
+off, `/api/live?dates=` for that day (plus anything that kicked off in the last 6 hours), and keeps the last good
+copy in its Caches dir ("Offline · 2:31 PM CT" when a refresh fails). Day shown: one with a live game, else
+today, else the next day with games, else the last (Sunday shows Saturday's finals). Refresh hint: 10 min while
+games are on, just after the next kickoff otherwise, and at Central midnight. No odds, no implied score, no
+weather flags beyond the snapshot's kickoff forecast on upcoming outdoor games; finals dim the trailing side by
+score. Live and final rows link to `cfbgameday://game/<id>`; the rest of the widget opens Live (games on),
+Rivalry (that setting), or the board.
+
+**Universal links**: `applinks:cfbgameday.app`, and `.well-known/apple-app-site-association` on the site claims
+`/` and `/index.html` (any fragment) for `3V73W9NUZ6.com.hoynelabs.cfbgameday`; `/privacy`, `/support` and
+`/api/*` stay on the web. `Route(url:)` maps `#rivalry`, `#live`, `#starred`, `#tv`, `#lines`, `#blowouts`,
+`#game/<id>` the same way as `cfbgameday://`. Apple's CDN served the file within minutes of the 10-21 deploy
+(`curl https://app-site-association.cdn-apple.com/a/v1/cfbgameday.app`).
+
+Tested 2026-10-21 on the iOS 27 simulator: 12 unit tests (`xcodebuild ... test`; routing, day choice, filters,
+live dates, refresh timing) plus rendered previews of every size; widget added from the gallery with live data,
+Edit Widget -> Rivalry games, tap opened the board on the Rivalry filter; `simctl openurl
+https://cfbgameday.app/#live` opened the Live tab, `#game/<id>` the game sheet, `/privacy` Safari; tab check
+passed. If a test run fails with "Application failed preflight checks" (Busy), `xcrun simctl uninstall <udid>
+com.hoynelabs.cfbgameday` and run again.
+
 ## In-app events and nominations (drafted 2026-10-20)
 
 Apple requires every in-app event to deep-link into the app itself, which is why 1.0.5 exists.
