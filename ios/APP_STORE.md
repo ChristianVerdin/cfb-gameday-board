@@ -202,7 +202,7 @@ first; event links do not).
 ## In-app events and nominations (drafted 2026-10-20)
 
 Apple requires every in-app event to deep-link into the app itself, which is why 1.0.5 exists.
-Six events are drafts in App Store Connect, USA only, purpose all users, text kept generic (no
+Six events, all approved 2026-10-20 with 1.0.5 (Rivalry Saturdays published 10-21; each other one publishes on its date), USA only, purpose all users, text kept generic (no
 "College Football Playoff" or trophy-game marks in event text; those names appear only as board data):
 
 | Event (display name) | id | Badge | Publish | Runs (CT) | Deep link |
@@ -225,11 +225,13 @@ field, no added text and no posted lines; render at 1920x1080 / 1080x1920 in hea
 `ffmpeg -i raw.png -pix_fmt rgb24 out.png` to drop alpha. The Rivalry Week shots come from a
 `--start 20261124 --end 20261130 --out <scratch>` preview served by a copy of `server.py`.
 
-Nominations (drafts, NEW_CONTENT, USA): "Rivalry Week 2026" (`d88131cc-2e00-4597-b8d0-f5b455f59db9`,
+Nominations (NEW_CONTENT, USA; **submitted 2026-10-21** with the events linked): "Rivalry Week 2026" (`d88131cc-2e00-4597-b8d0-f5b455f59db9`,
 Nov 24-29) and "Postseason 2026-27" (`29768088-c2c0-4a7c-86c7-03fe2eb922b2`, Dec 1 - Jan 26).
 The API rejects draft event ids in `--in-app-events`; link them once the events are approved
 (`asc nominations update --id .. --in-app-events .. --submitted=false`), then submit with
-`--submitted=true`. Apple asks for about three weeks of lead time.
+`--submitted=true`. Apple asks for about three weeks of lead time. The submit can answer HTTP 500
+and still go through (Postseason did on 10-21, and a view right after still read DRAFT): re-check with
+`asc nominations list --app 6809035228 --status SUBMITTED` before retrying.
 
 Submitting 1.0.5 with the events in one review submission, so Review tests the links on the new build:
 ```
