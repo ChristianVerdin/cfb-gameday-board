@@ -578,7 +578,8 @@
       ? g.under_score > 0
       : (g.impact_level==="UNDER" || g.impact_level==="WATCH"));
     const heat = list.filter(g => (g.flags||[]).some(f=>f.includes("HEAT")||f==="HOT")).sort((a,b)=>(b.temp||0)-(a.temp||0)).slice(0,5);
-    const alt = list.filter(g => (g.flags||[]).includes("ALTITUDE"));
+    // A game already in unders carries its elevation in impact_notes; list it once.
+    const alt = list.filter(g => (g.flags||[]).includes("ALTITUDE") && !unders.includes(g));
     const indoor = list.filter(g=>g.indoor);
     const liveGames = list.filter(isLive);
     let html = "";
