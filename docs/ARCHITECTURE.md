@@ -407,6 +407,48 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
   refresh: it fails only above 25% missing forecasts, warns above 10%, and only
   inside Open-Meteo's ~16-day horizon. An enrichment failure never fails it.
 
+## iOS widget and universal links (from 1.1)
+
+The Today's Games widget (`ios/CFBGameDayWidget/`) is a second client of the
+same two endpoints, running on users' devices rather than on the site:
+
+- It reads `games.json` for each game's `id`, `date`, `time_tbd`, `neutral`,
+  `indoor`, `networks`/`broadcasts`, `gameState`, `statusShort`, `rivalry`,
+  `temp`, `wx_emoji`, and `home`/`away` `id`, `abbr`, `rank`, `color`, `alt`.
+  `/api/live?dates=` supplies `state`, `statusShort`, `completed` and the
+  teams' `score`/`winner`. It never reads odds, spreads, totals, implied
+  scores or `/api/game`.
+- Decoding is lenient (`SlateModel.swift`): a renamed or missing field drops
+  out quietly instead of failing the widget, so check that file before
+  changing the snapshot's shape. `CFBGameDayTests` decodes the frozen
+  `Fixtures/week8.json` and will catch a rename only once the fixture is
+  refreshed from a new snapshot.
+- Day choice: the day with a live game, else today, else the next day with a
+  matching game, else the last. Show filters (All games, Top 25, Rivalry games)
+  apply before the day is picked, so Rivalry on a Wednesday shows Saturday's
+  trophy games. Kickoffs are Central; a game past kickoff with no live data
+  shows its kickoff time, never a 0-0.
+- `/api/live` is asked only for the shown day plus any kickoff in the last
+  6 hours (Friday's late games at 1 AM Saturday), and only once a game is
+  within 15 minutes of kickoff. The widget asks WidgetKit to reload every
+  10 minutes while games are on, else 2 minutes after the next kickoff
+  (capped at 3 hours) and just after Central midnight; iOS budgets reloads,
+  so these are requests. The last good fetch is cached in the extension's
+  Caches directory and shown with an "Offline" footer when the network fails.
+- Tapping a live or final game opens `cfbgameday://game/<id>` (the game sheet);
+  anywhere else opens the board on the widget's filter.
+
+Universal links: `.well-known/apple-app-site-association` (served as
+`application/json` by `vercel.json`) names the app
+`3V73W9NUZ6.com.hoynelabs.cfbgameday` and claims only `/` and `/index.html`,
+fragments included. A shared `https://cfbgameday.app/#rivalry` or
+`#game/<id>` opens in the app when it is installed; `/privacy` and
+`/support` stay in Safari. Apple's CDN caches the file
+(`https://app-site-association.cdn-apple.com/a/v1/cfbgameday.app`), so a
+change reaches devices on Apple's schedule, not at deploy. `check.py` checks
+the claims. In the app, `Route(url:)` in `QuickActions.swift` maps
+`cfbgameday://` links and these https links onto a tab and a fragment.
+
 ## PWA
 
 `manifest.webmanifest` + `icons/` (SVG source, PNGs rendered with `qlmanage`

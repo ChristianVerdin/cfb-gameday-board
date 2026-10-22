@@ -9,6 +9,10 @@ generated alias. The tunnel and self-host sections below remain as fallbacks.
 
 - `vercel.json`: `api/live.py` as a Python function (15 s max), HSTS and
   nosniff headers, `cleanUrls` so `/privacy` and `/support` resolve.
+- `.well-known/apple-app-site-association` (universal links, from iOS 1.1) is
+  served with `Content-Type: application/json` by a `vercel.json` header rule;
+  Apple fetches it through its own CDN, so check
+  `https://app-site-association.cdn-apple.com/a/v1/cfbgameday.app` after a change.
 - `.vercelignore` keeps `ios/`, `docs/`, `deploy/`, `scripts/`, `lines.json`
   out of the upload.
 - Local CLI link lives in `.vercel/project.json` (gitignored). Recreate with
@@ -32,9 +36,12 @@ and `curl -sI https://cfbgameday.app/`. If the domain ever moves, update
 
 ### Weekly data
 
-`.github/workflows/refresh.yml` runs Thursday 9 PM CT and Saturday 9 AM CT
-(cron in UTC), rebuilds the snapshot, runs `scripts/check.py`, and commits
-`games.json` / `games.js` when they changed. Vercel deploys the commit. Trigger
+`.github/workflows/refresh.yml` runs seven times a week (Tue 4 AM and a 10 AM
+backup, Wed 1 PM, Thu 7 AM, Fri 7 AM, Sat 4 AM and an 8 AM backup, all CT; cron
+in UTC, scheduled hours early because GitHub starts scheduled runs late),
+rebuilds the snapshot, heals a run that lost kickoff forecasts, runs
+`scripts/check.py`, and commits `games.json`, `games.js`, `index.html` and
+`sitemap.xml` when they changed. Details: `AGENTS.md` § 1. Vercel deploys the commit. Trigger
 by hand with `gh workflow run refresh.yml` (optional `start` / `end` inputs).
 
 ## Rule that does not change
