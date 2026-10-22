@@ -13,9 +13,9 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   Thu, Fri and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
 - **iPhone, iPad and Mac:** SwiftUI shell around the same board, in `ios/`. On the App Store
-  since 2026-09-10, currently 1.0.5 (Rivalry Games quick action and `cfbgameday://` links,
-  since 2026-10-20), with 1.1 (Today's Games widget and universal links) in App Review
-  since 2026-10-21; iPad and a resizable Mac window since 1.0.3 (2026-10-10):
+  since 2026-09-10, currently 1.1 (Today's Games widget and universal links, since
+  2026-10-22); Rivalry Games quick action and `cfbgameday://` links since 1.0.5 (2026-10-20),
+  iPad and a resizable Mac window since 1.0.3 (2026-10-10):
   https://apps.apple.com/app/id6809035228
 
 <p align="center"><img src="docs/screenshots/desktop-saturday.png" width="880" alt="The web board on a Saturday: day and filter pills, the rivalry desk, the weather and travel desk, and three columns of game cards with kickoff-hour weather and posted lines"></p>
