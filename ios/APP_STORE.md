@@ -23,7 +23,7 @@ Nothing in the listing promises wagering, picks, or "locks". Keep it that way th
 | 1.0.3 (6) | 10-09 | 10-10 | iPad, resizable Mac window, Board menu, captioned screenshots, weather-led subtitle |
 | 1.0.4 (7) | 10-14 | 10-15 | Home Screen quick actions |
 | 1.0.5 (8) | 10-20, with six in-app events | 10-20 | Rivalry Games quick action, `cfbgameday://` deep links |
-| 1.1.0 (9) | 10-21 | in review | Today's Games widget, universal links, sixth screenshot |
+| 1.1.0 (9) | 10-21 | 10-22 | Today's Games widget, universal links, sixth screenshot |
 
 All dates 2026, Central. From 1.0.1 every version has used release type `AFTER_APPROVAL`, so approval
 is the release; Apple's lookup API and store page can lag ASC's `READY_FOR_SALE` by up to a day.
