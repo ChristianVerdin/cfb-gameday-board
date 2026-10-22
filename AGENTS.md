@@ -64,7 +64,7 @@ calls Claude, Grok, or any model. Rules: `CLAUDE.md`. Live state: `CONTEXT.md`.
 
 ## 9. App Review status watch (session-scoped, optional)
 
-**Command:** a shell loop around `asc review status --app 6809035228` every 10 min that exits when the version state changes; started from a Claude Code session as a background task when a submission is pending. Nothing is scheduled on the machine; nothing notifies (no Telegram chat ID). `asc status --app 6809035228 --watch` is the equivalent one-liner.
+**Command:** a shell loop around `asc review status --app 6809035228` every 5 to 10 min that exits when the version state changes; started from a Claude Code session as a background task when a submission is pending. Nothing is scheduled on the machine; nothing notifies (no Telegram chat ID). `asc status --app 6809035228 --watch` is the equivalent one-liner.
 
 ## 10. Weekly App Store promotional text (manual, one command)
 
@@ -73,6 +73,15 @@ Run after the Thursday snapshot refresh. Reads `games.json`, writes a ≤170-cha
 (game count, Saturday count, tightest Saturday line, and the board's rain/heat/wind flag counts for games not yet final) and pushes it as the
 listing's promotional text, which Apple updates without review. Not wired into the
 GitHub Action because that would put the App Store Connect `.p8` key in repo secrets.
+
+## 11. Today's Games widget (on users' devices, from iOS 1.1)
+
+**File:** `ios/CFBGameDayWidget/` (`SlateWidget.swift` timeline provider, `SlateModel.swift` fetch, decode and day logic, `SlateViews.swift` layouts).
+**Runs:** WidgetKit asks each installed widget for a timeline; the provider fetches `https://cfbgameday.app/games.json` and, once a shown game is within 15 minutes of kickoff, `/api/live?dates=` for the shown day plus kickoffs in the last 6 hours.
+**Schedule:** requests a reload every 10 min while games are on, otherwise 2 min after the next kickoff (capped at 3 h) and just after Central midnight; 15 min when nothing loaded. iOS budgets widget reloads, so these are requests, not guarantees.
+**Load:** one `games.json` GET and at most one `/api/live` call per reload per widget; `/api/live` is CDN-cached 20 s on Vercel, so ESPN sees no more traffic than the web board causes.
+**Cost:** $0 beyond Vercel bandwidth. **Guardrails:** never reads or shows odds, spreads, totals or implied scores; Central times; a game past kickoff with no live data shows its kickoff, never 0-0; offline falls back to its last good copy and says "Offline".
+**Tests:** `CFBGameDayTests` (the `xcodebuild ... test` line in `CLAUDE.md`) runs the day, phase and reload logic against a frozen Week 8 snapshot and, with `TEST_RUNNER_SNAPSHOT_DIR` set, renders every widget size to PNG.
 
 ## Not automated, on purpose
 

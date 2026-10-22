@@ -13,9 +13,19 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
   Thu, Fri and two on Saturday), each well ahead of kickoff, and heals itself if a run
   drops kickoff forecasts.
 - **iPhone, iPad and Mac:** SwiftUI shell around the same board, in `ios/`. On the App Store
-  since 2026-09-10, currently 1.1 (Today's Games widget and universal links, since
-  APPROVAL_DATE); iPad and a resizable Mac window since 1.0.3 (2026-10-10):
+  since 2026-09-10, currently 1.0.5 (Rivalry Games quick action and `cfbgameday://` links,
+  since 2026-10-20), with 1.1 (Today's Games widget and universal links) in App Review
+  since 2026-10-21; iPad and a resizable Mac window since 1.0.3 (2026-10-10):
   https://apps.apple.com/app/id6809035228
+
+<p align="center"><img src="docs/screenshots/desktop-saturday.png" width="880" alt="The web board on a Saturday: day and filter pills, the rivalry desk, the weather and travel desk, and three columns of game cards with kickoff-hour weather and posted lines"></p>
+<p align="center">
+  <img src="docs/screenshots/iphone-saturday.png" width="200" alt="iPhone app, Saturday view: rivalry desk with Wagon Wheel and Floyd of Rosedale, then the weather desk">
+  <img src="docs/screenshots/iphone-card.png" width="200" alt="iPhone app: Indiana at Michigan card with venue, forecast, spread, total and moneyline">
+  <img src="docs/screenshots/iphone-game-sheet.png" width="200" alt="iPhone app: live game sheet with the line score and scoring summary">
+  <img src="docs/screenshots/iphone-widget.png" width="200" alt="Home Screen with the large Today's Games widget showing Saturday's Top 25 games">
+</p>
+<p align="center"><sub>Week 8, 2026, captured October 21: the Saturday slate on the web; in the iPhone app, the rivalry and weather desks, a game card, a live game sheet, and the Today's Games widget (1.1) on Top 25.</sub></p>
 
 ## What's on the board
 
@@ -92,6 +102,7 @@ needs the server because the browser cannot call ESPN directly.
 | `CONTEXT.md`, `AGENTS.md` | Operator notes: live state and the map of everything that runs unattended. Not needed to run the board |
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range, plus the generated block in `index.html` and `sitemap.xml` |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
+| `docs/screenshots/` | The images in this README (live board and iOS simulator, Week 8 2026) |
 | `docs/superpowers/` | Design specs and plans for larger features (e.g. the game sheet) |
 | `scripts/check.py` | Offline smoke test: flag table, CT kickoff, cover/total math, snapshot shape, structured data |
 | `scripts/run_summary.py` | Prints the build's counts and warnings as Markdown for the GitHub Actions step summary |
@@ -102,7 +113,8 @@ needs the server because the browser cannot call ESPN directly.
 | `api/game.py` | Game sheet detail (scoring, box, leaders, drives, win probability) from ESPN's game summary |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
-| `ios/` | SwiftUI iPhone and iPad app (also runs on Apple silicon Macs): `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |
+| `.well-known/apple-app-site-association` | Universal links: lets iOS open board links (`/` and `/index.html` only) in the app; served as JSON via `vercel.json` |
+| `ios/` | SwiftUI iPhone and iPad app (also runs on Apple silicon Macs): `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, the Today's Games widget in `CFBGameDayWidget/`, unit tests and widget renders in `CFBGameDayTests/` (frozen Week 8 snapshot), `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |
 | `scripts/release_ios.sh` | One-command iOS release: archive, export, validate, upload, attach (and `--submit`) via the `asc` CLI, altool fallback; stops if the archive or IPA is missing, and `ASC_SIGNING_KEY_ID` signs the export with an API key when Xcode has no account |
 | `scripts/ios_tab_check.sh` | Simulator smoke test: drives the tabs with AXe and fails on a blank revisit |
 | `scripts/review_mux.py` | Lays the narration lines over a phone screen recording at cue times, outputs H.264 for App Review |

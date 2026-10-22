@@ -32,7 +32,8 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - Web live at https://cfbgameday.app. iOS **1.0.5 (8) live on the App Store** since
   2026-10-20 (auto-released on approval; 1.0.0 went live 2026-09-10). It added `cfbgameday://`
   deep links and a Rivalry Games quick action, which the six in-app events open; 1.0.4 (2026-10-15)
-  added Home Screen quick actions, 1.0.3 (2026-10-10) iPad and a resizable Mac window. Details: `CONTEXT.md`.
+  added Home Screen quick actions, 1.0.3 (2026-10-10) iPad and a resizable Mac window. **1.1.0 (9)** (Today's Games
+  widget, universal links) has been in App Review since 2026-10-21 17:22 CT and releases itself on approval. Details: `CONTEXT.md`.
   Cross-project playbook: `app-store-release` skill.
 
 ## Hosted
@@ -60,6 +61,8 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - `manifest.webmanifest`, `sw.js`, `icons/` PWA. Shell-only cache; `/api/*` never cached. Bump `VERSION` in `sw.js` when the shell changes.
 - `ios/`: edit `project.yml` and the Swift sources, then `cd ios && xcodegen generate`. iPhone + iPad from 1.0.3; the iPad setup (all orientations, no `UIRequiresFullScreen`) is what makes the Mac window resizable, so keep it. Home Screen quick actions (from 1.0.4) are static in `project.yml`, routed in `QuickActions.swift`; `cfbgameday://` deep links (from 1.0.5, what in-app events open) parse there too (`Route`), and from 1.1 so do universal links to the board (`applinks:cfbgameday.app` in the entitlements; the site's `.well-known/apple-app-site-association` claims only `/` and `/index.html`, checked by `check.py`). `CFBGameDayWidget/` is the WidgetKit extension (from 1.1): `games.json` + `/api/live`, never odds or implied scores, Central times, cached in its own Caches dir. `CFBGameDayTests/` compiles the widget's model and views directly and reads a frozen Week 8 snapshot (`Fixtures/week8.json`). Mac run steps and screenshot sets: `ios/APP_STORE.md`. The `.xcodeproj` is generated and gitignored. Release checklist, version history and store rules: `ios/APP_STORE.md`; listing copy: `ios/metadata/` (applied by the release script). Bundle `com.hoynelabs.cfbgameday`, Hoyne Labs LLC. Review media (`ios/review/`) is gitignored.
 - `privacy.html`, `support.html`, `site.css`: public pages App Review links to; keep them accurate when data sources change.
+- `docs/screenshots/`: the README images (Week 8, 2026-10-21). Retake from the live board and a simulator whose Home Screen
+  holds only stock apps and CFB GameDay: the repo is public, and the default simulator shows icons for other projects.
 
 ## Product rules
 - Times in America/Chicago everywhere.
