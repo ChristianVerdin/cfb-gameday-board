@@ -8,6 +8,8 @@ that has kicked off.
 
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
+How it works and why it is built this way, in a five-minute read: [case study](docs/CASE_STUDY.md).
+
 - **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
   snapshot rebuilds itself seven times a week via GitHub Actions (two on Tuesday, Wed,
   Thu, Fri and two on Saturday), each well ahead of kickoff, and heals itself if a run
