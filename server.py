@@ -40,7 +40,8 @@ def fetch_json(url: str, timeout: int = 20) -> dict:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "ignore")[:300]
-        raise RuntimeError(f"ESPN {exc.code} {exc.reason} :: {body}") from exc
+        host = urllib.parse.urlsplit(url).hostname or "ESPN"   # Open-Meteo errors pass through here too
+        raise RuntimeError(f"{host} {exc.code} {exc.reason} :: {body}") from exc
 
 
 def fallback_dates(today: datetime | None = None) -> list[str]:
