@@ -14,6 +14,9 @@ name: Refresh slate snapshot
 #   Sat 4 AM CT  Saturday same-day weather (earliest kick is 11 AM CT)
 #   Sat 8 AM CT  backup for the 4 AM run - a dropped run cannot detect itself,
 #                and Saturday carries ~70 of the ~75 games
+#   Times above are CDT. Cron is UTC, so from the first Sunday of November to the second
+#   Sunday of March the same runs land an hour earlier in CST (Tue 3 AM + 9 AM, Wed noon,
+#   Thu/Fri 6 AM, Sat 3 AM + 7 AM); that only adds lead time, so nothing moves.
 # Commits games.json/games.js/index.html/sitemap.xml when they change; Vercel deploys the push.
 on:
   schedule:

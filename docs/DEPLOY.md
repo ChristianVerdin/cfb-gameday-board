@@ -37,8 +37,9 @@ and `curl -sI https://cfbgameday.app/`. If the domain ever moves, update
 ### Weekly data
 
 `.github/workflows/refresh.yml` runs seven times a week (Tue 4 AM and a 10 AM
-backup, Wed 1 PM, Thu 7 AM, Fri 7 AM, Sat 4 AM and an 8 AM backup, all CT; cron
-in UTC, scheduled hours early because GitHub starts scheduled runs late),
+backup, Wed 1 PM, Thu 7 AM, Fri 7 AM, Sat 4 AM and an 8 AM backup, all CDT; cron
+in UTC, so an hour earlier in CST from November to mid-March, and scheduled hours
+early because GitHub starts scheduled runs late),
 rebuilds the snapshot, heals a run that lost kickoff forecasts, runs
 `scripts/check.py`, and commits `games.json`, `games.js`, `index.html` and
 `sitemap.xml` when they changed. Details: `AGENTS.md` § 1. Vercel deploys the commit. Trigger
