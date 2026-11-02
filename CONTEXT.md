@@ -25,7 +25,7 @@
 | ~~After 1.0.5 approval~~ | **Done 2026-10-21:** events linked, both nominations SUBMITTED; README/support copy; promo text carried (see State) | Claude |
 | ~~After 1.1 approval~~ | **Done 2026-10-22:** live 08:00 CT; README iOS line, support.html qualifiers dropped, CLAUDE.md status, promo text carried (see State) | Claude |
 | ~~Thu 10/22 or Fri 10/23 (optional)~~ | **Done 10/29** with the Thursday snapshot (rain clause added) | Claude |
-| Tue 11/24 | Rivalry Week board: check the label, the rivalry desk, and any TBA kickoffs | Claude |
+| Tue 11/24 | Rivalry Week board: check the label, the rivalry desk, and any TBA kickoffs. Scanned 11/02 (ESPN schedules 11/10-12/13 through `rivalry()`): 9 trophy games in Week 11, 4 in Week 12, 20 in Rivalry Week (Iron Bowl, The Game, Egg Bowl, Lone Star Showdown among them), Army-Navy 12/12; the untagged pairs have no proper name or trophy (NC State-UNC, Tennessee-Vanderbilt, Oregon-Washington), so nothing to add. ESPN lists four Mountain West games on 11/28 as `TBD @ <home>` (team id -2, Sat TBA) and every 12/4-12/5 title game as `TBD @ TBD`; a scratch build of both dates rendered them (Rivalry Week / Championship Week labels, TBD names, TBA kicks, no crash), so the only Rivalry Week work is a look once ESPN fills the opponents in | Claude |
 | Tue 12/1 onward | Postseason: labels and titles per `docs/ARCHITECTURE.md` § Week labels; first real bowl week Dec 15 | Claude |
 | ~~Wed 10/28~~ | **Done 15:05 CT:** Week 9 Tue build clean, promo text on 1.1.0, 0 reviews (see State) | Claude |
 | Wed 11/4 | Week 10: confirm the Tue build (`counts` free of `geocode_failed`/`forecast_failed`), `git pull`, `promo_text.py --apply` (Tuesday's forecast replaces Monday's), `asc reviews list --app 6809035228` | Claude |
