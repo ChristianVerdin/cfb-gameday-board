@@ -10,7 +10,7 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 How it works and why it is built this way, in a five-minute read: [case study](docs/CASE_STUDY.md).
 
-_Last updated 2026-10-29 13:58 CT. The live board holds Week 9 (56 games, Tue 10/27 to Sat 10/31), from the snapshot generated 2026-10-29 12:57 CT. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
+_Last updated 2026-11-02 12:15 CT. The live board holds Week 10 (63 games, Tue 11/3 to Sat 11/7), from the snapshot generated 2026-11-02 11:48 CT. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
 
 - **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
   snapshot rebuilds itself seven times a week via GitHub Actions (two on Tuesday, Wed,
