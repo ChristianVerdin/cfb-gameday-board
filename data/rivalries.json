@@ -30,6 +30,7 @@
 {"ids": [235, 2572], "teams": ["Memphis", "Southern Miss"], "label": "Black and Blue Bowl", "trophy": null, "note": "not annual; last met 2012"},
 {"ids": [259, 277], "teams": ["Virginia Tech", "West Virginia"], "label": "Black Diamond Trophy", "trophy": null, "note": "not annual; last met 2022"},
 {"ids": [239, 2628], "teams": ["Baylor", "TCU"], "label": "Bluebonnet Battle", "trophy": null, "note": ""},
+{"ids": [2579, 245], "teams": ["South Carolina", "Texas A&M"], "label": "Bonham Trophy", "trophy": null, "note": "annual since 2014 (SEC cross-division); named for James Butler Bonham"},
 {"ids": [2305, 142], "teams": ["Kansas", "Missouri"], "label": "Border Showdown", "trophy": null, "note": "official name since 2004; commonly Border War; Lamar Hunt Trophy also awarded"},
 {"ids": [36, 2751], "teams": ["Colorado State", "Wyoming"], "label": "Border War", "trophy": "Bronze Boot", "note": ""},
 {"ids": [84, 96], "teams": ["Indiana", "Kentucky"], "label": "Bourbon Barrel", "trophy": null, "note": "not annual; last met 2005"},
