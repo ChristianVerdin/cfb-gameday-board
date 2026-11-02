@@ -40,9 +40,10 @@ Restart `server.py` after a refresh; it reads `dates` from `games.json` at start
 - Vercel project `cfb-gameday-board` (team christian-verdins-projects), deploys on push to `main`.
   Production: https://cfbgameday.app (alias cfb-gameday-board.vercel.app). `docs/DEPLOY.md`.
 - Snapshot refresh is a GitHub Action, seven runs a week (Tue 4 AM, Tue 10 AM backup, Wed 1 PM, Thu 7 AM,
-  Fri 7 AM, Sat 4 AM, Sat 8 AM backup CT), each scheduled hours early because GitHub fires scheduled runs late and
-  can drop them. Manual: `gh workflow run refresh.yml`. It also regenerates `index.html`
-  (SportsEvent block + kicker) and `sitemap.xml`, which are committed with the snapshot.
+  Fri 7 AM, Sat 4 AM, Sat 8 AM backup, CDT; the UTC crons land an hour earlier in CST from November to mid-March),
+  each scheduled hours early because GitHub fires scheduled runs late and can drop them.
+  Manual: `gh workflow run refresh.yml`. It also regenerates `index.html` (SportsEvent block + kicker) and
+  `sitemap.xml`, which are committed with the snapshot.
 - `api/live.py` is the hosted proxy; keep its payload identical to `server.py`'s. Both share `live_payload()`.
   `api/game.py` (`/api/game?id=`, the game sheet) shares `game_payload()` the same way; it must never carry odds.
 

@@ -40,3 +40,6 @@ ios/.asc/
 
 # transient backup written by scripts/ci_heal.py
 .heal-backup/
+
+# editor
+.vscode/

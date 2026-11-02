@@ -24,11 +24,13 @@
 | ~~On cv's go~~ | **Done 15:05 CT:** 1.0.5 + six events submitted (`c6ba9bc9`). Watch `asc review status --app 6809035228` and `asc app-events list --app 6809035228` | Claude |
 | ~~After 1.0.5 approval~~ | **Done 2026-10-21:** events linked, both nominations SUBMITTED; README/support copy; promo text carried (see State) | Claude |
 | ~~After 1.1 approval~~ | **Done 2026-10-22:** live 08:00 CT; README iOS line, support.html qualifiers dropped, CLAUDE.md status, promo text carried (see State) | Claude |
-| Thu 10/22 or Fri 10/23 (optional) | Re-run `promo_text.py --apply` after the Thu/Fri snapshot: Wednesday's weather clause (wind 4) came from a 3-day forecast. 1.1.0 is live and nothing newer exists, so the default target is right | Claude |
+| ~~Thu 10/22 or Fri 10/23 (optional)~~ | **Done 10/29** with the Thursday snapshot (rain clause added) | Claude |
 | Tue 11/24 | Rivalry Week board: check the label, the rivalry desk, and any TBA kickoffs | Claude |
 | Tue 12/1 onward | Postseason: labels and titles per `docs/ARCHITECTURE.md` § Week labels; first real bowl week Dec 15 | Claude |
 | ~~Wed 10/28~~ | **Done 15:05 CT:** Week 9 Tue build clean, promo text on 1.1.0, 0 reviews (see State) | Claude |
-| Wed 11/4 | Week 10: confirm the Tue build (`counts` free of `geocode_failed`/`forecast_failed`), `git pull`, `promo_text.py --apply`, `asc reviews list --app 6809035228` | Claude |
+| Wed 11/4 | Week 10: confirm the Tue build (`counts` free of `geocode_failed`/`forecast_failed`), `git pull`, `promo_text.py --apply` (Tuesday's forecast replaces Monday's), `asc reviews list --app 6809035228` | Claude |
+| Wed 11/11 | Week 11: same checks. The Rivalry Week in-app event publishes itself 11/10 12:00Z: confirm `asc app-events list --app 6809035228` shows it PUBLISHED next to Rivalry Saturdays | Claude |
+| Wed 11/18 | Week 12: same checks; Championship Week event publishes itself 11/17. Rivalry Saturdays ends 11/22 | Claude |
 | ~~Before Nov 1~~ | **Done 2026-10-07:** board window Tue–Mon (Tue 7 AM CT cron, 7-date live cap, empty dates skipped), promo rain clause at ≥60% | Claude |
 | On hold (cv) | Business and account items (EU trader status, business address change): see `CONTEXT.private.md`, local only | cv |
 
@@ -39,8 +41,7 @@ Differentiate Without Color), search-results/header image made, 1.0.2 copy stage
 **Parked** (revisit only if cv asks): the search-results/header image (cv: don't use it; source stays in `docs/creative-asset.html`), promo video + AI pictures (pipeline committed: `scripts/app_video.py`,
 Eleven v4 wired, App Store 886x1920 cut tested offline), Xcode Cloud test-only workflow (needs a shared scheme in
 `project.yml` + `ios/ci_scripts/ci_post_clone.sh`), custom product pages, A/B tests, web analytics, campaign links,
-1.1 (universal links + widget), Xcode 27.1 / iPhone Duo (Duo screenshots required for submissions from April 2027),
-Rivalry Week In-App Event + nominations (decide early November). Calendar: membership renews Feb 27, 2027; dev
+Xcode 27.1 / iPhone Duo (Duo screenshots required for submissions from April 2027). Calendar: membership renews Feb 27, 2027; dev
 cert expires Mar 2, 2027 (Xcode renews it).
 
 **Before Saturday's screenshots:** the simulator must not hold eligible ratings-prompt state, or the 1.0.2
