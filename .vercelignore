@@ -7,3 +7,11 @@ lines.tmp
 .github
 .venv
 __pycache__
+CONTEXT.private.md
+.vscode
+.DS_Store
+.env
+.env.*
+*.p8
+.heal-backup
+.vercel
