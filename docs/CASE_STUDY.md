@@ -36,7 +36,8 @@ the 2025 postseason through the real build on October 20 found every postseason 
 Championship Week, Bowl season, each playoff round and the National Championship.
 
 **The self-healing refresh.** A GitHub Action runs the build seven times a week: Tuesday at 4 AM and 10 AM,
-Wednesday at 1 PM, Thursday and Friday at 7 AM, and Saturday at 4 AM and 8 AM. Runs are scheduled hours early
+Wednesday at 1 PM, Thursday and Friday at 7 AM, and Saturday at 4 AM and 8 AM, Central daylight time. The crons
+are set in UTC, so from November to mid-March each run lands an hour earlier on the clock. Runs are scheduled hours early
 because GitHub starts scheduled runs late (5 hours 8 minutes once on this repo) and sometimes drops them.
 
 The heal step exists because a lost forecast used to be invisible. A CI run on September 17 lost 8 of 75
