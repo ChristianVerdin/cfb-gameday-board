@@ -11,7 +11,7 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 How it works and why it is built this way, in a five-minute read: [case study](docs/CASE_STUDY.md).
 
-_Last updated 2026-11-05 12:35 CT. The live board holds Week 10 (63 games, Tue 11/3 to Sat 11/7), from the snapshot generated 2026-11-05 11:59 CT. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
+_Last updated 2026-11-06 12:13 CT. The live board holds Week 10 (63 games, Tue 11/3 to Sat 11/7), from the snapshot generated 2026-11-05 13:25 CT. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
 
 - **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
   snapshot rebuilds itself seven times a week via GitHub Actions (two on Tuesday, Wed,
@@ -104,7 +104,6 @@ needs the server because the browser cannot call ESPN directly.
 | `games.js` | Snapshot payload as `window.CFB_DATA = {...}` (loaded by the page) |
 | `games.json` | Same payload as plain JSON |
 | `server.py` | Static server + `/api/live` and `/api/game` ESPN proxies with per-date / per-game caches |
-| `CONTEXT.md`, `AGENTS.md` | Operator notes: live state and the map of everything that runs unattended. Not needed to run the board |
 | `scripts/refresh_week.py` | Rebuilds `games.json` / `games.js` for a new date range, plus the generated block in `index.html` and `sitemap.xml` |
 | `docs/ARCHITECTURE.md` | Snapshot vs live, ESPN endpoints, Open-Meteo process, weekly rebuild |
 | `docs/screenshots/` | The images in this README (live board and iOS simulator, Week 8 2026) |
@@ -124,7 +123,6 @@ needs the server because the browser cannot call ESPN directly.
 | `scripts/ios_tab_check.sh` | Simulator smoke test: drives the tabs with AXe and fails on a blank revisit |
 | `scripts/review_mux.py` | Lays the narration lines over a phone screen recording at cue times, outputs H.264 for App Review |
 | `scripts/tunnel.sh` | Gameday Cloudflare quick tunnel for the local server (fallback only) |
-| `CLAUDE.md` | Rules and conventions for working in this repo with an AI agent |
 | `.vercelignore` | Keeps `ios/`, docs, scripts, and local state out of the Vercel upload |
 | `docs/DEPLOY.md`, `deploy/` | Hosting: Vercel (live), tunnels, and self-host drafts |
 
