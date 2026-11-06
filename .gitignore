@@ -43,3 +43,8 @@ ios/.asc/
 
 # editor
 .vscode/
+
+# Internal notes stay local (cv, 2026-11-06)
+CLAUDE.md
+AGENTS.md
+CONTEXT.md
