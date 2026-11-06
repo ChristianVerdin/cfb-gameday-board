@@ -1,10 +1,11 @@
 # CFB GameDay Board
 
 College football slate board. Built for scanning a Saturday slate in one
-place: venue, kickoff-hour weather, DraftKings lines (via ESPN), implied scores,
-TV/streams, then live score / cover / total state once games start, and a game
-sheet (scoring, box score, leaders, drives, ESPN win probability) for any game
-that has kicked off.
+place: venue, kickoff-hour weather and TV/streams for every game, then live
+score and game state once games start, and a game sheet (scoring, box score,
+leaders, drives, ESPN win probability) for any game that has kicked off. Cards
+also show the posted lines ESPN publishes (DraftKings), with implied scores
+before kickoff and cover/total state once a game is live.
 
 Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
