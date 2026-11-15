@@ -128,9 +128,12 @@ def run(base: str) -> dict:
         if code != 200 or not plays:
             fail(f"/api/nfl/game?id={gid} code={code} plays={plays}")
 
-    code, h, _ = get(f"{base}/nfl/")
-    if code != 200 or "noindex" not in h.get("x-robots-tag", ""):
+    code, h, _ = get(f"{base}/nfl/")  # launched 2026-11-15: the board is indexable, the API is not
+    if code != 200 or "noindex" in h.get("x-robots-tag", ""):
         fail(f"/nfl/ code={code} x-robots={h.get('x-robots-tag')}")
+    _, h, _ = get(f"{base}/api/nfl/live")
+    if "noindex" not in h.get("x-robots-tag", ""):
+        fail(f"/api/nfl/live lost noindex: x-robots={h.get('x-robots-tag')}")
     code, h, _ = get(f"{base}/")
     if code != 200 or "x-robots-tag" in h:
         fail(f"CFB / code={code} x-robots={h.get('x-robots-tag')}")
