@@ -48,3 +48,10 @@ ios/.asc/
 CLAUDE.md
 AGENTS.md
 CONTEXT.md
+
+# Pro Football Board app
+ios-pfb/*.xcodeproj/
+ios-pfb/build/
+ios-pfb/DerivedData/
+ios-pfb/screenshots/
+ios-pfb/.asc-app-id
