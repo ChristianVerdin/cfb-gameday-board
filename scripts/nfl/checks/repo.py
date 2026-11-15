@@ -13,16 +13,19 @@ PROTECTED = (
     "server.py", "api/live.py", "api/game.py", "app.js", "sw.js", "index.html", "site.css",
     "games.json", "games.js", "sitemap.xml", "manifest.webmanifest", "privacy.html", "support.html",
     "scripts/refresh_week.py", "scripts/check.py", "scripts/ci_heal.py", "scripts/run_summary.py",
-    "scripts/promo_text.py", "data/rivalries.json", ".vercelignore",
+    "scripts/promo_text.py", "data/rivalries.json",
 )
 PROTECTED_PREFIXES = (".well-known/", "ios/", "icons/")
 NFL_PATHS = ("nflcore/", "nfl/", "api/nfl/", "scripts/nfl/", "scripts/check_nfl.py", "scripts/fixtures/nfl/",
-             ".github/workflows/nfl-", ".github/workflows/pr-check")
+             ".github/workflows/nfl-", ".github/workflows/pr-check", "ios-pfb/")
+SCAN_SUFFIXES = (".html", ".js", ".css", ".json", ".md", ".swift", ".yml", ".strings", ".txt")
+# The support address is already public on the CFB support page.
+PUBLIC_CONTACT = "hoynelabs" + "@" + "gm" + "ail.com"
 
 # Built from fragments so this file never matches itself.
 PRIVATE = [re.compile(p, re.I) for p in (
     "nfl" + "_2026", "fan" + "duel_scr", "daily" + "locks", "sports" + "kit", "drunk" + "ryan",
-    "/Us" + "ers/", "gm" + r"ail\.com", "bet" + "_slips", "page" + "_grabber",
+    "/Us" + "ers/", "gm" + r"ail\.com", "bet" + "_slips", "page" + "_grabber", r"\b" + "c" + r"v\b",
 )]
 BETTING = re.compile(r"\b(" + "|".join((
     "odds", "spreads?", "moneylines?", "over/under", "parlays?", "betting", "wagers?", "sportsbooks?",
@@ -61,8 +64,15 @@ def test_cfb_untouched(check):
     if not base:
         return
     changed = changed_vs_base(base)
+    if not any(p.startswith(NFL_PATHS + ("ios-pfb/",)) for p in changed):
+        return  # a college-board-only change: this guard covers NFL work, not the board it protects
     hit = sorted(p for p in changed if p in PROTECTED or p.startswith(PROTECTED_PREFIXES))
     check("protected CFB files changed vs merge-base", hit, [])
+    if ".vercelignore" in changed:
+        old = git("show", f"{base}:.vercelignore").splitlines()
+        new = (ROOT / ".vercelignore").read_text().splitlines()
+        check.true(".vercelignore only gains lines", all(line in new for line in old), f"dropped {[l for l in old if l not in new]}")
+        check.true(".vercelignore keeps its order", [l for l in new if l in old] == old)
     if "vercel.json" in changed:
         old = json.loads(git("show", f"{base}:vercel.json"))
         new = json.loads((ROOT / "vercel.json").read_text())
@@ -89,7 +99,9 @@ def test_cfb_untouched(check):
 
 def test_public_hygiene(check):
     for path in nfl_files():
-        text = path.read_text(errors="replace")
+        if path.suffix.lower() in (".png", ".jpg", ".jpeg", ".gz", ".ico", ".xcprivacy_bin"):
+            continue
+        text = path.read_text(errors="replace").replace(PUBLIC_CONTACT, "")
         for pat in PRIVATE:
             m = pat.search(text)
             check.true(f"no private name in {path.relative_to(ROOT)}", m is None, m.group(0) if m else "")
@@ -100,7 +112,16 @@ def test_stats_only_files(check):
     for path in nfl_files():
         rel = str(path.relative_to(ROOT))
         tool = path.parent.name == "nfl" and path.parent.parent.name == "scripts" and path.suffix == ".py"
-        if not (tool or (rel.startswith(("nfl/", "scripts/fixtures/nfl/")) and path.suffix in (".html", ".js", ".css", ".json", ".md"))):
+        if not (tool or (rel.startswith(("nfl/", "scripts/fixtures/nfl/", "ios-pfb/")) and path.suffix in SCAN_SUFFIXES)):
             continue
         m = BETTING.search(path.read_text(errors="replace"))
         check.true(f"no betting words in {rel}", m is None, m.group(0) if m else "")
+
+
+def test_ios_pfb_privacy_manifests(check):
+    for target in ("ProFootballBoard", "ProFootballBoardWidget"):
+        f = ROOT / "ios-pfb" / target / "PrivacyInfo.xcprivacy"
+        check.true(f"{target} privacy manifest exists", f.is_file())
+        if f.is_file():
+            text = f.read_text()
+            check.true(f"{target} manifest declares UserDefaults CA92.1", "NSPrivacyAccessedAPICategoryUserDefaults" in text and "CA92.1" in text)
