@@ -61,7 +61,9 @@ def test_syntax(check):
 
 def test_static(check):
     html = _src("index.html")
-    check.true("noindex meta", re.search(r'<meta name="robots" content="noindex,nofollow"', html) is not None)
+    check.true("indexable since launch", 'name="robots"' not in html)
+    check.true("canonical", '<link rel="canonical" href="https://cfbgameday.app/nfl" />' in html)
+    check.true("own icons, not the college board's", 'href="/nfl/icons/icon-192.png"' in html and '"/icons/icon-192.png"' not in html)
     check.true("title", "<title>Pro Football Board</title>" in html)
     check.true("links /site.css read-only", 'href="/site.css"' in html)
     for asset in ("/nfl/nfl.css", "/nfl/sheet.css", "/nfl/sheet.js", "/nfl/app.js"):
@@ -84,7 +86,7 @@ def test_no_external_art(check):
         check.true(f"{name}: no img tags", "<img" not in src.lower())
         check.true(f"{name}: no css url()", "url(" not in src)
         urls = re.findall(r"https?://[^\s\"'<>)]+", src)
-        bad = [u for u in urls if not re.match(r"https://(www\.nflverse\.com|open-meteo\.com)/", u)]
+        bad = [u for u in urls if not re.match(r"https://(www\.nflverse\.com|open-meteo\.com|cfbgameday\.app)/", u)]
         check(f"{name}: external urls", bad, [])
         check.true(f"{name}: no logo or headshot paths", re.search(r"(logo|headshot|espncdn)", src, re.I) is None)
     keys = set(re.findall(r'localStorage\.\w+\(\s*([A-Z_]+|"[^"]+")', _src("app.js")))

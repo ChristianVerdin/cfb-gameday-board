@@ -58,6 +58,21 @@ def nfl_files() -> list[Path]:
     return [ROOT / p for p in sorted(set(tracked)) if p.startswith(NFL_PATHS) and (ROOT / p).is_file()]
 
 
+NFL_LINK = ' <a href="/nfl">Pro football board</a> ·'
+
+
+def approved_launch_edit(path: str, base: str) -> bool:
+    """The approved launch edits (2026-11-15): the college footer gains one link, the sitemap gains /nfl URLs."""
+    diff = git("diff", base, "--", path).splitlines()
+    removed = [l[1:] for l in diff if l.startswith("-") and not l.startswith("---")]
+    added = [l[1:] for l in diff if l.startswith("+") and not l.startswith("+++")]
+    if path == "index.html":
+        return len(removed) == len(added) == 1 and NFL_LINK in added[0] and added[0].replace(NFL_LINK, "", 1) == removed[0]
+    if path == "sitemap.xml":
+        return not removed and bool(added) and all("cfbgameday.app/nfl" in l for l in added)
+    return False
+
+
 def test_cfb_untouched(check):
     base = merge_base()
     check.true("merge-base with main found", base is not None)
@@ -66,7 +81,7 @@ def test_cfb_untouched(check):
     changed = changed_vs_base(base)
     if not any(p.startswith(NFL_PATHS + ("ios-pfb/",)) for p in changed):
         return  # a college-board-only change: this guard covers NFL work, not the board it protects
-    hit = sorted(p for p in changed if p in PROTECTED or p.startswith(PROTECTED_PREFIXES))
+    hit = sorted(p for p in changed if (p in PROTECTED or p.startswith(PROTECTED_PREFIXES)) and not approved_launch_edit(p, base))
     check("protected CFB files changed vs merge-base", hit, [])
     if ".vercelignore" in changed:
         old = git("show", f"{base}:.vercelignore").splitlines()
@@ -89,7 +104,8 @@ def test_cfb_untouched(check):
             check.true(f"vercel.json {fn} only NFL excludes added", all(x.startswith(("nfl", "api/nfl")) for x in n - o),
                        f"added {sorted(n - o)}")
         for h in old.get("headers", []):
-            check.true(f"vercel.json header kept {h.get('source')}", h in new.get("headers", []))
+            if not h.get("source", "").startswith(("/nfl", "/api/nfl")):
+                check.true(f"vercel.json header kept {h.get('source')}", h in new.get("headers", []))
     wf = ".github/workflows/refresh.yml"
     if wf in changed:
         diff = git("diff", base, "--", wf)

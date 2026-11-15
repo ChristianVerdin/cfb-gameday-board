@@ -46,8 +46,9 @@ def test_vercel(check):
             added = excludes(fns[fn]) - excludes(cfg)
             check.true(f"{fn} extended only with NFL paths", all(x.startswith(("nfl", "api/nfl")) for x in added), str(sorted(added)))
     hdrs = {h["source"]: {x["key"]: x["value"] for x in h["headers"]} for h in v["headers"]}
-    for src in ("/nfl", "/nfl/(.*)", "/api/nfl/(.*)"):
-        check(f"noindex {src}", hdrs.get(src, {}).get("X-Robots-Tag"), "noindex, nofollow")
+    check("api stays noindex", hdrs.get("/api/nfl/(.*)", {}).get("X-Robots-Tag"), "noindex, nofollow")
+    for src in ("/nfl", "/nfl/(.*)"):  # launched 2026-11-15: the board pages are indexable
+        check(f"board page indexable {src}", hdrs.get(src, {}).get("X-Robots-Tag"), None)
     check("nfl sw no-cache", hdrs.get("/nfl/sw.js", {}).get("Cache-Control"), "no-cache")
 
 

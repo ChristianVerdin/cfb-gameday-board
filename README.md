@@ -32,6 +32,17 @@ _Last updated 2026-11-12 18:46 CT. The live board holds Week 11 (67 games, Tue 1
 </p>
 <p align="center"><sub>Week 8, 2026, captured October 21: the Saturday slate on the web; in the iPhone app, the rivalry and weather desks, a game card, a live game sheet, and the Today's Games widget (1.1) on Top 25.</sub></p>
 
+## Pro football board
+
+A second board for pro football lives at https://cfbgameday.app/nfl, and it is **stats-only** (no lines, implied scores or cover math):
+- every game of the week, with kickoff in Central time, TV, and the venue's roof and kickoff-hour weather;
+- live score, down and distance, and field position on each card, polled every 20 s;
+- a whip-around desk that ranks the live games worth switching to (red zone, one-score fourth quarters, two-minute drills, overtime);
+- a play-by-play game sheet with every drive, a drive tracker, ESPN win probability, the box score and leaders;
+- season matchup metrics from nflverse play-by-play (offense and defense EPA per play, success rate, pass rate over expected; CC BY 4.0).
+
+It is separate code (`nflcore/`, `api/nfl/`, `nfl/`, `scripts/nfl/`, checks in `scripts/check_nfl.py`). The snapshot and metrics rebuild through `nfl-refresh.yml` and `nfl-metrics.yml`. A native iOS companion app lives in `ios-pfb/`. Independent and unofficial: not affiliated with the NFL or any team. Details: `docs/ARCHITECTURE.md`.
+
 ## What's on the board
 
 - Every FBS game Tuesday through Monday, kickoff in Central time, filterable by
