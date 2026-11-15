@@ -111,6 +111,10 @@ def convert(src: Path, dst: Path, events: list[str] | None = None) -> int:
 
 # (fixture name, path under the capture dir, event ids to keep or None)
 MANIFEST: list[tuple[str, str, list[str] | None]] = [
+    ("sb_live_end_period_w10", "scoreboard/20261115T202206Z.json.gz", ["401873060"]),
+    ("summary_live_end_period_min_gb", "triggers/401873060_status-STATUS_END_PERIOD_20261115T202206Z.json.gz", None),
+    ("summary_live_two_minute_hou_cle", "triggers/401873056_play-Two-minutewarning-p4_20261115T205414Z.json.gz", None),
+    ("summary_final_fresh_hou_cle", "triggers/401873056_status-STATUS_FINAL_20261115T211514Z.json.gz", None),
     ("summary_ot_final_2025w2_nyg_dal", "static/ot_final_2025_w2_nyg_dal.json.gz", None),
     ("summary_tie_final_2025w4_gb_dal", "static/tie_final_2025_w4_gb_dal.json.gz", None),
     ("summary_probowl_2025", "static/probowl_2025_summary.json.gz", None),

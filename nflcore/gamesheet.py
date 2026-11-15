@@ -390,8 +390,11 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
         if not isinstance(end_yl, int):
             end_yl = drive_end
         d_out = next((d for d in drives_out if d["id"] == cur_id), None)
+        start_yl = (cur.get("start") or {}).get("yardLine")
+        if d_out and not d_out["plays"] and isinstance(end_yl, int):
+            start_yl = end_yl  # a drive just opened by a kickoff carries a placeholder start spot of 0
         tracker = {"drive_id": cur_id, "team": ((cur.get("team") or {}).get("abbreviation")) or "",
-                   "start_yl": (cur.get("start") or {}).get("yardLine"), "cur_yl": end_yl if isinstance(end_yl, int) else None,
+                   "start_yl": start_yl, "cur_yl": end_yl if isinstance(end_yl, int) else None,
                    "plays": d_out["plays"] if d_out else 0, "yards": _int(cur.get("yards")) or 0,
                    "elapsed": (cur.get("timeElapsed") or {}).get("displayValue")}
 

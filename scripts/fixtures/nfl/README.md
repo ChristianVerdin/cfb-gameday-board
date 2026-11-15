@@ -13,6 +13,10 @@ Regenerate with `make_fixture.py build --captures DIR` (see its docstring).
 | `summary_tie_final_2025w4_gb_dal` | 401772921, 2025-09-28, DAL 40 GB 40 | Final tie, equal scores |
 | `summary_superbowl_lx` | 401772988, 2026-02-08, SEA 29 NE 13 | Neutral-site final, Super Bowl |
 | `summary_probowl_2025` | 401831718, 2026-02-04, NFC 66 AFC 52 | Pro Bowl: AFC/NFC pseudo-teams, no drives |
+| `summary_live_end_period_min_gb` | 401873060, 2026-11-15, MIN at GB, end of Q3 | Live summary at a quarter break; current drive opened by a kickoff with a placeholder start spot of 0 and no plays |
+| `summary_live_two_minute_hou_cle` | 401873056, 2026-11-15, HOU at CLE, Q4 2:00 | Two-minute warning as the newest play (admin row carrying the real pending down) |
+| `summary_final_fresh_hou_cle` | 401873056, 2026-11-15, CLE 27 HOU 24 | Summary captured at the switch to final; End of Game is the last play |
+| `sb_live_end_period_w10` | 401873060, 2026-11-15 20:22Z | Scoreboard with STATUS_END_PERIOD (End of Q3) and the situation still present |
 
 ## Scoreboards
 
