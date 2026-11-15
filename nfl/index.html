@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pro Football Board" />
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <title>Pro Football Board</title>
+  <meta name="description" content="NFL scores, kickoff times, TV, venue weather and live game state on one screen." />
+  <link rel="stylesheet" href="/site.css" />
+  <link rel="stylesheet" href="/nfl/nfl.css" />
+  <link rel="stylesheet" href="/nfl/sheet.css" />
+</head>
+<body class="nfl">
+  <div class="wrap">
+    <header>
+      <div class="kicker" id="kicker">NFL</div>
+      <h1>Pro Football Board</h1>
+      <div class="sub" id="updated">Loading scores...</div>
+    </header>
+    <div class="banner" id="banner" role="status" hidden></div>
+    <div class="rowscroll" id="pills" aria-label="Game windows"></div>
+    <div class="desk" id="desk"></div>
+    <div id="main"></div>
+    <div class="bye" id="bye"></div>
+    <footer>Independent and unofficial. Not affiliated with, endorsed or sponsored by the National Football League or any team. Team names are used only to identify teams. Scores and play data via ESPN. Season metrics from <a href="https://www.nflverse.com/" rel="noopener">nflverse</a> (CC BY 4.0). Weather by <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0).<br /><a href="/">College football board</a> · <a href="/privacy">Privacy</a></footer>
+  </div>
+<!-- games:start -->
+<script type="application/ld+json">
+[
+ {
+  "@context": "https:\/\/schema.org",
+  "@type": "SportsEvent",
+  "name": "Los Angeles Rams at Arizona Cardinals",
+  "startDate": "2026-11-15T21:05:00Z",
+  "sport": "American football",
+  "location": {
+   "@type": "Place",
+   "name": "State Farm Stadium",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Glendale",
+    "addressRegion": "AZ",
+    "addressCountry": "US"
+   }
+  },
+  "competitor": [
+   {
+    "@type": "SportsTeam",
+    "name": "Los Angeles Rams"
+   },
+   {
+    "@type": "SportsTeam",
+    "name": "Arizona Cardinals"
+   }
+  ]
+ },
+ {
+  "@context": "https:\/\/schema.org",
+  "@type": "SportsEvent",
+  "name": "Seattle Seahawks at Las Vegas Raiders",
+  "startDate": "2026-11-15T21:05:00Z",
+  "sport": "American football",
+  "location": {
+   "@type": "Place",
+   "name": "Allegiant Stadium",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Las Vegas",
+    "addressRegion": "NV",
+    "addressCountry": "US"
+   }
+  },
+  "competitor": [
+   {
+    "@type": "SportsTeam",
+    "name": "Seattle Seahawks"
+   },
+   {
+    "@type": "SportsTeam",
+    "name": "Las Vegas Raiders"
+   }
+  ]
+ },
+ {
+  "@context": "https:\/\/schema.org",
+  "@type": "SportsEvent",
+  "name": "San Francisco 49ers at Dallas Cowboys",
+  "startDate": "2026-11-15T21:25:00Z",
+  "sport": "American football",
+  "location": {
+   "@type": "Place",
+   "name": "AT&T Stadium",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Arlington",
+    "addressRegion": "TX",
+    "addressCountry": "US"
+   }
+  },
+  "competitor": [
+   {
+    "@type": "SportsTeam",
+    "name": "San Francisco 49ers"
+   },
+   {
+    "@type": "SportsTeam",
+    "name": "Dallas Cowboys"
+   }
+  ]
+ },
+ {
+  "@context": "https:\/\/schema.org",
+  "@type": "SportsEvent",
+  "name": "Pittsburgh Steelers at Cincinnati Bengals",
+  "startDate": "2026-11-16T01:20:00Z",
+  "sport": "American football",
+  "location": {
+   "@type": "Place",
+   "name": "Paycor Stadium",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Cincinnati",
+    "addressRegion": "OH",
+    "addressCountry": "US"
+   }
+  },
+  "competitor": [
+   {
+    "@type": "SportsTeam",
+    "name": "Pittsburgh Steelers"
+   },
+   {
+    "@type": "SportsTeam",
+    "name": "Cincinnati Bengals"
+   }
+  ]
+ },
+ {
+  "@context": "https:\/\/schema.org",
+  "@type": "SportsEvent",
+  "name": "Los Angeles Chargers at Baltimore Ravens",
+  "startDate": "2026-11-17T01:15:00Z",
+  "sport": "American football",
+  "location": {
+   "@type": "Place",
+   "name": "M&T Bank Stadium",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Baltimore",
+    "addressRegion": "MD",
+    "addressCountry": "US"
+   }
+  },
+  "competitor": [
+   {
+    "@type": "SportsTeam",
+    "name": "Los Angeles Chargers"
+   },
+   {
+    "@type": "SportsTeam",
+    "name": "Baltimore Ravens"
+   }
+  ]
+ }
+]
+</script>
+<!-- games:end -->
+  <script src="/nfl/games.js"></script>
+  <script src="/nfl/sheet.js" defer></script>
+  <script src="/nfl/app.js" defer></script>
+</body>
+</html>

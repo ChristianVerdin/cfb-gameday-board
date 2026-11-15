@@ -4,11 +4,19 @@
   "functions": {
     "api/live.py": {
       "maxDuration": 15,
-      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,data/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest}"
+      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,data/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest,nfl/**,nflcore/**,api/nfl/**}"
     },
     "api/game.py": {
       "maxDuration": 15,
-      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,data/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest}"
+      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,data/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest,nfl/**,nflcore/**,api/nfl/**}"
+    },
+    "api/nfl/live.py": {
+      "maxDuration": 30,
+      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,data/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest,nfl/**}"
+    },
+    "api/nfl/game.py": {
+      "maxDuration": 30,
+      "excludeFiles": "{ios/**,docs/**,deploy/**,scripts/**,icons/**,data/**,lines.json,*.md,*.html,app.js,sw.js,games.js,manifest.webmanifest,nfl/**}"
     }
   },
   "headers": [
@@ -37,6 +45,22 @@
           "value": "no-cache"
         }
       ]
+    },
+    {
+      "source": "/nfl",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/nfl/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/api/nfl/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/nfl/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     },
     {
       "source": "/manifest.webmanifest",

@@ -1,0 +1,74 @@
+name: Refresh NFL snapshot
+
+# Crons are UTC, written for CST. After DST starts 3/14 they land an hour later
+# in local time. Each run sits hours ahead of its deadline: GitHub fires
+# scheduled runs late and can drop them.
+# Gated by the repo variable NFL_REFRESH_ENABLED (manual runs always go).
+on:
+  schedule:
+    - cron: "0 12 * * 2"
+    - cron: "0 18 * * 2"
+    - cron: "0 10 * * 3"
+    - cron: "0 14 * * 3"
+    - cron: "0 18 * * 3"
+    - cron: "0 22 * * 3"
+    - cron: "0 12 * * 4"
+    - cron: "0 14 * * 5"
+    - cron: "0 12 * * 6"
+    - cron: "0 2 * * 0"
+    - cron: "0 6 * * 0"
+    - cron: "0 10 * * 0"
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
+    inputs:
+      st:
+        description: "Season type (blank = auto)"
+        required: false
+      week:
+        description: "Week number (blank = auto)"
+        required: false
+      year:
+        description: "Season year (blank = auto)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nfl-snapshot
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.event_name == 'workflow_dispatch' || vars.NFL_REFRESH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build snapshot
+        env:
+          IN_ST: ${{ github.event.inputs.st }}
+          IN_WEEK: ${{ github.event.inputs.week }}
+          IN_YEAR: ${{ github.event.inputs.year }}
+        run: |
+          args=()
+          [ -n "$IN_ST" ] && args+=(--st "$IN_ST")
+          [ -n "$IN_WEEK" ] && args+=(--week "$IN_WEEK")
+          [ -n "$IN_YEAR" ] && args+=(--year "$IN_YEAR")
+          python3 scripts/nfl/refresh_nfl.py "${args[@]}"
+          python3 scripts/check_nfl.py
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- nfl/games.json nfl/games.js nfl/index.html; then
+            echo "no change"
+            exit 0
+          fi
+          label=$(python3 -c "import json;print(json.load(open('nfl/games.json')).get('week_label') or 'slate')")
+          git config user.name "gameday-bot"
+          git config user.email "gameday-bot@users.noreply.github.com"
+          git add nfl/games.json nfl/games.js nfl/index.html
+          git commit -m "NFL snapshot: $label ($(date -u +%Y-%m-%dT%H:%MZ))"
+          ok=0; for i in 1 2 3 4; do if git pull --rebase origin main && git push; then ok=1; break; fi; git rebase --abort 2>/dev/null || true; if [ "$i" -lt 4 ]; then sleep $((i*7)); fi; done; [ "$ok" = 1 ] || { echo "push failed after 4 attempts"; exit 1; }

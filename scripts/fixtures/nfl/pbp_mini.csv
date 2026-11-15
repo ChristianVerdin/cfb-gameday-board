@@ -1,0 +1,12 @@
+game_id,week,season_type,posteam,defteam,play_type,pass,rush,qb_dropback,qb_kneel,qb_spike,epa,success,pass_oe,decoy_a,decoy_b
+g1,1,REG,WAS,LA,pass,1,0,1,0,0,0.5,1,10,x1,y1
+g1,1,REG,WAS,LA,run,0,1,0,0,0,-0.1,0,,x2,y2
+g1,1,REG,LA,WAS,pass,1,0,1,0,0,0.2,1,-4,x3,y3
+g1,1,REG,LA,WAS,run,0,1,0,0,0,0.0,0,,x4,y4
+g1,1,REG,WAS,LA,qb_kneel,0,1,0,1,0,-0.5,0,,x5,y5
+g1,1,REG,WAS,LA,no_play,0,0,0,0,0,0.9,1,,x6,y6
+g1,1,REG,WAS,LA,pass,1,0,1,0,0,,0,3,x7,y7
+g2,2,REG,KC,WAS,pass,1,0,1,0,0,1.0,1,6,x8,y8
+g2,2,REG,WAS,KC,run,0,1,0,0,0,0.3,1,,x9,y9
+g2,2,REG,WAS,KC,qb_spike,1,0,1,0,1,-2.0,0,,x10,y10
+g3,18,POST,WAS,LA,pass,1,0,1,0,0,5.0,1,9,x11,y11
