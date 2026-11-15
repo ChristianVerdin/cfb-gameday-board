@@ -311,7 +311,7 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
         plays_by_drive.setdefault(str(dr["id"]), []).append(out)
         play_info[pid] = {"id": pid, "seq": seq, "period": e, "t": _t_elapsed(e, out["clock"]), "drive": str(dr["id"]),
                           "clock": out["clock"], "text": out["text"],
-                          "end_yl": (p.get("end") or {}).get("yardLine")}
+                          "end_yl": (p.get("end") or {}).get("yardLine"), "admin": out["kind"] == "admin"}
 
     cur = (summary.get("drives") or {}).get("current")
     cur_id = str(cur["id"]) if cur and cur.get("id") is not None and state == "in" else None
@@ -382,7 +382,7 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
     tracker = None
     if cur_id and cur:
         cur_plays = [play_info[p["id"]] for p in plays_by_drive.get(cur_id, [])]
-        newest = max(cur_plays, key=lambda i: i["seq"], default=None)
+        newest = max((i for i in cur_plays if not i["admin"]), key=lambda i: i["seq"], default=None)
         end_yl = newest["end_yl"] if newest else None
         if not isinstance(end_yl, int):
             end_yl = (cur.get("end") or {}).get("yardLine")

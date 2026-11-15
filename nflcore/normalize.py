@@ -90,7 +90,7 @@ def _situation(sit: dict, home: dict, away: dict) -> dict:
     pos = str(sit.get("possession")) if sit.get("possession") is not None else None
     side = "home" if pos == home["id"] else "away" if pos == away["id"] else None
     # ESPN's yardLine is the distance from the home goal line; yl100 is yards to the goal being attacked
-    yl100 = None if stoppage or not yard or side is None else max(0, min(100, yard if side == "away" else 100 - yard))
+    yl100 = None if stoppage or yard is None or side is None else max(0, min(100, yard if side == "away" else 100 - yard))
     return {
         "text": None if stoppage else (sit.get("shortDownDistanceText") or None),
         "down": None if stoppage else down,
@@ -101,7 +101,7 @@ def _situation(sit: dict, home: dict, away: dict) -> dict:
         "yard_text": None if stoppage else (sit.get("possessionText") or None),
         "yl100": yl100,
         "is_red_zone": bool(sit.get("isRedZone")) and not stoppage,
-        "goal_to_go": bool(not stoppage and yl100 and dist and dist >= yl100),
+        "goal_to_go": bool(not stoppage and yl100 is not None and yl100 > 0 and dist and dist >= yl100),
         "last_play": {"id": str(lp["id"]), "text": collapse(lp.get("text"), CLIP), "type": last_type or None}
         if lp.get("id") is not None else None,
     }

@@ -438,6 +438,15 @@ def test_live_mid(check):
     check("event scores win", [o["teams"]["away"]["score"], o["teams"]["home"]["score"]],
           [int(c["score"]) for c in sorted(ev["competitions"][0]["competitors"], key=lambda c: c["homeAway"] == "home")])
     check("tracker cur_yl is the last play's end", o["tracker"]["cur_yl"] is not None and 0 <= o["tracker"]["cur_yl"] <= 100, True)
+    # a trailing administrative play (timeout) carries a reset spot and must not move the tracker
+    adm = copy.deepcopy(check.fixture(EARLY))
+    cur_plays = adm["drives"]["current"]["plays"]
+    base_yl = norm_summary(adm, ev)["tracker"]["cur_yl"]
+    to = copy.deepcopy(cur_plays[-1])
+    to.update({"id": "99999999901", "text": "Official Timeout at 05:22", "type": {"id": "21", "text": "Official Timeout"},
+               "sequenceNumber": str(int(cur_plays[-1].get("sequenceNumber") or 0) + 1), "end": {"yardLine": 65}})
+    cur_plays.append(to)
+    check("tracker ignores trailing admin play", norm_summary(adm, ev)["tracker"]["cur_yl"], base_yl)
     # statuses that are in-progress by state but not by name pass through
     ht = {"status": {"period": 2, "displayClock": "0:00", "type": {"state": "in", "name": "STATUS_HALFTIME"}}}
     late = copy.deepcopy(check.fixture(LATE))
