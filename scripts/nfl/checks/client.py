@@ -66,7 +66,10 @@ def test_static(check):
     check.true("links /site.css read-only", 'href="/site.css"' in html)
     for asset in ("/nfl/nfl.css", "/nfl/sheet.css", "/nfl/sheet.js", "/nfl/app.js"):
         check.true(f"absolute asset {asset}", asset in html)
-    check.true("no service worker registration", "serviceWorker" not in html and "serviceWorker" not in _src("app.js"))
+    app = _src("app.js")
+    check.true("registers /nfl/sw.js with scope /nfl/", 'register("/nfl/sw.js", { scope: "/nfl/" })' in app)
+    check.true("sw registration guarded", '"serviceWorker" in navigator' in app and 'location.protocol === "file:"' in app)
+    check.true("sw not registered from the html", "serviceWorker" not in html)
     m = re.search(r"<footer>(.*?)</footer>", html, re.S)
     check.true("footer present", m is not None)
     text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(1).split("<br")[0])).strip() if m else ""
@@ -349,6 +352,7 @@ const el = (id) => (els[id] ||= { id, innerHTML: "", textContent: "", hidden: fa
 const handlers = { doc: {}, win: {} };
 const timers = [];
 const opened = [];
+const regs = [];
 const fetched = [];
 let fetchMode = "ok";
 let step = 0;
@@ -362,8 +366,10 @@ const ctx = {
   AbortController: function () { this.signal = {}; this.abort = () => {}; },
   setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
   clearTimeout: () => {},
+  navigator: { serviceWorker: { register: (u, o) => { regs.push([u, o]); return Promise.resolve(); } } },
   fetch: async (url) => {
     fetched.push(url);
+    if (url.startsWith("/nfl/metrics.json")) return cfg.metrics ? { ok: true, json: async () => cfg.metrics } : { ok: false, status: 404 };
     if (fetchMode === "fail") throw new Error("network down");
     const payload = cfg.lives[Math.min(step, cfg.lives.length - 1)];
     step += 1;
@@ -404,6 +410,7 @@ const flush = () => new Promise((r) => setImmediate(r));
   ctx.location.hash = ""; handlers.win.hashchange();
   out.opened = opened;
   out.fetchedAll = fetched;
+  out.regs = regs;
   console.log(JSON.stringify(out));
 })().catch((e) => { console.error(e && e.stack || e); process.exit(1); });
 """
@@ -488,8 +495,8 @@ def test_render(check):
     src = _src("app.js")
     poll1, poll2, snapshot = _w11_payloads()
 
-    def run(snap, hash_=""):
-        env = {"CFG": json.dumps({"src": src, "lives": [poll1, poll2], "snap": snap, "hash": hash_}), "PATH": str(Path(NODE).parent)}
+    def run(snap, hash_="", metrics=None):
+        env = {"CFG": json.dumps({"src": src, "lives": [poll1, poll2], "snap": snap, "hash": hash_, "metrics": metrics}), "PATH": str(Path(NODE).parent)}
         p = subprocess.run([NODE, "-e", HARNESS], capture_output=True, text=True, env=env, timeout=60)
         if p.returncode:
             raise AssertionError("harness failed: " + p.stderr[:800])
@@ -533,6 +540,8 @@ def test_render(check):
     check.true("second poll: stale banner", "slow to answer" in s2["banner"])
     check.true("failed poll keeps the last data", s3["main"] == s2["main"] and "could not refresh" in s3["banner"])
     check.true("live view lists only live games", "is-final" not in o["liveView"]["main"] and "is-live" in o["liveView"]["main"])
+    check("service worker registered once with scope", o["regs"], [["/nfl/sw.js", {"scope": "/nfl/"}]])
+    check.true("no metrics file: no metrics block", "class=\"mx\"" not in oa["main"])
     check("sheet opened then closed on leaving the route", o["opened"], ["401873066", "closed"])
 
     # no snapshot: live only, canonical url, a banner saying what is missing
@@ -557,3 +566,83 @@ def test_render(check):
     check("expired snapshot week: canonical url", run(old)["url1"], "/api/nfl/live")
     # hash routes
     check.true("#all lists every window", run(snapshot, "#all")["first"]["main"].count("<article") == 6)
+
+
+# ---------- weather and metrics rendering with the real generated files ----------
+
+WX_FUNCS = ("ctText", "compass", "wxStale", "signed", "hWx", "ord", "metricsFor", "hMetricRows", "hMetrics", "esc")
+WX_SCRIPT = r"""
+const ESC_RE = new RegExp("[&<>\"']", "g");
+const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" };
+const KICK_FMT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", minute: "2-digit" });
+const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+const STALE_MS = 18 * 3600000;
+let metrics = JSON.parse(process.env.METRICS);
+let live = null;
+const SNAP = { season: { year: 2026, type: 2 } };
+%s
+const games = JSON.parse(process.env.GAMES);
+const mkSide = (t) => ({ abbr: t.abbr });
+const out = {};
+out.cards = games.map((g) => {
+  const x = { wx: g.wx, wx_status: g.wx_status, ph: false, away: mkSide(g.away), home: mkSide(g.home) };
+  return { wx: hWx(x), mx: hMetrics(x), status: g.wx_status };
+});
+out.compass = [0, 11, 22.5, 90, 180, 270, 348.75, 360, null, "x"].map(compass);
+const now = Date.now();
+out.stale = [wxStale({ stale: true }, now), wxStale({ fetched_at: new Date(now - 3600000).toISOString() }, now), wxStale({ fetched_at: new Date(now - 24 * 3600000).toISOString() }, now), wxStale(null, now)];
+const base = { temp: 40, wind: 5, winddir: 90, fetched_at: "2026-11-15T20:56:37Z", label: "Clear", flags: ["<b>x</b>"] };
+out.staleHtml = hWx({ wx: { ...base, stale: true }, wx_status: "ok" });
+out.freshHtml = hWx({ wx: { ...base, fetched_at: new Date().toISOString() }, wx_status: "ok" });
+out.errHtml = hWx({ wx: null, wx_status: "error" });
+out.naHtml = hWx({ wx: { ...base }, wx_status: "na" });
+out.small = (() => {
+  const m = JSON.parse(JSON.stringify(metrics));
+  const t = games.find((g) => g.home.abbr in m.teams);
+  m.teams[t.home.abbr].small_sample = true;
+  metrics = m;
+  return hMetrics({ ph: false, away: mkSide(t.away), home: mkSide(t.home) });
+})();
+console.log(JSON.stringify(out));
+"""
+
+BETTING = re.compile("|".join(["od" + "ds", "spr" + "ead", "mon" + "eyline", "co" + "ver", "wa" + "ger", "ed" + "ge", "fav" + "orite", "should win", "pi" + "ck", "pro" + "j", "implied", "bet"]), re.I)
+
+
+def test_wx_metrics(check):
+    if not NODE:
+        return
+    src = _src("app.js")
+    snap = json.loads((NFL / "games.json").read_text("utf-8"))
+    metrics = json.loads((NFL / "metrics.json").read_text("utf-8"))
+    script = WX_SCRIPT % _extract(src, WX_FUNCS)
+    env = {"PATH": str(Path(NODE).parent), "GAMES": json.dumps(snap["games"]), "METRICS": json.dumps(metrics)}
+    p = subprocess.run([NODE, "-e", script], capture_output=True, text=True, env=env, timeout=60)
+    if p.returncode:
+        raise AssertionError("wx harness failed: " + p.stderr[:800])
+    o = json.loads(p.stdout.strip().splitlines()[-1])
+    cards = o["cards"]
+    check("one card per generated game", len(cards), len(snap["games"]))
+    for c, g in zip(cards, snap["games"]):
+        tag = f"{g['shortName']} ({g['wx_status']})"
+        st = g["wx_status"]
+        if st == "dome":
+            check.true(f"{tag}: Indoors", "<b>Indoors</b>" in c["wx"] and "mph" not in c["wx"])
+        elif st in ("ok", "retractable", "canopy"):
+            check.true(f"{tag}: temp, wind with compass, rain", "mph" in c["wx"] and "Rain" in c["wx"] and "<b>" in c["wx"] and re.search(r"Wind</div><div class=\"val\">\d+ mph [NESW]{1,3}<", c["wx"]) is not None, c["wx"][:300])
+            for f in (g["wx"].get("flags") or []):
+                check.true(f"{tag}: chip {f}", f'<span class="flag">{f}</span>' in c["wx"])
+            if g["wx"].get("roof_note"):
+                check.true(f"{tag}: roof note", g["wx"]["roof_note"] in c["wx"])
+        else:
+            check(f"{tag}: nothing rendered", c["wx"], "")
+        check.true(f"{tag}: metrics block with footnote", c["mx"].count("EPA/play") == 2 and f"through Week {metrics['through_week']}, CC BY 4.0" in c["mx"] and "PROE" in c["mx"] and "Success rate" in c["mx"], c["mx"][:200])
+        check.true(f"{tag}: no betting vocabulary", BETTING.search(c["wx"] + c["mx"]) is None, (BETTING.search(c["wx"] + c["mx"]) or [""])[0] if BETTING.search(c["wx"] + c["mx"]) else "")
+    check("compass points", o["compass"], ["N", "N", "NNE", "E", "S", "W", "N", "N", "", ""])
+    check("staleness", o["stale"], [True, False, True, False])
+    check.true("stale forecast marked with fetched time", "Forecast from" in o["staleHtml"] and "CT" in o["staleHtml"])
+    check.true("fresh forecast has no stale note", "Forecast from" not in o["freshHtml"])
+    check.true("flags are escaped", "<b>x</b>" not in o["staleHtml"] and "&lt;b&gt;x" in o["staleHtml"])
+    check("failed weather renders nothing", o["errHtml"], "")
+    check("placeholder status renders nothing", o["naHtml"], "")
+    check("small_sample hides the metrics block", o["small"], "")

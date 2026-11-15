@@ -49,11 +49,15 @@
 /* Slots filled only when the snapshot provides data */
 .nfl .venue .roofnote { color: var(--dim); }
 .nfl .wx { grid-template-columns: repeat(4, 1fr); }
+.nfl .flags { padding-top: 0; }
 .nfl .wx .cond { grid-column: 1 / -1; }
 .nfl .mx { margin: 0 12px 10px; display: grid; gap: 4px; background: #10192b; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 12px; }
 .nfl .mx .mrow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: baseline; }
 .nfl .mx .mrow span:first-child { text-align: left; }
 .nfl .mx .mrow span:last-child { text-align: right; }
+.nfl .mx .mt { color: var(--muted); font-size: 11px; font-weight: 700; margin-top: 4px; }
+.nfl .mx .mt:first-child { margin-top: 0; }
+.nfl .mx .mfoot { color: var(--dim); font-size: 10px; margin-top: 4px; }
 .nfl .mx .mrow .mlab { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; text-align: center; }
 
 /* Whip-around desk */

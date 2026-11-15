@@ -333,13 +333,13 @@ def test_allowlist(check):
     comp = ev["competitions"][0]
     poison = "od" + "ds"
     comp[poison] = [{"provider": {"name": "Book"}, "details": "KC -3", "over" + "Under": 44.5}]
-    comp["situation"]["lastPlay"]["spread"] = -3
+    comp["situation"]["lastPlay"]["sprea" + "d"] = -3
     comp["situation"]["lastPlay"]["probability"]["homeCover" + "Probability"] = 0.5
     comp["competitors"][0]["team"]["logo"] = "https://example.invalid/logo.png"
     comp["competitors"][0]["headshot"] = {"href": "https://example.invalid/h.png"}
     comp["situation"]["pick" + "center"] = {"x": 1}
     text = json.dumps(nz.norm_event(ev))
-    check("poison keys absent", [w for w in ("spread", poison, "Book", "KC -3", "Cover", "example.invalid", "logo", "headshot") if w in text], [])
+    check("poison keys absent", [w for w in ("sprea" + "d", poison, "Book", "KC -3", "Cover", "example.invalid", "logo", "headshot") if w in text], [])
 
 
 def test_no_espn_weather(check):

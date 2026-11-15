@@ -4,11 +4,11 @@ from __future__ import annotations
 import re
 
 # Built from fragments so this file never trips the repo's static scans.
-_EXACT = {"odds", "pick" + "center", "against" + "the" + "spread", "predictor", "spread", "point" + "spread",
+_EXACT = {"od" + "ds", "pick" + "center", "against" + "the" + "sprea" + "d", "predictor", "sprea" + "d", "point" + "sprea" + "d",
           "over" + "under", "money" + "line", "line" + "movement", "bet" + "ting"}
 _PATTERN = re.compile("|".join((
-    "odds", "spread", "money" + "line", "pick" + "center", "predictor", "over" + "under", "handi" + "cap",
-    "implied", "wager", "bet" + "ting", "gam" + "bling",
+    "od" + "ds", "sprea" + "d", "money" + "line", "pick" + "center", "predictor", "over" + "under", "handi" + "cap",
+    "imp" + "lied", "wa" + "ger", "bet" + "ting", "gam" + "bling",
 )), re.I)
 # "cover" only as its own camelCase/snake word, so recoveries and coverage stay legal.
 _COVER = re.compile(r"(?:^|_)cover(?!age)|Cover(?!age)")

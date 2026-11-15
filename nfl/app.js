@@ -11,10 +11,13 @@
   const ESC_RE = new RegExp("[&<>\"']", "g");
   const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" };
   const WIN_LABEL = { flex: "Flex TBD", xmas: "Christmas", thanks: "Thanksgiving", wed: "Wed night", blackfri: "Black Friday", tnf: "TNF", fri: "Friday", sat: "Saturday", intl: "Int'l AM", sunE: "Sun early", sunL: "Sun late", snf: "SNF", mnf: "MNF", probowl: "Pro Bowl", other: "Other" };
+  const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  const STALE_MS = 18 * 3600000;
   const SWING_WINDOW_MS = 180000;
   const HYSTERESIS = 5;
   const VIEWS = ["live", "all", "starred"];
 
+  let metrics = null;       // /nfl/metrics.json, optional
   let live = null;          // last good /api/nfl/live payload
   let liveErr = "";
   let lastOk = null;
@@ -161,7 +164,7 @@
       round: s.round || (kind === "playoff" ? (s.week_label || ctx.label || "Playoffs") : null),
       tv: tvText(l.broadcasts && l.broadcasts.length ? l.broadcasts : s.broadcasts),
       venue: s.venue || (l.venue_name ? { name: l.venue_name } : null), wx: s.wx || null, wx_status: s.wx_status || "",
-      metrics: s.metrics || null, situation: l.situation || null, wp: l.wp || null, desk: l.desk || null,
+      situation: l.situation || null, wp: l.wp || null, desk: l.desk || null,
       away, home, ph: !!(l.placeholder || s.placeholder) || !away || !home,
     };
     if (g.state === "post" && !g.result && away && home && away.score != null && home.score != null) {
@@ -211,13 +214,29 @@
   }
 
   // ---------- formatting ----------
-  function kickText(g) {
-    if (g.time_tbd) return "TBD";
-    const d = new Date(g.date);
-    if (isNaN(d)) return "TBD";
+  function ctText(d) {
     const o = {};
     for (const p of KICK_FMT.formatToParts(d)) o[p.type] = p.value;
     return [o.weekday, o.hour + ":" + o.minute, o.dayPeriod, "CT"].filter(Boolean).join(" ");
+  }
+  function kickText(g) {
+    if (g.time_tbd) return "TBD";
+    const d = new Date(g.date);
+    return isNaN(d) ? "TBD" : ctText(d);
+  }
+  function compass(deg) {
+    if (deg == null || deg === "" || !isFinite(Number(deg))) return "";
+    return COMPASS[Math.round(((Number(deg) % 360) + 360) % 360 / 22.5) % 16];
+  }
+  function wxStale(w, now) {
+    if (!w) return false;
+    const t = Date.parse(w.fetched_at || "");
+    return !!w.stale || (!isNaN(t) && now - t > STALE_MS);
+  }
+  function signed(v, d) {
+    const x = Number(v);
+    if (v == null || !isFinite(x)) return "";
+    return (x > 0 ? "+" : "") + x.toFixed(d);
   }
   function clockText(d) { return CLOCK_FMT.format(d) + " CT"; }
   function periodName(g) {
@@ -291,21 +310,43 @@
   function hWx(g) {
     const w = g.wx, st = g.wx_status;
     if (st === "dome") return `<div class="wx"><div class="cond"><b>Indoors</b><span class="mini">Dome</span></div></div>`;
-    if (!w || (st && st !== "ok" && st !== "retractable" && st !== "canopy")) return "";
-    const n = (v, u) => (v == null || v === "" ? "" : Math.round(Number(v)) + u);
+    if (!w || (st && st !== "ok" && st !== "retractable" && st !== "canopy" && !w.stale)) return "";
+    const n = (v, u) => (v == null || v === "" || !isFinite(Number(v)) ? "" : Math.round(Number(v)) + u);
     const cell = (lab, val) => (val ? `<div><div class="mini">${esc(lab)}</div><div class="val">${esc(val)}</div></div>` : "");
     const chipsHtml = (w.flags || []).map((f) => `<span class="flag">${esc(f)}</span>`).join("");
-    const noteHtml = w.roof_note ? `<div class="note">${esc(w.roof_note)}</div>` : "";
+    const fetched = new Date(w.fetched_at || "");
+    const staleNote = wxStale(w, Date.now()) && !isNaN(fetched) ? `Forecast from ${esc(ctText(fetched))}, may be out of date.` : "";
+    const noteText = [w.roof_note, staleNote].filter(Boolean).join(" ");
+    const noteHtml = noteText ? `<div class="note">${esc(noteText)}</div>` : "";
+    const windText = n(w.wind, " mph") ? n(w.wind, " mph") + (compass(w.winddir) ? " " + compass(w.winddir) : "") : "";
     const condHtml = `<div class="cond"><b>${esc(n(w.temp, "°"))}</b><span class="mini">${esc(w.label || "")}</span></div>`;
-    const cellsHtml = cell("Wind", n(w.wind, " mph")) + cell("Gusts", n(w.gusts, " mph")) + cell("Rain", n(w.pop, "%")) + cell("Feels", n(w.apparent, "°"));
+    const cellsHtml = cell("Wind", windText) + cell("Gusts", n(w.gusts, " mph")) + cell("Rain", n(w.pop, "%")) + cell("Feels", n(w.apparent, "°"));
     const flagsHtml = chipsHtml ? `<div class="flags">${chipsHtml}</div>` : "";
     return `<div class="wx">${condHtml}${cellsHtml}${noteHtml}</div>${flagsHtml}`;
   }
+  function ord(v) { return v == null ? "" : " #" + Number(v); }
+  function metricsFor(abbr) {
+    const t = metrics && metrics.teams && metrics.teams[abbr];
+    return t && t.off && t.def && !t.small_sample ? t : null;
+  }
+  function hMetricRows(o, d, oa, da) {
+    const rows = [
+      ["EPA/play", signed(o.off.epa, 3) + ord(o.off.epa_rank), signed(d.def.epa, 3) + ord(d.def.epa_rank)],
+      ["Success rate", (o.off.sr * 100).toFixed(1) + "%" + ord(o.off.sr_rank), (d.def.sr * 100).toFixed(1) + "%" + ord(d.def.sr_rank)],
+    ];
+    if (o.off.proe != null) rows.push(["PROE", signed(o.off.proe, 1) + " pts" + ord(o.off.proe_rank), ""]);
+    const bodyHtml = rows.map((r) => `<div class="mrow"><span>${esc(r[1])}</span><span class="mlab">${esc(r[0])}</span><span>${esc(r[2])}</span></div>`).join("");
+    return `<div class="mt">${esc(oa)} offense vs ${esc(da)} defense</div>${bodyHtml}`;
+  }
   function hMetrics(g) {
-    const m = g.metrics;
-    if (!Array.isArray(m) || !m.length) return "";
-    const rowsHtml = m.map((r) => `<div class="mrow"><span>${esc(r.away)}</span><span class="mlab">${esc(r.label)}</span><span>${esc(r.home)}</span></div>`).join("");
-    return `<div class="mx">${rowsHtml}</div>`;
+    if (!metrics || g.ph || !g.away || !g.home) return "";
+    const y = (live || SNAP || {}).season;
+    if (y && metrics.season && y.year && Number(y.year) !== Number(metrics.season)) return "";
+    const a = metricsFor(g.away.abbr), h = metricsFor(g.home.abbr);
+    if (!a || !h) return "";
+    const wk = metrics.through_week ? ", through Week " + Number(metrics.through_week) : "";
+    const footHtml = `<div class="mfoot">nflverse${esc(wk)}, CC BY 4.0. Season to date, per play.</div>`;
+    return `<div class="mx">${hMetricRows(a, h, g.away.abbr, g.home.abbr)}${hMetricRows(h, a, g.home.abbr, g.away.abbr)}${footHtml}</div>`;
   }
   function hVenue(g) {
     const v = g.venue;
@@ -535,6 +576,20 @@
     if (document.hidden) return;
     if (hiddenWait || Date.now() - lastPollAt > pollDelay(games, Date.now())) pollLive();
   });
+  async function loadMetrics() {
+    try {
+      const res = await fetch("/nfl/metrics.json");
+      if (!res.ok) return;
+      const m = await res.json();
+      if (!m || typeof m.teams !== "object" || !m.teams) return;
+      metrics = m;
+      render();
+    } catch (e) { /* optional */ }
+  }
+  function registerSw() {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || location.protocol === "file:") return;
+    navigator.serviceWorker.register("/nfl/sw.js", { scope: "/nfl/" }).catch(() => {});
+  }
   window.addEventListener("hashchange", applyHash);
   window.NFLBoard = {
     game: (id) => games.find((g) => g.id === String(id)) || null,
@@ -544,4 +599,6 @@
   applyHash();
   render();
   pollLive();
+  loadMetrics();
+  registerSw();
 })();

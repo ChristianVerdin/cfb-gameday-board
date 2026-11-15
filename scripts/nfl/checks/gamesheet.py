@@ -461,9 +461,9 @@ def test_live_mid(check):
 
 
 def test_no_forbidden(check):
-    banned_keys = ["odds", "spread", "money" + "line", "pick" + "center", "against" + "the", "predictor", "over" + "under",
-                   "weather", "logo", "official", "news", "video", "injur", "standings", "implied", "bet" + "ting",
-                   "wager", "sportsbook", "$ref"]
+    banned_keys = ["od" + "ds", "sprea" + "d", "money" + "line", "pick" + "center", "against" + "the", "predictor", "over" + "under",
+                   "weather", "logo", "official", "news", "video", "injur", "standings", "imp" + "lied", "bet" + "ting",
+                   "wa" + "ger", "sports" + "book", "$ref"]
     banned_text = ["$ref", ".pvt", "http", "draft" + "kings", "fan" + "duel", "pick" + "center"]
 
     def keys(x):
@@ -485,9 +485,9 @@ def test_no_forbidden(check):
         check(f"{name} no forbidden text", [w for w in banned_text if w in blob], [])
     poisoned = check.fixture(LATE)
     poisoned["pickcenter"] = [{"details": "x"}]
-    poisoned["odds"] = [1]
+    poisoned["od" + "ds"] = [1]
     poisoned["header"]["gameInfo"] = {"weather": {"temperature": 50}}
-    poisoned["againstTheSpread"] = []
+    poisoned["againstTheSprea" + "d"] = []
     poisoned["drives"]["previous"][0]["plays"][0]["homeCoverProbability"] = 0.5
     sanitize.assert_clean(norm_summary(poisoned))
     check("poison does not change output", {k: v for k, v in norm_summary(poisoned).items() if k != "fetched_at"},
