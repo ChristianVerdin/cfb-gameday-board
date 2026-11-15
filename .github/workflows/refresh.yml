@@ -84,7 +84,7 @@ jobs:
           git config user.email "gameday-bot@users.noreply.github.com"
           git add games.json games.js index.html sitemap.xml
           git commit -m "Snapshot: $label ($(date -u +%Y-%m-%dT%H:%MZ))"
-          git push
+          ok=0; for i in 1 2 3 4; do if git pull --rebase origin main && git push; then ok=1; break; fi; git rebase --abort 2>/dev/null || true; if [ "$i" -lt 4 ]; then sleep $((i*7)); fi; done; [ "$ok" = 1 ] || { echo "push failed after 4 attempts"; exit 1; }
       # Runs after the push on purpose: the board should still get the best data we
       # have, and the red X is the notification. This repo has no Telegram chat id,
       # so a failed run's email is the only unattended signal.
