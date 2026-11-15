@@ -161,6 +161,7 @@ def live(a):
     log(out, f"start live st={a.st} week={a.week} follow={follow or 'auto'} until={a.until}")
     while True:
         t0 = time.time()
+        idle_s = 0.0
         try:
             body, host = get(sb_path)
             save(out, "scoreboard", stamp(), body)
@@ -205,12 +206,20 @@ def live(a):
             if not states.get("in") and not states.get("pre"):
                 log(out, "no live or upcoming games in this week; stopping")
                 break
+            if not states.get("in"):
+                kicks = [datetime.strptime(ev["date"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+                         for ev in events if game_tuple(ev)["state"] == "pre" and ev.get("date")]
+                ahead = [(k - now_utc()).total_seconds() for k in kicks if k > now_utc()]
+                if ahead:
+                    idle_s = min(3600.0, max(0.0, min(ahead) - 1800))
+                    if idle_s > a.interval:
+                        log(out, f"idle: next kick in {min(ahead) / 60:.0f} min; sleeping {idle_s / 60:.0f} min")
         except Exception as e:  # noqa: BLE001
             log(out, f"poll failed: {e}")
         if until and now_utc() >= until:
             log(out, "until reached; stopping")
             break
-        time.sleep(max(1.0, a.interval - (time.time() - t0)))
+        time.sleep(max(1.0, idle_s, a.interval - (time.time() - t0)))
 
 
 def static(a):
