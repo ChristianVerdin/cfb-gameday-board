@@ -467,3 +467,34 @@ iOS Safari when not already running standalone.
 The proxy binds `127.0.0.1` on purpose: it is an unauthenticated ESPN
 fetch-amplifier and must not sit on `0.0.0.0` without auth. Options, cost
 order, with the draft config files, are in `docs/DEPLOY.md` and `deploy/`.
+
+## Pro football board (`/nfl`)
+
+A second board for pro football. It is stats-only: no lines, implied scores or cover math anywhere. It shares
+the domain, the Vercel project and the visual language with the college board, but none of the college code.
+`server.py`, `app.js` and `refresh_week.py` are untouched.
+
+| Piece | Role |
+| --- | --- |
+| `nflcore/espn.py` | ESPN scoreboard and summary over two hosts, with a request budget. It only queries by week and season; date ranges are refused. |
+| `nflcore/slate.py` | Week resolution from ESPN's calendar. Rolls to the next week once every game is final. Postseason labels and weeks come from the calendar, never hard-coded. |
+| `nflcore/normalize.py`, `gamesheet.py` | Allowlisted, stats-only payloads for `/api/nfl/live` and `/api/nfl/game` |
+| `nflcore/desk.py` | Whip-around score: closeness times lateness, plus red zone, two-minute, one-score fourth quarter and overtime. Reasons are pinned strings. |
+| `nflcore/venues.py` | 38 stadiums keyed by ESPN venue id. Coordinates come from Wikidata/Wikipedia. Each is classed open, canopy, retractable or dome. |
+| `nflcore/weather.py`, `scripts/nfl/refresh_nfl.py` | Weekly snapshot `nfl/games.json`: Open-Meteo kickoff-hour forecast plus a three-hour game window. Domes are skipped and retractable roofs labelled. |
+| `nflcore/metrics.py`, `scripts/nfl/build_metrics.py` | `nfl/metrics.json` from nflverse play-by-play (CC BY 4.0): EPA/play, success rate and pass rate over expected, with ranks |
+| `api/nfl/live.py`, `api/nfl/game.py` | Vercel functions. Whitelisted params, a game-id gate, tiered CDN caching, stale-if-error. |
+| `nfl/` | Client (board, game sheet, field tracker) and `sw.js` scoped to `/nfl/` |
+
+ESPN details that shape the code:
+- **The current drive appears twice** (`drives.previous[-1]` and `drives.current`). Plays are deduplicated by id.
+- **Stoppages report `down` as -1.**
+- **Overtime is period 5,** but the first overtime kickoff is tagged period 4.
+- **Ties:** both teams have `winner:false`, and the win-probability curve ends at 0.5.
+- **Flex and playoff placeholders** have `timeValid:false` at 05:00Z.
+- **`yardLine` is measured from the home team's goal line.** Yards to the goal being attacked is `yardLine` for the away offense and `100 - yardLine` for the home offense.
+
+Freshness:
+- **Live:** the board polls `/api/nfl/live` every 20 s while games are live; the CDN caches it for 15 s.
+- **Snapshot and metrics:** rebuilt by `nfl-refresh.yml` and `nfl-metrics.yml`. Crons run hours ahead of each kickoff window, because scheduled GitHub runs arrive late.
+- **When the snapshot is late,** the board still renders from the live endpoint, without weather and metrics.
