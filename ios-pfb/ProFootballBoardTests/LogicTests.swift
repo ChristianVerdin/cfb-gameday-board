@@ -243,4 +243,19 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(Weather.compass(-90), "W")
         XCTAssertNil(Weather.compass(nil))
     }
+
+    func testTrackerYardText() {
+        XCTAssertEqual(YardText.fromHomeGoal(100, away: "SF", home: "DAL"), "SF 0")
+        XCTAssertEqual(YardText.fromHomeGoal(65, away: "SF", home: "DAL"), "SF 35")
+        XCTAssertEqual(YardText.fromHomeGoal(29, away: "SF", home: "DAL"), "DAL 29")
+        XCTAssertEqual(YardText.fromHomeGoal(50, away: "SF", home: "DAL"), "50")
+        XCTAssertNil(YardText.fromHomeGoal(nil, away: "SF", home: "DAL"))
+        XCTAssertNil(YardText.fromHomeGoal(140, away: "SF", home: "DAL"))
+    }
+
+    func testPlural() {
+        XCTAssertEqual(Plural.count(1, "play"), "1 play")
+        XCTAssertEqual(Plural.count(0, "play"), "0 plays")
+        XCTAssertEqual(Plural.count(11, "play"), "11 plays")
+    }
 }

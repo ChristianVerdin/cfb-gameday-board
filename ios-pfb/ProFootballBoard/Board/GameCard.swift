@@ -33,11 +33,21 @@ struct GameCard: View {
     }
 
     private var meta: some View {
-        HStack(spacing: 8) {
-            BoardTag(text: game.window.label, tint: BoardTheme.gold)
-            Text(kickoff).font(.footnote).foregroundStyle(BoardTheme.muted).lineLimit(1)
-            Spacer(minLength: 4)
-            if !game.tv.isEmpty { Text(game.tv).font(.footnote.weight(.semibold)).foregroundStyle(BoardTheme.blue).lineLimit(1) }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                BoardTag(text: game.window.label, tint: BoardTheme.gold).fixedSize()
+                Text(kickoff).font(.footnote).foregroundStyle(BoardTheme.muted).lineLimit(1)
+                Spacer(minLength: 4)
+                if !game.tv.isEmpty { Text(game.tv).font(.footnote.weight(.semibold)).foregroundStyle(BoardTheme.blue).lineLimit(1) }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    BoardTag(text: game.window.label, tint: BoardTheme.gold).fixedSize()
+                    if !game.tv.isEmpty { Text(game.tv).font(.footnote.weight(.semibold)).foregroundStyle(BoardTheme.blue) }
+                }
+                Text(kickoff).font(.footnote).foregroundStyle(BoardTheme.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -67,7 +77,7 @@ struct GameCard: View {
         return HStack(spacing: 10) {
             TeamChip(team: team)
             VStack(alignment: .leading, spacing: 0) {
-                Text(team.name.isEmpty ? team.abbr : team.name).font(.headline).lineLimit(1)
+                Text(team.name.isEmpty ? team.abbr : team.name).font(.headline).lineLimit(2)
                 if let r = team.record { Text(r.text).font(.caption).foregroundStyle(BoardTheme.muted) }
             }
             Spacer(minLength: 4)
@@ -100,7 +110,7 @@ struct GameCard: View {
                     if !info.text.isEmpty { Text(info.text).font(.subheadline.weight(.semibold).monospacedDigit()) }
                     if game.isLive, let s = game.situation {
                         let bits = [s.possessionAbbr.map { "\($0) ball" }, s.stoppage ? "Stoppage" : s.text].compactMap { $0 }
-                        if !bits.isEmpty { Text(bits.joined(separator: " \u{00B7} ")).font(.subheadline).foregroundStyle(BoardTheme.muted).lineLimit(1) }
+                        if !bits.isEmpty { Text(bits.joined(separator: " \u{00B7} ")).font(.subheadline).foregroundStyle(BoardTheme.muted).lineLimit(3) }
                         if s.isRedZone { BoardTag(text: s.goalToGo ? "Goal to go" : "Red zone", tint: BoardTheme.red) }
                     }
                 }

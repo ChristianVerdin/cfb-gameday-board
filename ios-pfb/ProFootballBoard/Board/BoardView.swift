@@ -40,7 +40,7 @@ struct BoardView: View {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     if let error = board.error { errorBanner(error) }
                     if filter != .following || !games.isEmpty { chips }
-                    if filter != .following {
+                    if filter == .all {
                         DeskSection(desk: board.desk, upcoming: board.games)
                     }
                     if visible.isEmpty { empty } else {
@@ -56,8 +56,16 @@ struct BoardView: View {
             }
             .refreshable { await board.refresh() }
             .background(BoardTheme.bg.ignoresSafeArea())
-            .navigationTitle(board.weekLabel ?? "Pro Football Board")
+            .navigationTitle(title)
             .toolbarBackground(BoardTheme.bg, for: .navigationBar)
+        }
+    }
+
+    private var title: String {
+        switch filter {
+        case .all: board.weekLabel ?? "Pro Football Board"
+        case .live: "Live"
+        case .following: "Following"
         }
     }
 

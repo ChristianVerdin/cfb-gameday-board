@@ -43,3 +43,18 @@ enum PeriodLabel {
         return n == 5 ? "OT" : "\(n - 4)OT"
     }
 }
+
+enum Plural {
+    /// "1 play", "2 plays".
+    static func count(_ n: Int, _ noun: String) -> String { "\(n) \(noun)\(n == 1 ? "" : "s")" }
+}
+
+enum YardText {
+    /// "SF 35" for a spot measured in yards from the home goal line (0...100); "50" at midfield.
+    static func fromHomeGoal(_ yl: Int?, away: String, home: String) -> String? {
+        guard let yl, (0...100).contains(yl) else { return nil }
+        if yl == 50 { return "50" }
+        return yl > 50 ? "\(away) \(100 - yl)" : "\(home) \(yl)"
+    }
+}
+

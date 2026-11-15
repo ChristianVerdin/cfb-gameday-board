@@ -52,10 +52,19 @@ struct MetricsBlock: View {
     }
 
     private func row(_ title: String, _ left: String, _ right: String?) -> some View {
-        HStack {
-            Text(left).frame(maxWidth: .infinity, alignment: .leading)
-            Text(title).foregroundStyle(BoardTheme.muted).font(.caption)
-            Text(right ?? "").frame(maxWidth: .infinity, alignment: .trailing)
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                Text(left).frame(maxWidth: .infinity, alignment: .leading)
+                Text(title).foregroundStyle(BoardTheme.muted).font(.caption)
+                Text(right ?? "").frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).foregroundStyle(BoardTheme.muted).font(.caption)
+                Text(left)
+                if let right, !right.isEmpty { Text(right) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.footnote.monospacedDigit())
     }

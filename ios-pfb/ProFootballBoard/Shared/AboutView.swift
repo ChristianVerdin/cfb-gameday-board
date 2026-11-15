@@ -39,6 +39,8 @@ struct AboutView: View {
                     LabeledContent("Version", value: version)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(BoardTheme.bg.ignoresSafeArea())
             .navigationTitle("About")
         }
     }

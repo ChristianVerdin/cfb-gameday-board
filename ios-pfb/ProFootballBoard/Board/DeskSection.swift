@@ -16,7 +16,7 @@ struct DeskSection: View {
             if !desk.isEmpty || !soon.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     if !desk.isEmpty {
-                        header("Whip-around")
+                        header("Whip-around \u{00B7} all live games")
                         ForEach(Array(desk.enumerated()), id: \.element.id) { i, g in deskCard(g, rank: i + 1) }
                     }
                     if !soon.isEmpty {
@@ -56,7 +56,7 @@ struct DeskSection: View {
                     }
                 }
                 if rank == 1, let play = g.situation?.lastPlay?.text, !play.isEmpty {
-                    Text(play).font(.footnote).foregroundStyle(BoardTheme.muted).lineLimit(2)
+                    Text(play).font(.footnote).foregroundStyle(BoardTheme.muted).lineLimit(4)
                 }
             }
             .padding(12)

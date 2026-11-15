@@ -19,6 +19,8 @@ struct GameView: View {
         NavigationStack {
             content
                 .background(Color(.systemBackground))
+                .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+                .toolbar(.visible, for: .navigationBar)
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -56,7 +58,7 @@ struct GameView: View {
     private func loaded(_ sheet: GameSheet) -> some View {
         let tab = picked ?? sheet.defaultTab
         return ScrollView {
-            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+            VStack(spacing: 12) {
                 GameHeader(sheet: sheet)
                 notices(sheet)
                 if sheet.phase == .pre {
@@ -64,16 +66,19 @@ struct GameView: View {
                         ? "The Pro Bowl has no drive or win probability detail here. Play-by-play opens at kickoff."
                         : "Play-by-play opens at kickoff.")
                 } else {
-                    Section {
-                        tabBody(tab, sheet)
-                    } header: {
-                        TabBar(selection: Binding(get: { tab }, set: { picked = $0 }))
-                    }
+                    tabBody(tab, sheet)
                 }
                 footer
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 24)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if sheet.phase != .pre {
+                TabBar(selection: Binding(get: { tab }, set: { picked = $0 }))
+                    .padding(.horizontal, 12)
+                    .background(Color(.systemBackground))
+            }
         }
         .refreshable { await store.refresh() }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -134,7 +139,6 @@ private struct TabBar: View {
             }
             .background(RGB.card.color, in: Capsule())
             .padding(.vertical, 4)
-            .background(Color(.systemBackground))
             .onChange(of: selection) { _, new in withAnimation { proxy.scrollTo(new, anchor: .center) } }
         }
         .accessibilityElement(children: .contain)

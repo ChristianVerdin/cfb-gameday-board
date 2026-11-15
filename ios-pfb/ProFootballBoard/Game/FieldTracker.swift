@@ -12,16 +12,16 @@ struct FieldTracker: View {
     private var drive: Drive? { sheet.drives.first { $0.id == tracker?.driveID } }
 
     private var caption: String {
-        let lastPlay = drive?.playList.last { !$0.isAdmin }
         let from = drive?.start?.yardText
-        let at = lastPlay?.yardText ?? drive?.end?.yardText
+        let at = YardText.fromHomeGoal(tracker?.currentYardLine, away: sheet.awayAbbr, home: sheet.homeAbbr)
+            ?? drive?.end?.yardText ?? drive?.playList.last { !$0.isAdmin }?.yardText
         return [offence.map { "\($0.abbr) ball" }, from.map { "from \($0)" }, at.map { "now \($0)" }]
             .compactMap { $0 }.joined(separator: " · ")
     }
 
     private var meta: String {
         guard let t = tracker else { return "" }
-        return [t.plays > 0 ? "\(t.plays) plays" : nil, "\(t.yards) yds", t.elapsed].compactMap { $0 }.joined(separator: " · ")
+        return [t.plays > 0 ? Plural.count(t.plays, "play") : nil, "\(t.yards) yds", t.elapsed].compactMap { $0 }.joined(separator: " · ")
     }
 
     var body: some View {
@@ -82,7 +82,7 @@ struct FieldTracker: View {
         ctx.stroke(ball, with: .color(.white), lineWidth: 1.5)
 
         for (abbr, x) in [(sheet.awayAbbr, 5.0), (sheet.homeAbbr, 115.0)] {
-            ctx.draw(Text(abbr).font(.system(size: labelSize, weight: .heavy)).foregroundStyle(.white.opacity(0.9)), at: pt(x, 18))
+            ctx.draw(Text(abbr).font(.system(size: min(labelSize, 12), weight: .heavy)).foregroundStyle(.white.opacity(0.9)), at: pt(x, 18))
         }
     }
 }

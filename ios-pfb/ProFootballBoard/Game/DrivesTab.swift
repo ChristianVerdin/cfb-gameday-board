@@ -37,7 +37,7 @@ private struct DriveCard: View {
 
     private var meta: String {
         let start = drive.start.map { s in [PeriodLabel.of(s.period), s.yardText.map { "from \($0)" } ?? ""].filter { !$0.isEmpty }.joined(separator: " ") }
-        return [start, "\(drive.plays) plays", "\(drive.yards) yds", drive.time].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        return [start, Plural.count(drive.plays, "play"), "\(drive.yards) yds", drive.time].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     private var resultText: String { live ? "On the field" : drive.resultText ?? drive.result ?? "Drive" }
