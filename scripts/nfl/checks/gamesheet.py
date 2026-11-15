@@ -447,6 +447,20 @@ def test_live_mid(check):
                "sequenceNumber": str(int(cur_plays[-1].get("sequenceNumber") or 0) + 1), "end": {"yardLine": 65}})
     cur_plays.append(to)
     check("tracker ignores trailing admin play", norm_summary(adm, ev)["tracker"]["cur_yl"], base_yl)
+    # a finished drive (made field goal from the 30) sits at the drive's end spot: ESPN gives the kick an end
+    # spot of 100, and the trailing timeout a reset spot of 35 (LAR at ARI, 2026-11-15)
+    fg = copy.deepcopy(check.fixture(EARLY))
+    drv = fg["drives"]["current"]
+    seq = int(drv["plays"][-1].get("sequenceNumber") or 0)
+    kick, stop = copy.deepcopy(drv["plays"][-1]), copy.deepcopy(drv["plays"][-1])
+    kick.update({"id": "99999999911", "text": "Field goal is GOOD", "type": {"id": "59", "text": "Field Goal Good"},
+                 "sequenceNumber": str(seq + 1), "start": {"down": 4, "distance": 3, "yardLine": 70},
+                 "end": {"yardLine": 100}, "scoringPlay": True})
+    stop.update({"id": "99999999912", "text": "Official Timeout", "type": {"id": "21", "text": "Official Timeout"},
+                 "sequenceNumber": str(seq + 2), "start": {"down": -1, "yardLine": 35}, "end": {"yardLine": 35}})
+    drv["plays"] += [kick, stop]
+    drv.update({"result": "FG", "end": {"yardLine": 70, "text": "LAR 30"}})
+    check("finished drive tracker sits at the drive end spot", norm_summary(fg, ev)["tracker"]["cur_yl"], 70)
     # statuses that are in-progress by state but not by name pass through
     ht = {"status": {"period": 2, "displayClock": "0:00", "type": {"state": "in", "name": "STATUS_HALFTIME"}}}
     late = copy.deepcopy(check.fixture(LATE))

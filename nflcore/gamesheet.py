@@ -382,10 +382,13 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
     tracker = None
     if cur_id and cur:
         cur_plays = [play_info[p["id"]] for p in plays_by_drive.get(cur_id, [])]
+        drive_end = _int((cur.get("end") or {}).get("yardLine"))
         newest = max((i for i in cur_plays if not i["admin"]), key=lambda i: i["seq"], default=None)
-        end_yl = newest["end_yl"] if newest else None
+        # A finished drive sits at ESPN's drive end spot: a made field goal's own end spot reads 100
+        # (it would draw the ball on the goal line) and a punt's is the receiving team's spot.
+        end_yl = drive_end if cur.get("result") and drive_end is not None else (newest["end_yl"] if newest else None)
         if not isinstance(end_yl, int):
-            end_yl = (cur.get("end") or {}).get("yardLine")
+            end_yl = drive_end
         d_out = next((d for d in drives_out if d["id"] == cur_id), None)
         tracker = {"drive_id": cur_id, "team": ((cur.get("team") or {}).get("abbreviation")) or "",
                    "start_yl": (cur.get("start") or {}).get("yardLine"), "cur_yl": end_yl if isinstance(end_yl, int) else None,
