@@ -99,7 +99,8 @@ def test_stats_only_files(check):
     """Client files and committed fixtures carry no betting vocabulary."""
     for path in nfl_files():
         rel = str(path.relative_to(ROOT))
-        if not (rel.startswith(("nfl/", "scripts/fixtures/nfl/")) and path.suffix in (".html", ".js", ".css", ".json")):
+        tool = path.parent.name == "nfl" and path.parent.parent.name == "scripts" and path.suffix == ".py"
+        if not (tool or (rel.startswith(("nfl/", "scripts/fixtures/nfl/")) and path.suffix in (".html", ".js", ".css", ".json", ".md"))):
             continue
         m = BETTING.search(path.read_text(errors="replace"))
         check.true(f"no betting words in {rel}", m is None, m.group(0) if m else "")

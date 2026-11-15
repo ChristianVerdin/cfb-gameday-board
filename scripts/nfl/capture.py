@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Capture raw ESPN NFL payloads for test fixtures (stdlib only).
 
-Raw captures contain sportsbook links and odds, so they are never committed:
+Raw captures carry third-party link and market data, so they are never committed:
 write them outside the repo (--out is required) and turn them into sanitized
 fixtures with make_fixture.py.
 
