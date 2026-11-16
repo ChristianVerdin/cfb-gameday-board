@@ -377,6 +377,167 @@ def test_game_payload():
           [True, False, False, False, False, False])
 
 
+def test_hosted_api():
+    """api/live.py and api/game.py: one canonical URL shape per resource, rejections cached, ESPN never reached."""
+    import http.server
+    import threading
+    import urllib.error
+    import urllib.request
+    from datetime import timedelta
+    import server  # noqa: E402
+    from api import game as api_game, live as api_live  # noqa: E402
+
+    calls = {"date": [], "summary": []}
+    keep = (api_live.pull_date, api_game.pull_summary)
+
+    def fake_date(d):
+        calls["date"].append(d)
+        return [{"id": "9" + d, "status": {"type": {"state": "pre"}}, "competitions": [{"competitors": []}]}]
+
+    snap_ids = sorted(server.GAME_IDS or [])
+    fixture = json.loads((ROOT / "scripts/fixtures/summary_final.json").read_text("utf-8"))
+
+    def fake_summary(gid):
+        calls["summary"].append(gid)
+        if gid == snap_ids[1]:
+            raise server.UpstreamError("site.web.api.espn.com 404 Not Found :: http://sports.core.api.espn.pvt/x", 404)
+        if gid == snap_ids[2]:
+            raise server.UpstreamError("site.web.api.espn.com 503 Unavailable :: http://sports.core.api.espn.pvt/x", None)
+        if gid == snap_ids[3]:
+            raise OSError("timed out reaching site.api.espn.com")
+        return fixture
+
+    api_live.pull_date, api_game.pull_summary = fake_date, fake_summary
+    servers = []
+
+    def serve(handler_cls):
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        servers.append(httpd)
+        return f"http://127.0.0.1:{httpd.server_port}"
+
+    def get(base, path):
+        try:
+            with urllib.request.urlopen(base + path, timeout=10) as r:
+                return r.status, r.headers.get("Cache-Control"), r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get("Cache-Control"), e.read()
+
+    quiet = lambda *a, **k: None  # noqa: E731
+    api_live.handler.log_message = api_game.handler.log_message = quiet
+    try:
+        live, game = serve(api_live.handler), serve(api_game.handler)
+        D = server.DATES
+        lo, hi = server.date_window()
+        PARAM, VAL = "public, max-age=0, s-maxage=3600", "public, max-age=0, s-maxage=300"
+        OK = "public, max-age=0, s-maxage=20, stale-while-revalidate=40"
+
+        def live_case(name, path, status, cache, body_has=None, fetched=0):
+            calls["date"].clear()
+            st, cc, body = get(live, path)
+            check(f"live {name}", (st, cc), (status, cache))
+            check(f"live {name} ESPN pulls", len(calls["date"]), fetched)
+            if body_has:
+                check(f"live {name} body", json.loads(body).get("error"), body_has)
+
+        # happy paths: app.js shape (snapshot dates, joined), widget shape (sorted ET dates of snapshot games), no query
+        live_case("no query", "/api/live", 200, OK, fetched=len(D))
+        live_case("app.js shape", "/api/live?dates=" + ",".join(D), 200, OK, fetched=len(D))
+        snap = json.loads((ROOT / "games.json").read_text("utf-8"))
+        et = sorted({datetime.strptime(g["date"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+                     .astimezone(ZoneInfo("America/New_York")).strftime("%Y%m%d") for g in snap["games"]})
+        live_case("widget shape (every game's ET date)", "/api/live?dates=" + ",".join(et), 200, OK, fetched=len(et))
+        live_case("widget one date, comma-encoded", "/api/live?dates=" + D[0] + "%2C" + D[1], 200, OK, fetched=2)
+        live_case("slack low edge", f"/api/live?dates={lo}", 200, OK, fetched=1)
+        live_case("slack high edge", f"/api/live?dates={hi}", 200, OK, fetched=1)
+        # byte-identical success payload vs the dev server's builder
+        calls["date"].clear()
+        st, _, body = get(live, "/api/live?dates=" + D[0])
+        got = json.loads(body)
+        want = {"ok": True, "count": 1, "warnings": [], "dates": [D[0]],
+                "games": server.live_payload(fake_date(D[0]))}
+        got.pop("fetched_at")
+        check("live payload unchanged", got, want)
+        # rejections: structural 400 s-maxage=3600, value 400 s-maxage=300, none reach ESPN
+        live_case("unknown param", "/api/live?zz=1", 400, PARAM, "unknown parameter")
+        live_case("cache buster beside dates", f"/api/live?dates={D[0]}&cb=1", 400, PARAM, "unknown parameter")
+        live_case("bare param", "/api/live?x", 400, PARAM, "unknown parameter")
+        live_case("repeated dates", f"/api/live?dates={D[0]}&dates={D[1]}", 400, PARAM, "dates must appear once")
+        live_case("blank dates", "/api/live?dates=", 400, VAL)
+        live_case("unsorted", f"/api/live?dates={D[1]},{D[0]}", 400, VAL, "dates: sorted and unique")
+        live_case("duplicate", f"/api/live?dates={D[0]},{D[0]}", 400, VAL, "dates: sorted and unique")
+        live_case("eight dates", "/api/live?dates=" + ",".join(
+            (datetime.strptime(D[0], "%Y%m%d") + timedelta(days=i)).strftime("%Y%m%d") for i in range(8)), 400, VAL)
+        live_case("not digits", "/api/live?dates=2026111a", 400, VAL, "dates: YYYYMMDD")
+        live_case("unicode digits", "/api/live?dates=" + "%D9%A2" * 8, 400, VAL, "dates: YYYYMMDD")
+        live_case("not a day", "/api/live?dates=20261399", 400, VAL, "dates: YYYYMMDD")
+        live_case("space padded", f"/api/live?dates={D[0]}%20", 400, VAL)
+        live_case("old season", "/api/live?dates=20260101", 400, VAL, "dates: outside this slate")
+        low = (datetime.strptime(lo, "%Y%m%d") - timedelta(days=1)).strftime("%Y%m%d")
+        high = (datetime.strptime(hi, "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
+        live_case("one day under window", f"/api/live?dates={low}", 400, VAL)
+        live_case("one day over window", f"/api/live?dates={high}", 400, VAL)
+        check("window is snapshot +/- 2 days", (lo, hi), (
+            (datetime.strptime(min(D), "%Y%m%d") - timedelta(days=2)).strftime("%Y%m%d"),
+            (datetime.strptime(max(D), "%Y%m%d") + timedelta(days=2)).strftime("%Y%m%d")))
+        check("widget dates inside window", [d for d in et if not lo <= d <= hi], [])
+        # ESPN failure: generic body, short cache, no ESPN detail
+        api_live.pull_date = lambda d: (_ for _ in ()).throw(server.UpstreamError("site.web.api.espn.com 500 :: x", 500))
+        st, cc, body = get(live, "/api/live")
+        check("live 502", (st, cc, json.loads(body)), (502, "public, max-age=0, s-maxage=10",
+                                                      {"ok": False, "error": "live scores unavailable"}))
+
+        # /api/game
+        ok_id = snap_ids[0]
+        calls["summary"].clear()
+        st, cc, body = get(game, f"/api/game?id={ok_id}")
+        parsed = json.loads(body)
+        check("game ok", (st, cc, parsed["ok"]), (200, "public, max-age=0, s-maxage=3600, stale-while-revalidate=7200", True))
+        parsed.pop("ok")
+        check("game payload unchanged", parsed, server.game_payload(fixture))
+
+        def game_case(name, path, status, cache, error=None, pulls=0):
+            calls["summary"].clear()
+            st, cc, body = get(game, path)
+            check(f"game {name}", (st, cc), (status, cache))
+            check(f"game {name} ESPN pulls", len(calls["summary"]), pulls)
+            if error:
+                check(f"game {name} body", json.loads(body), {"ok": False, "error": error})
+            check(f"game {name} leaks nothing", [t for t in ("espn", ".pvt", "timed out", "Unavailable") if t in body.decode()], [])
+
+        game_case("cache buster", f"/api/game?id={ok_id}&x=1", 400, PARAM, "unknown parameter")
+        game_case("repeated id", f"/api/game?id={ok_id}&id={ok_id}", 400, PARAM, "id must appear once")
+        game_case("no id", "/api/game", 400, PARAM, "bad id")
+        game_case("bad id", "/api/game?id=1;ls", 400, PARAM, "bad id")
+        game_case("unknown id (gate, no ESPN call)", "/api/game?id=123456789", 404, VAL, "unknown game")
+        game_case("espn 4xx", f"/api/game?id={snap_ids[1]}", 404, VAL, "unknown game", pulls=1)
+        game_case("espn 5xx", f"/api/game?id={snap_ids[2]}", 502, "public, max-age=0, s-maxage=30", "game detail unavailable", 1)
+        game_case("network error", f"/api/game?id={snap_ids[3]}", 502, "public, max-age=0, s-maxage=30", "game detail unavailable", 1)
+    finally:
+        for h in servers:
+            h.shutdown()
+        api_live.pull_date, api_game.pull_summary = keep[0], keep[1]
+    # pull_summary: 404 from both hosts is "unknown", a mixed or 5xx outcome is not
+    real = server.fetch_json
+    try:
+        server.fetch_json = lambda url, timeout=20: (_ for _ in ()).throw(server.UpstreamError("x", 404))
+        try:
+            server.pull_summary("401858234")
+        except server.UpstreamError as exc:
+            check("pull_summary 404/404 status", exc.status, 404)
+        outcomes = iter([server.UpstreamError("x", 404), server.UpstreamError("y", 503)])
+        def mixed(url, timeout=20):
+            raise next(outcomes)
+        server.fetch_json = mixed
+        try:
+            server.pull_summary("401858234")
+        except server.UpstreamError as exc:
+            check("pull_summary 404/503 status", exc.status, None)
+    finally:
+        server.fetch_json = real
+    check("snapshot ids loaded", len(snap_ids) > 0, True)
+
+
 def ev(stype=2, week=8, date="2026-10-24T16:00Z", note="", year=2026):
     return {"season": {"year": year, "type": stype}, "week": {"number": week}, "date": date,
             "competitions": [{"notes": [{"headline": note}] if note else []}]}
@@ -550,7 +711,7 @@ def test_pwa():
 
 if __name__ == "__main__":
     for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_seo_escaping,
-              test_game_payload, test_labels, test_promo, test_rivalries, test_geocode, test_tba, test_pwa):
+              test_game_payload, test_hosted_api, test_labels, test_promo, test_rivalries, test_geocode, test_tba, test_pwa):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))
