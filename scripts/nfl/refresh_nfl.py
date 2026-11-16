@@ -44,6 +44,14 @@ def _venue(comp: dict) -> dict | None:
             "roof": None, "lat": None, "lon": None, "tz": None, "known": False}
 
 
+def _wx_venue(ven: dict | None) -> dict | None:
+    """The snapshot venue plus the table's elevation facts: weather reads them, the payload does not carry them."""
+    if not ven or not ven["known"]:
+        return ven
+    row = venues.venue(ven["id"])
+    return ven | {"elev_ft": row["elev_ft"], "verified": row["verified"]} if row else ven
+
+
 def _side(side: dict | None, raw: dict | None) -> dict | None:
     if not side:
         return None
@@ -76,7 +84,7 @@ def _game(ev: dict, st: int, wk_label: str, now: datetime, fetch, prev: dict, ca
     old = prev.get(g["id"]) or {}
     prev_wx = (old.get("wx_status"), old.get("wx")) if old.get("wx") else None
     if do_wx:
-        status, wx = weather.for_game(ven, kick, kind=kind, placeholder=g["placeholder"], time_tbd=tbd, now=now,
+        status, wx = weather.for_game(_wx_venue(ven), kick, kind=kind, placeholder=g["placeholder"], time_tbd=tbd, now=now,
                                       fetch=fetch, prev=prev_wx, cache=cache)
     elif prev_wx and not g["placeholder"] and kind != "all_star":
         status, wx = prev_wx

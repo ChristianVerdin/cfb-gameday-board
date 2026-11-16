@@ -88,6 +88,18 @@ def test_all_2026_venues_known(check):
         check(f"{fx} no unknown-venue warnings", [w for w in env["warnings"] if w.startswith("venue_unknown")], [])
 
 
+def test_altitude_reaches_weather(check):
+    env = _build(check, "sb_2026_w16.json", 2, 16, "Week 16", _now("2026-12-22"))
+    den = next(g for g in env["games"] if g["venue"]["id"] == "3937")
+    check("Denver has weather", den["wx_status"], "ok")
+    check("Denver tagged ALTITUDE", "ALTITUDE" in den["wx"]["flags"], True)
+    check("Denver elevation note", [n for n in den["wx"]["notes"] if n.startswith("Elevation")], ["Elevation 5,280 ft"])
+    check("venue payload unchanged", set(den["venue"]), VENUE_KEYS)
+    low = [g for g in env["games"] if g["wx"] and g["venue"]["id"] != "3937"]
+    check.true("other open-air games present", low)
+    check("sea-level venues untagged", [g["shortName"] for g in low if "ALTITUDE" in g["wx"]["flags"]], [])
+
+
 def test_placeholders_and_tbd(check):
     env = _build(check, "sb_2026_w16.json", 2, 16, "Week 16", _now("2026-12-20"))
     tbd = [g for g in env["games"] if g["time_tbd"]]
