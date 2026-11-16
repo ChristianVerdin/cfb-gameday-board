@@ -337,7 +337,7 @@ python3 scripts/refresh_week.py --start 20260911 --end 20260914
 
 - `--start` / `--end` are inclusive ESPN (Eastern) dates, `YYYYMMDD`. With no
   arguments: the Tuesday on or before today, through the following Monday
-  (midweek MAC/CUSA games are part of the slate; Monday stays with the ending week). `--start` alone means that one day.
+  (midweek MAC/CUSA games are part of the slate; Monday stays with the ending week while it still has a game to play, and otherwise rolls to the coming Tuesday through Monday). `--start` alone means that one day.
 - `--out DIR` writes elsewhere (default: repo root). Useful to diff before
   overwriting.
 - `--no-enrich` skips the per-game ESPN summary pass; `--seo-only` rebuilds only

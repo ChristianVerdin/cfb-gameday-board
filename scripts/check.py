@@ -113,6 +113,22 @@ def test_time():
     check("default tue", default_dates(day("2026-09-08")), ("20260908", "20260914"))
     check("default wed", default_dates(day("2026-10-07")), ("20261006", "20261012"))
     check("default thu", default_dates(day("2026-09-10")), ("20260908", "20260914"))
+    check("default mon done", default_dates(day("2026-11-16"), monday_done=True), ("20261117", "20261123"))
+    check("default sat done", default_dates(day("2026-11-14"), monday_done=True), ("20261110", "20261116"))
+
+    import refresh_week
+    real_pull = refresh_week.pull
+    ev = lambda state: {"status": {"type": {"state": state}}}
+    for name, events, want in (("all final", [ev("post"), ev("post")], True), ("none", [], True),
+                               ("one to play", [ev("post"), ev("pre")], False), ("live", [ev("in")], False)):
+        refresh_week.pull = lambda date, run, events=events: (events, {}, True)
+        check(f"nothing_left {name}", refresh_week.nothing_left("20261116"), want)
+
+    def down(date, run):
+        raise RuntimeError("ESPN 503")
+    refresh_week.pull = down
+    check("nothing_left pull failed", refresh_week.nothing_left("20261116"), False)
+    refresh_week.pull = real_pull
 
     check("compass n", compass(0), "N")
     check("compass nw", compass(307), "NW")

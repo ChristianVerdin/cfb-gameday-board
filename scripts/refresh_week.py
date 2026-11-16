@@ -95,12 +95,15 @@ def date_range(start: str, end: str) -> list[str]:
     return [(a + timedelta(days=i)).strftime("%Y%m%d") for i in range((b - a).days + 1)]
 
 
-def default_dates(today: datetime | None = None) -> tuple[str, str]:
+def default_dates(today: datetime | None = None, monday_done: bool = False) -> tuple[str, str]:
     """Tuesday through Monday of the slate in progress.
     Midweek MAC/CUSA games belong to the week, so a new slate starts on Tuesday;
-    Monday still belongs to the slate that is ending (Labor Day, bowl Mondays)."""
-    today = (today or datetime.now(CHICAGO)).date()
-    tuesday = today - timedelta(days=(today.weekday() - 1) % 7)
+    Monday still belongs to the slate that is ending (Labor Day, bowl Mondays),
+    unless monday_done says nothing is left to play that day: then the coming slate."""
+    day = (today or datetime.now(CHICAGO)).date()
+    if monday_done and day.weekday() == 0:
+        day += timedelta(days=1)
+    tuesday = day - timedelta(days=(day.weekday() - 1) % 7)
     return tuesday.strftime("%Y%m%d"), (tuesday + timedelta(days=6)).strftime("%Y%m%d")
 
 
@@ -632,6 +635,16 @@ def pull(date: str, run: Run) -> tuple[list, dict, bool]:
     raise RuntimeError(f"{date}: {last}")
 
 
+def nothing_left(date: str) -> bool:
+    """True when every game on this ESPN date is final (or there are none).
+    A failed pull counts as False, which keeps the ending slate."""
+    try:
+        events, _, _ = pull(date, Run())
+    except Exception:
+        return False
+    return all(((e.get("status") or {}).get("type") or {}).get("state") == "post" for e in events)
+
+
 SEO_BLOCK = re.compile(r"(<!-- games:start -->).*?(<!-- games:end -->)", re.S)
 KICKER = re.compile(r'(<div class="kicker" id="kicker">).*?(</div>)', re.S)
 TITLE = re.compile(r"(<title>).*?(</title>)", re.S)
@@ -867,6 +880,9 @@ def main() -> int:
         return 0
 
     start, end = default_dates()
+    if not args.start and datetime.now(CHICAGO).weekday() == 0 and nothing_left(end):
+        start, end = default_dates(monday_done=True)
+        print("Monday with nothing left to play: building the coming Tuesday..Monday")
     start = args.start or start
     end = args.end or (end if not args.start else args.start)
     dates = date_range(start, end)

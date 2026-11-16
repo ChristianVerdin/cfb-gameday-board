@@ -190,7 +190,8 @@ python3 scripts/promo_text.py --apply   # App Store promotional text for the wee
 ```
 
 With no arguments it targets Tuesday through Monday of the slate in progress
-(a new slate starts on Tuesday, so midweek MAC and CUSA games are included). Pass `--start 20260911 --end
+(a new slate starts on Tuesday, so midweek MAC and CUSA games are included; on a Monday with
+nothing left to play it builds the coming week). Pass `--start 20260911 --end
 20260914` to pick dates. Rerun it on a game morning to refresh the forecast to
 same-day accuracy, then restart `server.py`.
 
