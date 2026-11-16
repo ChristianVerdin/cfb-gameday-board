@@ -247,12 +247,14 @@
     const st = g.status;
     if (st === "STATUS_POSTPONED") return { pill: "POSTPONED", text: "", final: true };
     if (st === "STATUS_CANCELED") return { pill: "CANCELED", text: "", final: true };
+    if (g.state !== "pre" && !(g.state === "post" && g.completed)) {
+      if (st === "STATUS_SUSPENDED") return { pill: "SUSPENDED", text: (periodName(g) + " " + (g.clock || "")).trim() };
+      if (st === "STATUS_DELAYED" || st === "STATUS_RAIN_DELAY") return { pill: "DELAYED", text: (periodName(g) + " " + (g.clock || "")).trim() };
+    }
     if (g.state === "post") return { pill: g.ot ? "FINAL/OT" : "FINAL", text: g.result === "tie" ? "Tie game" : "", final: true };
     if (g.state !== "in") return { pill: "", text: "" };
     if (st === "STATUS_HALFTIME") return { pill: "HALF", text: "Halftime" };
     if (st === "STATUS_END_PERIOD") return { pill: "LIVE", text: "End of " + periodName(g) };
-    if (st === "STATUS_DELAYED") return { pill: "DELAYED", text: periodName(g) + " " + g.clock };
-    if (st === "STATUS_SUSPENDED") return { pill: "SUSPENDED", text: periodName(g) + " " + g.clock };
     if (/^End of /.test(g.statusShort || "")) return { pill: "LIVE", text: g.statusShort };
     return { pill: "LIVE", text: (periodName(g) + " " + g.clock).trim() };
   }
@@ -345,7 +347,7 @@
     const a = metricsFor(g.away.abbr), h = metricsFor(g.home.abbr);
     if (!a || !h) return "";
     const wk = metrics.through_week ? ", through Week " + Number(metrics.through_week) : "";
-    const footHtml = `<div class="mfoot">nflverse${esc(wk)}, CC BY 4.0. Season to date, per play.</div>`;
+    const footHtml = `<div class="mfoot">nflverse${esc(wk)}, CC BY 4.0. ${g.kind === "playoff" ? "Regular season, per play." : "Season to date, per play."}</div>`;
     return `<div class="mx">${hMetricRows(a, h, g.away.abbr, g.home.abbr)}${hMetricRows(h, a, g.home.abbr, g.away.abbr)}${footHtml}</div>`;
   }
   function hVenue(g) {

@@ -12,6 +12,9 @@ LOOP = ("ok=0; for i in 1 2 3 4; do if git pull --rebase origin main && git push
         "[ \"$ok\" = 1 ] || { echo \"push failed after 4 attempts\"; exit 1; }")
 REFRESH_CRONS = ["0 12 * * 2", "0 18 * * 2", "0 10 * * 3", "0 14 * * 3", "0 18 * * 3", "0 22 * * 3",
                  "0 6 * * 4", "0 12 * * 4", "0 6 * * 5", "0 14 * * 5", "0 12 * * 6", "0 2 * * 0", "0 6 * * 0", "0 10 * * 0", "0 12 * * 1"]
+PUSH_LOOP = ('for i in 1 2 3 4; do\n            if git pull --rebase origin main && git push; then ok=1; break; fi\n'
+             '            git rebase --abort 2>/dev/null || true\n')
+REBUILD = ("git fetch origin main", "git reset --hard origin/main", "if build; then", "if changed; then commit;")
 GUARD = "if: github.event_name == 'workflow_dispatch' || vars.NFL_REFRESH_ENABLED == 'true'"
 
 
@@ -62,7 +65,11 @@ def test_workflows(check):
         check.true(f"{name} guard", GUARD in text)
         check.true(f"{name} concurrency", f"group: {group}\n  cancel-in-progress: false" in text)
         check.true(f"{name} dispatch", "workflow_dispatch" in text)
-        check.true(f"{name} push loop", LOOP in text)
+        check.true(f"{name} push loop", PUSH_LOOP in text)
+        check.true(f"{name} conflict recovery rebuilds on origin/main", all(m in text for m in REBUILD))
+        check.true(f"{name} recovery order", text.index("git rebase --abort") < text.index("git fetch origin main")
+                   < text.index("git reset --hard origin/main") < text.index("if build; then"))
+        check.true(f"{name} bounded retries", 'push failed after 4 attempts' in text and "-lt 4" in text)
         check.true(f"{name} no bare push", not re.search(r"^\s*git push\s*$", text, re.M))
         check.true(f"{name} uses v7 actions", "actions/checkout@v7" in text and "actions/setup-python@v7" in text)
         adds = re.findall(r"git add (.+)", text)
@@ -89,7 +96,7 @@ def test_refresh_yml(check):
 
 def test_sw(check):
     sw = (ROOT / "nfl" / "sw.js").read_text()
-    check.true("cache name", 'const VERSION = "pfb-v1"' in sw)
+    check.true("cache name", 'const VERSION = "pfb-v2"' in sw)
     check.true("activate only prunes pfb- caches", 'k.startsWith("pfb-") && k !== VERSION' in sw)
     check.true("never caches api", 'url.pathname.startsWith("/api/")) return' in sw)
     check.true("scope guard", 'startsWith("/nfl/")' in sw)

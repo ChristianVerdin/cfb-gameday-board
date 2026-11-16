@@ -574,7 +574,7 @@ def test_render(check):
 
 # ---------- weather and metrics rendering with the real generated files ----------
 
-WX_FUNCS = ("ctText", "compass", "wxStale", "signed", "hWx", "ord", "metricsFor", "hMetricRows", "hMetrics", "esc")
+WX_FUNCS = ("ctText", "compass", "wxStale", "signed", "hWx", "ord", "metricsFor", "hMetricRows", "hMetrics", "esc", "periodName", "stateInfo")
 WX_SCRIPT = r"""
 const ESC_RE = new RegExp("[&<>\"']", "g");
 const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" };
@@ -600,6 +600,12 @@ out.staleHtml = hWx({ wx: { ...base, stale: true }, wx_status: "ok" });
 out.freshHtml = hWx({ wx: { ...base, fetched_at: new Date().toISOString() }, wx_status: "ok" });
 out.errHtml = hWx({ wx: null, wx_status: "error" });
 out.naHtml = hWx({ wx: { ...base }, wx_status: "na" });
+out.held = ["STATUS_SUSPENDED", "STATUS_DELAYED", "STATUS_RAIN_DELAY"].map((st) => [
+  stateInfo({ status: st, state: "post", completed: false, period: 3, clock: "4:00", ot: false }).pill,
+  stateInfo({ status: st, state: "in", period: 3, clock: "4:00" }).pill]);
+out.finalPill = stateInfo({ status: "STATUS_FINAL", state: "post", completed: true, ot: false }).pill;
+out.playoff = hMetrics({ ph: false, kind: "playoff", away: mkSide(games[0].away), home: mkSide(games[0].home) });
+out.regular = hMetrics({ ph: false, kind: "regular", away: mkSide(games[0].away), home: mkSide(games[0].home) });
 out.small = (() => {
   const m = JSON.parse(JSON.stringify(metrics));
   const t = games.find((g) => g.home.abbr in m.teams);
@@ -627,6 +633,12 @@ def test_wx_metrics(check):
     o = json.loads(p.stdout.strip().splitlines()[-1])
     cards = o["cards"]
     check("one card per generated game", len(cards), len(snap["games"]))
+    check("held games filed under post are not FINAL", o["held"], [["SUSPENDED", "SUSPENDED"], ["DELAYED", "DELAYED"], ["DELAYED", "DELAYED"]])
+    check("a completed final is still FINAL", o["finalPill"], "FINAL")
+    wk = metrics["through_week"]
+    check.true("playoff card: regular-season wording, week and attribution kept",
+               f"nflverse, through Week {wk}, CC BY 4.0. Regular season, per play." in o["playoff"] and "Season to date" not in o["playoff"], o["playoff"][-160:])
+    check.true("regular card keeps Season to date", f"through Week {wk}, CC BY 4.0. Season to date, per play." in o["regular"], o["regular"][-160:])
     for c, g in zip(cards, snap["games"]):
         tag = f"{g['shortName']} ({g['wx_status']})"
         st = g["wx_status"]
