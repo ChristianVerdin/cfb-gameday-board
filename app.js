@@ -249,7 +249,7 @@
     const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
     return [
       `${teamLabel(a)} ${g.neutral?"vs":"@"} ${teamLabel(h)}`,
-      g.rivalry ? `🏆 ${g.rivalry}${g.trophy ? ` (${g.trophy})` : ""}` : "",
+      g.rivalry ? `🏆 ${g.rivalry}${g.trophy ? ` (${g.trophy})` : ""}` : (g.notes&&g.notes[0] ? g.notes[0] : ""),
       `${fmtKick(g)} · ${(g.networks||g.broadcasts||[]).join("/")}`,
       [g.venue, [g.city,g.state].filter(Boolean).join(", ")].filter(Boolean).join(" · "),
       [g.wx_emoji, g.temp!=null?Math.round(g.temp)+"°":"", g.wx_label, wx.wind!=null?`wind ${Math.round(wx.wind)} ${g.wind_dir||""}`:"", wx.pop!=null?`rain ${wx.pop}%`:""].filter(Boolean).join(" · "),
@@ -407,7 +407,7 @@
       if (liveOnly && !isLive(g) && !isFinal(g)) return false;
       if (weatherOnly && !(g.flags&&g.flags.length) && g.impact_level==="CLEAR") return false;
       if (q) {
-        const blob=[g.name,g.shortName,g.venue,g.city,g.state,...(g.networks||[]),g.home&&g.home.conference,g.away&&g.away.conference,g.rivalry,g.trophy].join(" ").toLowerCase();
+        const blob=[g.name,g.shortName,g.venue,g.city,g.state,...(g.networks||[]),g.home&&g.home.conference,g.away&&g.away.conference,g.rivalry,g.trophy,...(g.notes||[])].join(" ").toLowerCase();
         if (!blob.includes(q.toLowerCase())) return false;
       }
       return true;
@@ -624,11 +624,11 @@
     return html;
   }
   function downloadCsv(list) {
-    const headers = ["kick_ct","away","home","venue","city","state","tv","spread","total","proj_away","proj_home","temp","wind","rain","flags","notes","rivalry"];
+    const headers = ["kick_ct","away","home","venue","city","state","tv","spread","total","proj_away","proj_home","temp","wind","rain","flags","notes","rivalry","event"];
     const rows = list.map(g=>{
       const a=g.away||{}, h=g.home||{}, o=g.odds||{}, wx=g.wx||{}, impl=g.implied||{};
       const pa = started(g) ? "" : impl.away, ph = started(g) ? "" : impl.home;
-      return [fmtKick(g), a.name, h.name, g.venue, g.city, g.state, (g.networks||[]).join("|"), o.details, o.total, pa, ph, g.temp, wx.wind, wx.pop, (g.flags||[]).join("|"), (g.impact_notes||[]).join("; "), g.rivalry].map(v => `"${String(v??"").replaceAll('"','""')}"`).join(",");
+      return [fmtKick(g), a.name, h.name, g.venue, g.city, g.state, (g.networks||[]).join("|"), o.details, o.total, pa, ph, g.temp, wx.wind, wx.pop, (g.flags||[]).join("|"), (g.impact_notes||[]).join("; "), g.rivalry, (g.notes||[]).join("; ")].map(v => `"${String(v??"").replaceAll('"','""')}"`).join(",");
     });
     const blob = new Blob([[headers.join(","),...rows].join("\n")], {type:"text/csv"});
     const url = URL.createObjectURL(blob);
@@ -731,6 +731,8 @@
     $("a2hs").hidden = false;
     $("a2hs-x").onclick = () => { localStorage.setItem(A2HS_KEY, "1"); $("a2hs").hidden = true; };
   }
+  // In the iOS app, same-host footer links would replace the board in the web view with no way back; _blank hands them to Safari.
+  if (window.cfbNative) document.querySelectorAll('footer a[href^="/"]').forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
   function applyHash(e) {
     const gid = gameHash(location.hash);
     // e: reached by navigation, so Back closes it. Back to the hash it was opened from
