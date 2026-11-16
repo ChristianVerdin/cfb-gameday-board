@@ -11,7 +11,7 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 How it works and why it is built this way, in a five-minute read: [case study](docs/CASE_STUDY.md).
 
-_Last updated 2026-11-12 18:46 CT. The live board holds Week 11 (67 games, Tue 11/10 to Sat 11/14), from the snapshot generated 2026-11-12 13:50 CT. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
+_Last updated 2026-11-16 10:59 CT. The live board holds Week 12 (70 games, Tue 11/17 to Sat 11/21), from the snapshot generated 2026-11-16 10:50 CT. The pro football board has been live at /nfl since 2026-11-15. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
 
 - **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
   snapshot rebuilds itself seven times a week via GitHub Actions (two on Tuesday, Wed,
