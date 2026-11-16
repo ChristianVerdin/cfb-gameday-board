@@ -162,13 +162,17 @@ def _live(query, now, fetch_scoreboard, fetch_calendar, cache):
             (sb, fetched), stale = _scoreboard(cache, fetch_scoreboard, info["st"], info["week"],
                                                info["year"] if info["st"] == 3 else None, LIVE_TTL, now)
             events = sb.get("events") or []
-            if events and all(((e.get("competitions") or [{}])[0].get("status") or e.get("status") or {})
-                              .get("type", {}).get("state") == "post" for e in events):
+            if events and all(slate.event_settled(e) for e in events):
                 nxt = slate.resolve_week(cal, now, events_all_post=True)
                 if nxt:
-                    info = nxt
-                    (sb, fetched), stale = _scoreboard(cache, fetch_scoreboard, info["st"], info["week"],
-                                                       info["year"] if info["st"] == 3 else None, LIVE_TTL, now)
+                    try:
+                        nxt_sb = _scoreboard(cache, fetch_scoreboard, nxt["st"], nxt["week"],
+                                             nxt["year"] if nxt["st"] == 3 else None, LIVE_TTL, now)
+                    except Exception:  # noqa: BLE001 - a failed advance keeps the current week
+                        nxt_sb = None
+                    if nxt_sb is not None:
+                        info = nxt
+                        (sb, fetched), stale = nxt_sb
     except espn.EspnQueryError as e:
         return _err(400, str(e), BAD)
     except Exception:  # noqa: BLE001 - any upstream failure is a 502 with nothing cached

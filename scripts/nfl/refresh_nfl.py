@@ -271,14 +271,14 @@ def pick_week(args, now: datetime, calendar: dict, pull=espn.pull_scoreboard) ->
         return None, None
     sb = pull(wk["st"], wk["week"], wk["year"] if wk["st"] == 3 else None)
     evs = sb.get("events") or []
-    if evs and all(((e.get("status") or {}).get("type") or {}).get("state") == "post" for e in evs):
+    if evs and all(slate.event_settled(e) for e in evs):
         nxt = slate.resolve_week(calendar, now, events_all_post=True)
         if nxt:
             try:
                 sb2 = pull(nxt["st"], nxt["week"], nxt["year"] if nxt["st"] == 3 else None)
                 if sb2.get("events"):
                     return nxt, sb2
-            except espn.EspnError:
+            except Exception:   # noqa: BLE001 - a failed advance keeps the current week
                 pass
     return wk, sb
 

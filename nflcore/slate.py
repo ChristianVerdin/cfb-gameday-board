@@ -36,7 +36,7 @@ def chicago_date(iso_utc: str) -> str:
 def parse_calendar(calendar) -> list[dict]:
     """Flatten ESPN's calendar into ordered week entries: {st, week, label, start, end} (start/end aware UTC).
 
-    Accepts pull_calendar()'s dict or the bare list. Season types without entries (Off Season) are skipped.
+    Accepts pull_calendar()'s dict or the bare list. Only season types 1-3 count; Off Season (4) and entry-less types are skipped.
     """
     items = calendar.get("calendar") if isinstance(calendar, dict) else calendar
     out = []
@@ -47,6 +47,8 @@ def parse_calendar(calendar) -> list[dict]:
             st = int(typ.get("value"))
         except (TypeError, ValueError):
             continue
+        if st not in (1, 2, 3):   # Off Season (4) and anything new are not slates
+            continue
         for e in typ.get("entries") or []:
             try:
                 out.append({"st": st, "week": int(e["value"]), "label": e.get("label") or f"Week {e['value']}",
@@ -55,6 +57,19 @@ def parse_calendar(calendar) -> list[dict]:
                 continue
     out.sort(key=lambda r: r["start"])
     return out
+
+
+_HELD = ("STATUS_SUSPENDED", "STATUS_DELAYED", "STATUS_RAIN_DELAY")   # keep in step with normalize.HELD
+
+
+def event_settled(ev: dict) -> bool:
+    """True when a raw ESPN event is final enough to advance the week: state post, and not a suspended or
+    delayed game that ESPN left uncompleted. ESPN repeats the status on the event and its competition."""
+    for status in (ev.get("status"), (ev.get("competitions") or [{}])[0].get("status")):
+        t = (status or {}).get("type") or {}
+        if t.get("state") == "post" and (t.get("completed") or t.get("name") not in _HELD):
+            return True
+    return False
 
 
 def _season_year(calendar, entries) -> int | None:

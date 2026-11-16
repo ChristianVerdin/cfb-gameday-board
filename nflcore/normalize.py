@@ -115,6 +115,9 @@ def _wp(sit: dict) -> dict | None:
     return {"home": round(float(h), 3)}
 
 
+HELD = ("STATUS_SUSPENDED", "STATUS_DELAYED", "STATUS_RAIN_DELAY")
+
+
 def _status_short(state: str, name: str, period: int, clock: str, clock_s: int, ot_label: str,
                   desc: str, tbd: bool, last_type: str) -> str:
     if state == "pre":
@@ -137,6 +140,8 @@ def norm_event(ev: dict) -> dict:
     stype = status.get("type") or {}
     name = stype.get("name") or ""
     state = stype.get("state") or ("post" if stype.get("completed") else "pre")
+    if state == "post" and name in HELD and not stype.get("completed"):
+        state = "in"   # a suspended or delayed game that ESPN files under post is not final
     period = _int(status.get("period"), 0)
     clock_s = _int(status.get("clock"), 0)
     comps = comp.get("competitors") or []

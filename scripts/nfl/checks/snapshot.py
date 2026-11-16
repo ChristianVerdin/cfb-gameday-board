@@ -290,3 +290,40 @@ def test_main_exit_codes(check):
         check("empty scoreboard exits 1", R.main([], **{**kw, "pull": lambda *a, **k: {"events": []}}), 1)
         check("failure left the files", (out / "games.json").read_text(), before)
         check("--no-weather makes no calls", (R.main(["--no-weather", "--dry-run"], **{**kw, "fetch": Fetch(fail=True)}), calls > 0), (0, True))
+
+
+def test_week_target_edges(check):
+    from scripts.nfl.checks.core import CAL_2025_OFF
+
+    def args(**kw):
+        return type("A", (), {"st": None, "week": None, "year": None, **kw})()
+    c = Cal(check)
+    done = copy.deepcopy(c.sbs[("2", "10")])
+    for ev in done["events"]:
+        ev["status"]["type"]["state"] = "post"
+
+    def pull_fail_next(st, week, year=None):
+        if (st, week) == (2, 11):
+            raise ValueError("bad next week")
+        return done
+    wk, _ = R.pick_week(args(), _now("2026-11-17"), c.cal, pull_fail_next)
+    check("failed next-week fetch keeps the week", wk["week"], 10)
+    held = copy.deepcopy(done)
+    held["events"][0]["status"]["type"].update(name="STATUS_SUSPENDED", completed=False)
+    c.sbs[("2", "10")] = held
+    wk, _ = R.pick_week(args(), _now("2026-11-17"), c.cal, c.pull)
+    check("a suspended game under post blocks the advance", wk["week"], 10)
+
+    def pull(st, week, year=None):
+        if st not in (1, 2, 3):
+            raise espn.EspnError(f"seasontype out of range: {st}")
+        return done
+    now = _now("2026-02-10").replace(hour=12)
+    wk, _ = R.pick_week(args(), now, CAL_2025_OFF, pull)
+    check("super bowl week resolves, no advance into the off season", (wk["st"], wk["week"]), (3, 5))
+    now = _now("2026-02-12").replace(hour=12)
+    check("2026-02-12T12:00Z has no week", R.pick_week(args(), now, CAL_2025_OFF, pull), (None, None))
+    with tempfile.TemporaryDirectory() as d:
+        out = _site(Path(d))
+        rc = R.main([], now=now, out_dir=out, calendar=CAL_2025_OFF, pull=pull, fetch=_fetch())
+        check("2026-02-12T12:00Z run is a clean no-op", (rc, sorted(p.name for p in out.iterdir())), (0, ["index.html"]))

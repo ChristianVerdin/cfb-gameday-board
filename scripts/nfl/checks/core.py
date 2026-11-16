@@ -41,6 +41,12 @@ POST_2025 = [_entry("Wild Card", 1, "2026-01-07T08:00Z", "2026-01-14T07:59Z"),
 CAL_2026 = {"calendar": _season_cal(POST_2026), "season": {"type": 2, "year": 2026}, "week": {"number": 10}}
 CAL_2025 = {"calendar": [{"label": "Postseason", "value": "3", "entries": POST_2025}],
             "season": {"type": 3, "year": 2025}, "week": {"number": 1}}
+# ESPN's real 2025 calendar carries an Off Season "Week 1" entry (st 4) after the Super Bowl window.
+CAL_2025_OFF = {"calendar": [
+    {"label": "Regular Season", "value": "2", "entries": [_entry("Week 18", 18, "2025-12-30T08:00Z", "2026-01-07T07:59Z")]},
+    {"label": "Postseason", "value": "3", "entries": POST_2025},
+    {"label": "Off Season", "value": "4", "entries": [_entry("Week 1", 1, "2026-02-12T08:00Z", "2026-08-06T06:59Z")]}],
+    "season": {"type": 3, "year": 2025}, "week": {"number": 5}}
 
 
 def _z(s):
@@ -314,3 +320,26 @@ def test_kick_time(check):
     check("chicago_date same day", slate.chicago_date("2026-11-15T18:00Z"), "2026-11-15")
     check("chicago tz name", slate.chicago(datetime(2026, 11, 15, 18, 0, tzinfo=timezone.utc)).tzname(), "CST")
     check("chicago naive is UTC", slate.chicago(datetime(2026, 7, 1, 18, 0)).hour, 13)
+
+
+def test_offseason_entries_ignored(check):
+    ents = slate.parse_calendar(CAL_2025_OFF)
+    check("only seasons 1-3 parsed", sorted({e["st"] for e in ents}), [2, 3])
+    res = lambda s, post=None: slate.resolve_week(CAL_2025_OFF, _z(s), post)  # noqa: E731
+    check("super bowl week", _pick(res("2026-02-10T12:00Z")), (3, 5, "Super Bowl"))
+    check("advance past the super bowl is the offseason", res("2026-02-10T12:00Z", True), None)
+    check("2026-02-12T12:00Z is the offseason", res("2026-02-12T12:00Z"), None)
+    check("mid offseason", res("2026-05-01T12:00Z"), None)
+    junk = {"calendar": [{"value": "9", "entries": [_entry("X", 1, "2026-01-01T00:00Z", "2026-01-02T00:00Z")]}]}
+    check("unknown season type ignored", slate.parse_calendar(junk), [])
+
+
+def test_event_settled(check):
+    ev = lambda name, state, done: {"status": {"type": {"name": name, "state": state, "completed": done}}}  # noqa: E731
+    check("final", slate.event_settled(ev("STATUS_FINAL", "post", True)), True)
+    check("canceled under post", slate.event_settled(ev("STATUS_CANCELED", "post", False)), True)
+    check("suspended under post", slate.event_settled(ev("STATUS_SUSPENDED", "post", False)), False)
+    check("rain delay under post", slate.event_settled(ev("STATUS_RAIN_DELAY", "post", False)), False)
+    check("in progress", slate.event_settled(ev("STATUS_IN_PROGRESS", "in", False)), False)
+    comp = {"competitions": [{"status": {"type": {"name": "STATUS_FINAL", "state": "post", "completed": True}}}]}
+    check("competition status read", slate.event_settled(comp), True)

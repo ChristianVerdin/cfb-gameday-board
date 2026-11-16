@@ -176,6 +176,47 @@ def test_week_advance(check):
     check("empty week does not advance", body["week"]["number"], 10)
 
 
+def _all_final(board):
+    done = copy.deepcopy(board)
+    for ev in done["events"]:
+        c = ev["competitions"][0]
+        c["status"]["type"].update(name="STATUS_FINAL", state="post", completed=True)
+        c.pop("situation", None)
+    return done
+
+
+def test_week_advance_edges(check):
+    from scripts.nfl.checks.core import CAL_2025_OFF
+    f = Fakes(check)
+    done = _all_final(f.boards[(2, 10)])
+    f.boards = {(2, 10): done}   # week 11 fetch fails
+    status, body, _ = live(check, f, now="2026-11-17T15:00Z")
+    check("failed advance fetch keeps the current week", (status, body["week"]["number"], body["count"]), (200, 10, 14))
+    f = Fakes(check)
+    f.boards = {(2, 10): done}
+    f.boards[(2, 11)] = {"events": []}
+    status, body, _ = live(check, f, now="2026-11-17T15:00Z")
+    check("empty advance board still moves on", (status, body["week"]["number"]), (200, 11))
+    held = copy.deepcopy(f.boards[(2, 10)])
+    c = held["events"][0]["competitions"][0]
+    c["status"]["type"].update(name="STATUS_SUSPENDED", state="post", completed=False)
+    held["events"][0].get("status", {}).setdefault("type", {}).update(name="STATUS_SUSPENDED", state="post", completed=False)
+    f = Fakes(check)
+    f.boards = {(2, 10): held, (2, 11): check.fixture("sb_2026_w11.json")}
+    status, body, _ = live(check, f, now="2026-11-17T15:00Z")
+    check("a suspended game filed under post blocks the advance", (status, body["week"]["number"]), (200, 10))
+    check("and is not shown final", next(g for g in body["games"] if g["status"] == "STATUS_SUSPENDED")["state"], "in")
+    f = Fakes(check)
+    f.cal = CAL_2025_OFF["calendar"]
+    f.season = CAL_2025_OFF["season"]
+    f.boards = {(3, 5): _all_final(check.fixture("live_sb_w10_mid.json"))}
+    for now in ("2026-02-10T12:00Z", "2026-02-12T12:00Z"):
+        f.sb_calls.clear()
+        status, body, cc = live(check, f, now=now)
+        check(f"off season entry ignored at {now}", status, 200)
+    check("no season type 4 fetch", all(c[0] in (1, 2, 3) for c in f.sb_calls), True)
+
+
 def test_error_policy(check):
     t = [0.0]
     cache = TTLCache(clock=lambda: t[0])

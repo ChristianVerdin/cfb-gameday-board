@@ -363,3 +363,15 @@ def test_event_failure_is_isolated(check):
     check("calendar wins", out["week"], {"number": 11, "label": "Week 11"})
     games = out["games"]
     check("sorted by kickoff then id", [(g["date"], g["id"]) for g in games], sorted((g["date"], g["id"]) for g in games))
+
+
+def test_held_states_not_final(check):
+    ev = _live_event(check)
+    for name in ("STATUS_SUSPENDED", "STATUS_DELAYED", "STATUS_RAIN_DELAY"):
+        _set_status(ev, name, "post", 3, "4:00", clock_s=240)
+        g = nz.norm_event(ev)
+        check(f"{name} filed under post is not final", (g["state"], g["completed"], g["result"]), ("in", False, None))
+    _set_status(ev, "STATUS_FINAL", "post", 4, "0:00", completed=True)
+    check("a completed final stays post", nz.norm_event(ev)["state"], "post")
+    _set_status(ev, "STATUS_CANCELED", "post", 0, "0:00")
+    check("canceled stays post", nz.norm_event(ev)["state"], "post")
