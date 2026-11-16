@@ -781,9 +781,39 @@ def test_pwa():
                                      for h in vj.get("headers") or []), True)
 
 
+def test_public_hygiene():
+    """This repo is public: local notes stay off Vercel too, and no tracked text file carries a user path or a stray email."""
+    ignored = {l.strip() for l in (ROOT / ".gitignore").read_text().splitlines()}
+    vignored = {l.strip() for l in (ROOT / ".vercelignore").read_text().splitlines()}
+    for n in ("CLAUDE.md", "AGENTS.md", "CONTEXT.md", "CONTEXT.private.md", "CONTEXT_ARCHIVE*.md"):
+        check(f".gitignore has {n}", n in ignored, True)
+        check(f".vercelignore has {n}", n in vignored, True)
+    # The one public support address (printed on nfl/support.html) plus GitHub's no-reply form.
+    allowed = {"hoynelabs" + "@" + "gm" + "ail.com"}
+    email_re = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+    user_path = "/Us" + "ers/"  # fragments: this file must not match itself
+    out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout
+    bad = []
+    for rel in filter(None, out.decode().split("\0")):
+        path = ROOT / rel
+        if not path.is_file() or path.is_symlink():
+            continue
+        data = path.read_bytes()
+        if b"\0" in data[:4096]:
+            continue
+        text = data.decode("utf-8", "replace")
+        if user_path in text:
+            bad.append(f"{rel}: local user path")
+        for m in email_re.findall(text):
+            if m not in allowed and not m.endswith("@users.noreply.github.com"):
+                bad.append(f"{rel}: email {m}")
+    check("public hygiene (paths, emails)", bad, [])
+
+
 if __name__ == "__main__":
     for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_health_rule, test_fcs_playoff, test_jsonld, test_seo_escaping,
-              test_game_payload, test_hosted_api, test_labels, test_promo, test_rivalries, test_geocode, test_tba, test_pwa):
+              test_game_payload, test_hosted_api, test_labels, test_promo, test_rivalries, test_geocode, test_tba, test_pwa,
+              test_public_hygiene):
         t()
     if FAILS:
         print("\n".join("FAIL " + f for f in FAILS))

@@ -1,7 +1,9 @@
 # Architecture
 
 One folder, no build. Three moving parts, plus a hosted copy on Vercel that
-runs the same files with `api/live.py` in place of `server.py`:
+runs the same files with Python functions in place of `server.py`: `api/live.py`
+and `api/game.py` for the college board, `api/nfl/live.py` and `api/nfl/game.py`
+for the pro football board (`vercel.json` lists all four):
 
 1. A **snapshot** (`games.json` / `games.js`) built once per week by
    `scripts/refresh_week.py`.
@@ -121,7 +123,7 @@ escapes every ESPN string with `esc()`.
 
 ### Hosted variant (Vercel)
 
-`api/live.py` is a stateless Python function that imports `pull_date`,
+`api/live.py` (and `api/game.py`, same pattern with `game_payload()`) is a stateless Python function that imports `pull_date`,
 `live_payload`, and `parse_dates` from `server.py`. It sets
 `Cache-Control: public, max-age=0, s-maxage=20, stale-while-revalidate=40`, so
 Vercel's CDN answers every viewer from one ESPN pull per 20 s per URL. There is
@@ -166,7 +168,7 @@ server that only started after a game ended serves the snapshot line for it.
   fallback: it computes Tue..Mon of the slate in progress rather than a
   frozen list, which had silently stayed on Week 1's dates. It deliberately
   duplicates `refresh_week.default_dates` instead of importing it — `vercel.json`
-  excludes `scripts/**` from the `api/live.py` bundle, so that import would 502
+  excludes `scripts/**` from the function bundles, so that import would 502
   on every cold start.
 - The `LineBook` is built lazily via `line_book()`. It used to be constructed at
   module import, which meant every Vercel cold start read a `lines.json` the
@@ -480,7 +482,8 @@ the claims. In the app, `Route(url:)` in `QuickActions.swift` maps
 
 `manifest.webmanifest` + `icons/` (SVG source, PNGs rendered with `qlmanage`
 and `sips`) + `sw.js`. The service worker precaches the shell (`/`,
-`index.html`, `app.js`, `games.js`, manifest, icons) and answers every
+`index.html`, `site.css`, `app.js`, `games.js`, manifest, `/privacy`, `/support`,
+three icons) and answers every
 same-origin GET network-first with cache fallback, so a fresh deploy is picked
 up on the next online load and the last snapshot still renders offline. It
 never intercepts `/api/*`: live data is network-only and the header shows the
@@ -489,11 +492,17 @@ to drop old caches. `app.js` registers the worker on any non-`file:` origin
 (localhost counts as secure) and shows a one-time Add-to-Home-Screen hint in
 iOS Safari when not already running standalone.
 
-## Hosting (not done)
+## Hosting
 
-The proxy binds `127.0.0.1` on purpose: it is an unauthenticated ESPN
-fetch-amplifier and must not sit on `0.0.0.0` without auth. Options, cost
-order, with the draft config files, are in `docs/DEPLOY.md` and `deploy/`.
+Production is Vercel (`cfbgameday.app`, deploys on push to `main`): static files
+plus the four functions above. See `docs/DEPLOY.md`.
+
+## Self-hosting (fallback only)
+
+`server.py` binds `127.0.0.1` on purpose: the proxy is an unauthenticated ESPN
+fetch-amplifier and must not sit on `0.0.0.0` without auth. Tunnel and
+always-on-box options, with the draft config files, are in `docs/DEPLOY.md` and
+`deploy/`.
 
 ## Pro football board (`/nfl`)
 
