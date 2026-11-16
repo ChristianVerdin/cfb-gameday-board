@@ -11,7 +11,7 @@ LOOP = ("ok=0; for i in 1 2 3 4; do if git pull --rebase origin main && git push
         "git rebase --abort 2>/dev/null || true; if [ \"$i\" -lt 4 ]; then sleep $((i*7)); fi; done; "
         "[ \"$ok\" = 1 ] || { echo \"push failed after 4 attempts\"; exit 1; }")
 REFRESH_CRONS = ["0 12 * * 2", "0 18 * * 2", "0 10 * * 3", "0 14 * * 3", "0 18 * * 3", "0 22 * * 3",
-                 "0 12 * * 4", "0 14 * * 5", "0 12 * * 6", "0 2 * * 0", "0 6 * * 0", "0 10 * * 0", "0 12 * * 1"]
+                 "0 6 * * 4", "0 12 * * 4", "0 6 * * 5", "0 14 * * 5", "0 12 * * 6", "0 2 * * 0", "0 6 * * 0", "0 10 * * 0", "0 12 * * 1"]
 GUARD = "if: github.event_name == 'workflow_dispatch' || vars.NFL_REFRESH_ENABLED == 'true'"
 
 

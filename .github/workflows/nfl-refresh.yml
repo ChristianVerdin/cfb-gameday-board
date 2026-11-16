@@ -2,7 +2,9 @@ name: Refresh NFL snapshot
 
 # Crons are UTC, written for CST. After DST starts 3/14 they land an hour later
 # in local time. Each run sits hours ahead of its deadline: GitHub fires
-# scheduled runs late and can drop them.
+# scheduled runs late and can drop them. The Thu and Fri 06:00Z runs (midnight CT)
+# give Thursday and Friday daytime games (Thanksgiving, Black Friday, Christmas)
+# a same-day forecast even when the 12:00Z/14:00Z runs land hours late.
 # Gated by the repo variable NFL_REFRESH_ENABLED (manual runs always go).
 on:
   schedule:
@@ -12,7 +14,9 @@ on:
     - cron: "0 14 * * 3"
     - cron: "0 18 * * 3"
     - cron: "0 22 * * 3"
+    - cron: "0 6 * * 4"
     - cron: "0 12 * * 4"
+    - cron: "0 6 * * 5"
     - cron: "0 14 * * 5"
     - cron: "0 12 * * 6"
     - cron: "0 2 * * 0"
