@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
-from refresh_week import CHICAGO, compass, default_dates, has_line, impact, kick_ct  # noqa: E402
+from refresh_week import CHICAGO, compass, default_dates, has_line, impact, is_placeholder, kick_ct  # noqa: E402
 
 FAILS = []
 
@@ -96,7 +96,11 @@ def test_impact():
     check("altitude 3907 none", impact(False, wx(), 3907, "Clear")["flags"], [])
 
     r = impact(False, None, None, "Weather")
-    check("no wx", (r["flags"], r["impact_level"], r["impact_notes"]), ([], "CLEAR", ["Clean outdoor conditions"]))
+    check("no wx", (r["flags"], r["impact_level"], r["impact_notes"]), ([], "CLEAR", ["Forecast unavailable"]))
+    check("no wx score", (r["impact_score"], r["under_score"]), (0, 0))
+    check("empty wx dict is a real clean forecast", impact(False, {}, None, "Clear")["impact_notes"], ["Clean outdoor conditions"])
+    check("no wx keeps altitude", impact(False, None, 6030, "Weather")["impact_notes"],
+          ["Forecast unavailable", "Elevation 6,030 ft — kicking / conditioning note"])
 
 
 def test_time():
@@ -236,6 +240,53 @@ def test_snapshot_shape():
     check("games.js prefix", js.startswith("window.CFB_DATA = {"), True)
 
 
+def forecastable(games: list) -> tuple[list, int]:
+    """(outdoor games that could have a forecast, how many of those have none).
+
+    A TBA kickoff, a TBD team or a missing venue legitimately has no forecast; counting
+    them would reject a Rivalry Week snapshot full of unannounced kickoffs. Real failures
+    (forecast_failed, geocode_failed) still count.
+    """
+    pool = [g for g in games if not g.get("indoor") and not g.get("time_tbd") and not is_placeholder(g)]
+    return pool, sum(1 for g in pool if not g.get("wx"))
+
+
+def health_failure(games: list):
+    """The >25% rule test_run_health applies, as a pure function: message or None."""
+    outdoor, missing = forecastable(games)
+    if outdoor and len(games) >= 20:
+        pct = 100 * missing / len(outdoor)
+        if pct > 25:
+            return f"{missing}/{len(outdoor)} outdoor games have no forecast ({pct:.0f}%)"
+    return None
+
+
+def test_health_rule():
+    def g(i, **kw):
+        base = {"id": str(i), "indoor": False, "time_tbd": False, "venue": "Stadium", "wx": {"temp": 60},
+                "home": {"id": "1", "full": "A", "abbr": "A"}, "away": {"id": "2", "full": "B", "abbr": "B"}}
+        return {**base, **kw}
+    tba = [g(i, time_tbd=True, wx=None) for i in range(40)] + [g(100 + i) for i in range(60)]
+    check("40% TBA kickoffs pass", health_failure(tba), None)
+    tbd = [g(i, wx=None, home={"id": "-1", "full": "TBD", "abbr": "TBD"}) for i in range(20)] \
+        + [g(i, wx=None, venue=None) for i in range(20, 40)] + [g(100 + i) for i in range(60)]
+    check("TBD teams and no venue pass", health_failure(tbd), None)
+    failed = [g(i, wx=None) for i in range(40)] + [g(100 + i) for i in range(60)]
+    check("40% forecast_failed fails", bool(health_failure(failed)), True)
+    check("fail message counts only real games", (health_failure(failed) or "").startswith("40/100"), True)
+
+
+def test_fcs_playoff():
+    from refresh_week import drop_fcs_playoff
+
+    def ev(i, *notes):
+        return {"id": str(i), "competitions": [{"notes": [{"headline": n} for n in notes]}]}
+    events = [ev(1, "FCS Championship - First Round"), ev(2, "FCS CHAMPIONSHIP - Second Round"),
+              ev(3), ev(4, "Big 12 Championship"), ev(5, "Celebration Bowl")]
+    check("FCS playoff dropped, FBS kept", [e["id"] for e in drop_fcs_playoff(events)], ["3", "4", "5"])
+    check("no-notes event kept", len(drop_fcs_playoff([{"id": "9"}])), 1)
+
+
 def test_run_health():
     """Catch a snapshot that built but is quietly degraded.
 
@@ -253,8 +304,7 @@ def test_run_health():
     if not games:
         FAILS.append("snapshot has no games")
         return
-    outdoor = [g for g in games if not g.get("indoor")]
-    missing = sum(1 for g in outdoor if not g.get("wx"))
+    outdoor, missing = forecastable(games)
     # Open-Meteo only forecasts ~16 days out; a far-future --start legitimately has none.
     try:
         gen = datetime.strptime(data["generated_at"], "%Y-%m-%dT%H:%M:%SZ")
@@ -305,7 +355,7 @@ def test_jsonld():
         FAILS.append(f"structured data does not parse: {exc}")
         return
     data = json.loads((ROOT / "games.json").read_text("utf-8"))
-    want = [g for g in data.get("games") or [] if g.get("gameState") != "post"]
+    want = [g for g in data.get("games") or [] if g.get("gameState") != "post" and not is_placeholder(g)]
     check("one event per unplayed game", len(graph), len(want))
     need = {"name", "startDate", "location", "homeTeam", "awayTeam"}
     check("events have the required fields",
@@ -313,6 +363,11 @@ def test_jsonld():
     iso = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z))?$")   # date only = kickoff TBA
     check("startDate carries an offset",
           [e.get("startDate") for e in graph if not iso.match(e.get("startDate") or "")][:3], [])
+    check("no event with a null place name",
+          [e.get("name") for e in graph if not (e.get("location") or {}).get("name")][:3], [])
+    check("events carry the share image",
+          [e.get("name") for e in graph if e.get("image") != ["https://cfbgameday.app/icons/og.png"]][:3], [])
+    check("no endDate guessed", [e.get("name") for e in graph if "endDate" in e][:3], [])
     kicker = re.search(r'<div class="kicker" id="kicker">(.*?)</div>', html, re.S)
     check("kicker matches the snapshot", kicker.group(1) if kicker else None,
           escape(data.get("week_label") or "College football slate"))
@@ -335,7 +390,7 @@ def test_seo_escaping():
     from refresh_week import write_seo
     evil = '</title></script><img src=x onerror=alert(1)>'
     game = {"id": "1", "name": evil, "date": "2026-10-10T19:30Z", "gameState": "pre", "kick_ct": "Sat 2:30 PM CT",
-            "home": {"full": evil}, "away": {"full": "A"}, "networks": []}
+            "home": {"id": "1", "full": evil}, "away": {"id": "2", "full": "A"}, "networks": [], "venue": "Stadium"}
     with tempfile.TemporaryDirectory() as tmp:
         (Path(tmp) / "index.html").write_text((ROOT / "index.html").read_text("utf-8"), "utf-8")
         write_seo(Path(tmp), {"week_label": evil, "games": [game], "generated_at": "2026-10-07T00:00:00Z"})
@@ -470,7 +525,12 @@ def test_geocode():
     rows = {"Dublin": [{"name": "Dublin", "country": "Ireland", "country_code": "IE", "admin1": "Leinster", "latitude": 53.3, "longitude": -6.2},
                        {"name": "Dublin", "country": "United States", "country_code": "US", "admin1": "California", "latitude": 37.7, "longitude": -121.9},
                        {"name": "Dublin", "country": "United States", "country_code": "US", "admin1": "Ohio", "latitude": 40.1, "longitude": -83.1}],
-            "Nowhere": []}
+            "Nowhere": [],
+            # Open-Meteo gives territories country null and only the ISO code.
+            "Bayamon": [{"name": "Bayamon", "country_code": "PR", "admin1": "Bayamon", "latitude": 18.4, "longitude": -66.16}],
+            "San Juan": [{"name": "San Juan", "country_code": "PR", "latitude": 18.47, "longitude": -66.1},
+                         {"name": "San Juan", "country": "Argentina", "country_code": "AR", "latitude": -31.5, "longitude": -68.5}],
+            "Hagatna": [{"name": "Hagatna", "country_code": "GU", "latitude": 13.47, "longitude": 144.75}]}
     real = refresh_week.get
     refresh_week.get = lambda url, params, timeout=20: {"results": rows[params["name"]]}
     try:
@@ -480,6 +540,10 @@ def test_geocode():
         check("geocode US state", (geo.lookup("Dublin", "OH", "USA") or {}).get("admin1"), "Ohio")
         check("geocode US default", (geo.lookup("Dublin", "CA") or {}).get("admin1"), "California")
         check("geocode unmatched", (geo.lookup("Nowhere", "TX"), run.counts.get("geocode_unmatched")), (None, 1))
+        check("geocode Puerto Rico Bayamon", (geo.lookup("Bayamon", None, "Puerto Rico") or {}).get("lat"), 18.4)
+        check("geocode Puerto Rico San Juan", (geo.lookup("San Juan", None, "Puerto Rico") or {}).get("lat"), 18.47)
+        check("geocode Guam", (geo.lookup("Hagatna", None, "Guam") or {}).get("lat"), 13.47)
+        check("territory matches counted as matched", run.counts.get("geocode_unmatched"), 1)
     finally:
         refresh_week.get = real
 
@@ -494,7 +558,7 @@ def test_tba():
             return {"lat": 32.6, "lon": -85.5, "elev": 200, "geo_name": "Auburn", "admin1": "Alabama"}
 
     def team(tid, side):
-        return {"homeAway": side, "team": {"id": tid, "abbreviation": side.upper(), "conferenceId": "8"}}
+        return {"homeAway": side, "team": {"id": tid, "abbreviation": side.upper(), "displayName": side.upper() + " U", "conferenceId": "8"}}
     event = {"id": "401999999", "name": "Auburn at Alabama", "shortName": "AUB @ ALA", "date": "2026-11-28T05:00Z",
              "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
              "competitions": [{"timeValid": False, "venue": {"fullName": "Bryant-Denny Stadium",
@@ -510,6 +574,14 @@ def test_tba():
     check("tba not clean", g["impact_notes"][0].startswith("Kickoff time TBA"), True)
     check("tba rivalry", g["rivalry"], "Iron Bowl")
     check("tba startDate is a date", refresh_week.event_ld(g)["startDate"], "2026-11-28")
+    check("placeholder: no venue", is_placeholder({"home": {"id": "1", "full": "A"}, "away": {"id": "2", "full": "B"}}), True)
+    check("placeholder: TBD team", is_placeholder({"venue": "V", "home": {"id": "-1", "full": "TBD", "abbr": "TBD"},
+                                                  "away": {"id": "2", "full": "B"}}), True)
+    check("placeholder: real game", is_placeholder(g), False)
+    check("placeholder event skipped", refresh_week.event_ld({"id": "1", "venue": "V", "date": "2026-12-05T00:00:00Z",
+          "home": {"id": "-1", "full": "TBD"}, "away": {"id": "2", "full": "B"}}), None)
+    ld = refresh_week.event_ld(g)
+    check("event image, no endDate", (ld["image"], "endDate" in ld), (["https://cfbgameday.app/icons/og.png"], False))
     bowl = json.loads(json.dumps(event))
     bowl["season"] = {"year": 2026, "type": 3}
     bowl["competitions"][0]["notes"] = [{"headline": "Some Bowl"}]
@@ -549,7 +621,7 @@ def test_pwa():
 
 
 if __name__ == "__main__":
-    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_jsonld, test_seo_escaping,
+    for t in (test_impact, test_time, test_live_math, test_snapshot_shape, test_run_health, test_health_rule, test_fcs_playoff, test_jsonld, test_seo_escaping,
               test_game_payload, test_labels, test_promo, test_rivalries, test_geocode, test_tba, test_pwa):
         t()
     if FAILS:

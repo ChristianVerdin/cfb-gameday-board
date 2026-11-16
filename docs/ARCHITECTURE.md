@@ -64,6 +64,14 @@ https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboa
 Notes on that feed:
 
 - `groups=80` is FBS. FCS opponents still appear as competitors in FBS games.
+  It also returns the FCS Championship bracket (notes headline "FCS Championship -
+  First Round" and so on, 8 events on each of the first two Saturdays of December,
+  TBD teams and no venue until seeded). `drop_fcs_playoff()` removes those right
+  after the dates are gathered, before `week_label()` and the counts, so the labels,
+  the meta description and the promo text see only FBS games. It matches that
+  headline only (case-insensitive): regular-season FBS-vs-FCS games stay, and so does
+  the Celebration Bowl (a pending decision). The drop is recorded as
+  `counts.fcs_playoff_dropped`.
 - `dates=` is an Eastern-time calendar date. A 7:30 PM CT Saturday kick is a
   Saturday ESPN date; a 10:30 PM PT kick is still that same ESPN date.
 - `site.api.espn.com` returns 403 to some clients. The browser-like headers in
@@ -176,7 +184,14 @@ Done once per week by `scripts/refresh_week.py`, never live.
    `country` and no state (Aviva Stadium: Dublin, Ireland) and is matched against
    that country instead; matching it against US results put the Week 0 Dublin game
    on Dublin, Ohio's weather. A city with no match at all is counted as
-   `geocode_unmatched` and warned, since it leaves the game with no forecast too. The result supplies `lat`,
+   `geocode_unmatched` and warned, since it leaves the game with no forecast too.
+   US territories arrive like an overseas venue (`country` "Puerto Rico", no state) but
+   Open-Meteo returns `country` null and only `country_code` ("PR"), so the match also
+   accepts that code through the `TERRITORIES` map (Puerto Rico PR, Guam GU, U.S. Virgin
+   Islands VI, American Samoa AS). `geocode_unmatched` is deliberately not part of
+   `ci_heal.failures()`: a rebuild repeats an unmatched city, so counting it would
+   rebuild on every run and make `--verify` fail forever. It stays a `check.py`
+   warning. The result supplies `lat`,
    `lon`, `elev` (meters), `geo_name`, `admin1`, and the venue's IANA timezone.
    `elev_ft = round(elev * 3.28084)`. Cities are deduplicated per run, and any
    venue already present in the existing `games.json` reuses its stored `geo`
@@ -191,12 +206,15 @@ Done once per week by `scripts/refresh_week.py`, never live.
    A kickoff ESPN has not announced (`timeValid: false`) is parked at midnight
    Eastern; it gets no forecast (there is no kickoff hour), `wx_label` "Kickoff TBA",
    `kick_ct` like "Sat TBA", `time_tbd: true`, and an impact note saying the
-   forecast follows, never "Clean outdoor conditions".
+   forecast follows, never "Clean outdoor conditions". Any other outdoor game with no
+   forecast (no venue yet, an unmatched geocode, a forecast failure) reads
+   "Forecast unavailable"; the level stays CLEAR with `under_score` 0, so the filters
+   behave as before, but the card no longer claims clean weather.
    The call has a 10 s timeout and **one retry**, drawn from a whole-run budget
    of 20 so a bad Open-Meteo day cannot blow the Action's 20-minute cap. The
    retry exists because a dropped forecast is not a visible gap: `impact()` then
-   runs on `wx=None` and reports "Clean outdoor conditions", so a 98° game
-   silently loses its heat flag. A 2026-09-17 CI run lost 8 of 75 forecasts to
+   runs on `wx=None` and reports "Forecast unavailable" (it said "Clean outdoor
+   conditions" until 2026-11), so a 98° game silently loses its heat flag. A 2026-09-17 CI run lost 8 of 75 forecasts to
    TLS handshake timeouts exactly this way.
 3. **Derive** the display fields:
    - `wx_label` / `wx_emoji` from the WMO `weather_code` (0 Clear, 1 Mostly
@@ -238,7 +256,8 @@ Done once per week by `scripts/refresh_week.py`, never live.
      a total read"` at 90-92. Then wind (`"Wind 18 mph — check total"`), rain
      (`"75% rain — lean under if it arrives"`), cold, and elevation
      (`"Elevation 6,030 ft — kicking / conditioning note"`). If nothing scored
-     and there are no notes, `"Clean outdoor conditions"` is added first.
+     and there are no notes, `"Clean outdoor conditions"` is added first, or
+     `"Forecast unavailable"` when `wx` is None.
      Indoor: `"Indoor — weather off the board"`.
    - `kick_ct` is the kickoff in America/Chicago, e.g. `Sat 2:30 PM CT`.
    - `group`: `P4/P5` if either team is ACC / Big 12 / Big Ten / SEC / Pac-12,
@@ -284,7 +303,9 @@ Done once per week by `scripts/refresh_week.py`, never live.
    kicker div with `week_label` (or a neutral string, since `week_label()` can
    return None). `startDate` is venue-local with a real offset derived from
    `wx.utc_offset_seconds`, never the raw UTC; a TBA kickoff gets a date-only
-   `startDate`. A rivalry game carries its name as `alternateName` ("Iron Bowl" is
+   `startDate`. A placeholder (a team with a negative id or named TBD, or no venue
+   name) is skipped by `is_placeholder()`, since its Place name would be null. Each
+   event carries `image` (the og.png) and no `endDate`: a game has no fixed end. A rivalry game carries its name as `alternateName` ("Iron Bowl" is
    how it is searched). TV uses
    `publication` → `BroadcastEvent` → `publishedOn`. `sitemap.xml` gets
    `<lastmod>` from `generated_at`. Runs only when `--out` is the repo root;
@@ -350,8 +371,8 @@ python3 scripts/refresh_week.py --start 20260911 --end 20260914
   same commit — the refresh Action adds and diffs all four.
 - `warnings[]` used to hold only whole-date scoreboard failures, so an empty list
   was not evidence of a clean build: a geocode failure produced no forecast, and
-  `impact()` then reported "Clean outdoor conditions" for a game it knew nothing
-  about. It now records geocode, forecast, per-game skip and enrichment failures
+  `impact()` then reported a clean forecast for a game it knew nothing
+  about (now "Forecast unavailable"). It now records geocode, forecast, per-game skip and enrichment failures
   too (capped at 50), and `counts{}` carries `geocode_failed`, `forecast_failed`,
   `forecast_missing`, `geocode_unmatched`, `games_skipped`, `lines_carried`, `dates_failed`,
   `fallback_url_used`, `no_groups_fallback`, `enriched`, `enrich_failed`, plus
@@ -397,6 +418,12 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
   conference selector, so "SEC conference games" and "P4 non-conference" stay
   expressible. `isConfGame()` falls back to deriving from `conferenceId` when the
   snapshot predates `conf_game`.
+- The `check.py` run-health gate (`test_run_health`, which fails the Action's commit
+  step) fails a snapshot when more than 25% of outdoor games have no forecast, with at
+  least 20 games and a start within 14 days. Games that legitimately have none are
+  excluded from both the count and the denominator: `time_tbd`, a TBD team, no venue.
+  Real failures (`forecast_failed`, `geocode_failed`) still count. Offline fixtures
+  cover a 40%-TBA slate (passes) and a 40%-failed slate (fails).
 - `python3 scripts/check.py` runs the offline smoke test; run it after touching
   `impact()`, `kick_ct()`, or `liveMath()`. It checks the impact table, the time
   helpers, `fallback_dates()`, five `app.js` functions extracted as source text
