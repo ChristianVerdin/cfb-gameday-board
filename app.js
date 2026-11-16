@@ -731,7 +731,7 @@
     $("a2hs").hidden = false;
     $("a2hs-x").onclick = () => { localStorage.setItem(A2HS_KEY, "1"); $("a2hs").hidden = true; };
   }
-  // In the iOS app, same-host footer links would replace the board in the web view with no way back; _blank hands them to Safari.
+  // In the iOS app, same-host footer links would replace the board in the web view (and its tabs stop working there); _blank hands them to Safari.
   if (window.cfbNative) document.querySelectorAll('footer a[href^="/"]').forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
   function applyHash(e) {
     const gid = gameHash(location.hash);
