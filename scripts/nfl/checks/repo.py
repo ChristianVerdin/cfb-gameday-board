@@ -2,11 +2,16 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+# NFL_CHECK_NO_GIT=1 lets the suite run in a plain `git archive` export (no .git). The merge-base guard is
+# skipped with a printed SKIP; the two file scans walk the NFL paths on disk instead of `git ls-files`.
+# CI and a normal checkout leave it unset, so nothing changes there.
+NO_GIT = os.environ.get("NFL_CHECK_NO_GIT") == "1"
 
 # CFB files the NFL work must never change (relative to the merge-base with main).
 PROTECTED = (
@@ -54,6 +59,13 @@ def changed_vs_base(base: str) -> set[str]:
 
 
 def nfl_files() -> list[Path]:
+    if NO_GIT:
+        found = []
+        for p in sorted(ROOT.rglob("*")):
+            rel = p.relative_to(ROOT).as_posix()
+            if p.is_file() and rel.startswith(NFL_PATHS) and "__pycache__" not in rel and not rel.endswith(".pyc"):
+                found.append(p)
+        return found
     tracked = git("ls-files").split() + git("ls-files", "--others", "--exclude-standard").split()
     return [ROOT / p for p in sorted(set(tracked)) if p.startswith(NFL_PATHS) and (ROOT / p).is_file()]
 
@@ -74,6 +86,9 @@ def approved_launch_edit(path: str, base: str) -> bool:
 
 
 def test_cfb_untouched(check):
+    if NO_GIT:
+        print("SKIP repo.cfb_untouched: NFL_CHECK_NO_GIT=1 (needs a git checkout with main)")
+        return
     base = merge_base()
     check.true("merge-base with main found", base is not None)
     if not base:
