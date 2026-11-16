@@ -82,7 +82,10 @@ def _linescore(c) -> list[int]:
 
 
 def _state(status: dict) -> str:
-    st = ((status or {}).get("type") or {}).get("state")
+    t = (status or {}).get("type") or {}
+    st = t.get("state")
+    if st == "post" and t.get("name") in ("STATUS_SUSPENDED", "STATUS_DELAYED", "STATUS_RAIN_DELAY") and not t.get("completed"):
+        st = "in"   # held games are not final even when ESPN files them under post
     return st if st in ("pre", "in", "post") else "pre"
 
 
@@ -141,13 +144,19 @@ def _effective_periods(rows) -> list[int]:
     return eff
 
 
-def _t_elapsed(period: int, clock) -> int | None:
+def _season_type(summary: dict) -> int | None:
+    t = ((summary.get("header") or {}).get("season") or {}).get("type")
+    return _int(t)
+
+
+def _t_elapsed(period: int, clock, season_type: int | None = None) -> int | None:
     cs = _clock_s(clock)
     if period <= 0 or cs is None:
         return None
     if period <= 4:
         return (period - 1) * 900 + max(0, 900 - cs)
-    return 3600 + (period - 5) * 600 + max(0, 600 - cs)
+    ot = 900 if season_type == 3 else 600   # playoff OT periods are 15:00
+    return 3600 + (period - 5) * ot + max(0, ot - cs)
 
 
 def _play_out(dr, p, eff, wp, prev_total) -> dict:
@@ -291,6 +300,7 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
     if raw_plays != len(rows):
         warnings.append(f"duplicate_plays:{raw_plays - len(rows)}")
     eff = _effective_periods(rows)
+    stype = _season_type(summary)
 
     wp_by_id = {str(w.get("playId")): w.get("homeWinPercentage") for w in summary.get("winprobability") or []
                 if isinstance(w.get("homeWinPercentage"), (int, float))}
@@ -309,7 +319,7 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
         away, home = out["away"], out["home"]
         prev_total = away + home if None not in (away, home) else prev_total
         plays_by_drive.setdefault(str(dr["id"]), []).append(out)
-        play_info[pid] = {"id": pid, "seq": seq, "period": e, "t": _t_elapsed(e, out["clock"]), "drive": str(dr["id"]),
+        play_info[pid] = {"id": pid, "seq": seq, "period": e, "t": _t_elapsed(e, out["clock"], stype), "drive": str(dr["id"]),
                           "clock": out["clock"], "text": out["text"],
                           "end_yl": (p.get("end") or {}).get("yardLine"), "admin": out["kind"] == "admin"}
 

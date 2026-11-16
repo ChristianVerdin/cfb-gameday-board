@@ -540,3 +540,19 @@ def test_drive_yl100_by_side(check):
     check("away drive at yardLine 70 (own 30) has 70 to go", _yl100(70, "away"), 70)
     check("unknown side", _yl100(70, None), None)
     check("out of range", _yl100(101, "home"), None)
+
+
+def test_playoff_ot_clock(check):
+    from nflcore.gamesheet import _t_elapsed
+    check("regular OT start", _t_elapsed(5, "10:00", 2), 3600)
+    check("regular OT mid", _t_elapsed(5, "5:00", 2), 3900)
+    check("no season type keeps 10:00 OT", _t_elapsed(5, "5:00"), 3900)
+    check("playoff OT start", _t_elapsed(5, "15:00", 3), 3600)
+    check("playoff OT 5 min in", _t_elapsed(5, "10:00", 3), 3900)
+    check("playoff OT end", _t_elapsed(5, "0:00", 3), 4500)
+    check("playoff second OT starts after the first", _t_elapsed(6, "15:00", 3), 4500)
+    s = copy.deepcopy(check.fixture(OT))
+    s["header"]["season"]["type"] = 3
+    pts = norm_summary(s)["winprob"]["points"]
+    check.true("playoff OT points sorted", [p["t"] for p in pts] == sorted(p["t"] for p in pts))
+    check.true("playoff OT points stay inside 15:00 OT", max(p["t"] for p in pts) <= 4500)
