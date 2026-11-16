@@ -88,7 +88,8 @@ def test_no_external_art(check):
         check.true(f"{name}: no img tags", "<img" not in src.lower())
         check.true(f"{name}: no css url()", "url(" not in src)
         urls = re.findall(r"https?://[^\s\"'<>)]+", src)
-        bad = [u for u in urls if not re.match(r"https://(www\.nflverse\.com|open-meteo\.com|cfbgameday\.app)/", u)]
+        bad = [u for u in urls if not re.match(r"https://(www\.nflverse\.com|open-meteo\.com|cfbgameday\.app)/", u)
+               and u != "https://apps.apple.com/app/id6835216593"]   # the app's own store page
         check(f"{name}: external urls", bad, [])
         check.true(f"{name}: no logo or headshot paths", re.search(r"(logo|headshot|espncdn)", src, re.I) is None)
     keys = set(re.findall(r'localStorage\.\w+\(\s*([A-Z_]+|"[^"]+")', _src("app.js")))
