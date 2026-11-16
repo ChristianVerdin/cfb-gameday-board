@@ -62,6 +62,8 @@ def test_syntax(check):
 def test_static(check):
     html = _src("index.html")
     check.true("indexable since launch", 'name="robots"' not in html)
+    for page in ("support.html", "privacy.html"):   # both are in the sitemap
+        check.true(f"{page} indexable", 'name="robots"' not in _src(page) and "noindex" not in _src(page))
     check.true("canonical", '<link rel="canonical" href="https://cfbgameday.app/nfl" />' in html)
     check.true("own icons, not the college board's", 'href="/nfl/icons/icon-192.png"' in html and '"/icons/icon-192.png"' not in html)
     check.true("title", "<title>Pro Football Board</title>" in html)
