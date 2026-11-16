@@ -30,12 +30,32 @@ jobs:
           python3 scripts/check_nfl.py
       - name: Commit and push
         run: |
-          if git diff --quiet -- nfl/metrics.json; then
+          build() { python3 scripts/nfl/build_metrics.py && python3 scripts/check_nfl.py; }
+          changed() { ! git diff --quiet -- nfl/metrics.json; }
+          commit() {
+            git add nfl/metrics.json
+            git commit -m "NFL metrics ($(date -u +%Y-%m-%dT%H:%MZ))"
+          }
+          if ! changed; then
             echo "no change"
             exit 0
           fi
           git config user.name "gameday-bot"
           git config user.email "gameday-bot@users.noreply.github.com"
-          git add nfl/metrics.json
-          git commit -m "NFL metrics ($(date -u +%Y-%m-%dT%H:%MZ))"
-          ok=0; for i in 1 2 3 4; do if git pull --rebase origin main && git push; then ok=1; break; fi; git rebase --abort 2>/dev/null || true; if [ "$i" -lt 4 ]; then sleep $((i*7)); fi; done; [ "$ok" = 1 ] || { echo "push failed after 4 attempts"; exit 1; }
+          commit
+          ok=0
+          for i in 1 2 3 4; do
+            if git pull --rebase origin main && git push; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            if [ "$i" -lt 4 ]; then
+              sleep $((i*7))
+              git fetch origin main
+              git reset --hard origin/main
+              if build; then
+                if changed; then commit; else echo "origin/main already has this snapshot"; ok=1; break; fi
+              else
+                echo "rebuild failed on attempt $i"; exit 1
+              fi
+            fi
+          done
+          [ "$ok" = 1 ] || { echo "push failed after 4 attempts"; exit 1; }
