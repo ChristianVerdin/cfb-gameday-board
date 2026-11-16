@@ -267,6 +267,19 @@ struct SheetLeaders: Equatable, Sendable, Decodable {
 }
 
 /// /api/nfl/game?id=: drives, plays, win probability, scoring, team stats and leaders for one game.
+/// ESPN statuses for a game that is on but not being played right now. ESPN can report them with state "in" or "post".
+enum HeldStatus {
+    static let all: Set<String> = ["STATUS_SUSPENDED", "STATUS_DELAYED", "STATUS_RAIN_DELAY"]
+
+    static func contains(_ status: String?) -> Bool { status.map(all.contains) ?? false }
+
+    static func pill(_ status: String?) -> String { status == "STATUS_SUSPENDED" ? "Suspended" : "Delayed" }
+}
+
+extension GameSheet {
+    var isHeld: Bool { state != .pre && HeldStatus.contains(status) }
+}
+
 struct GameSheet: Equatable, Sendable, Decodable {
     var id: String
     var fetchedAt: Date?

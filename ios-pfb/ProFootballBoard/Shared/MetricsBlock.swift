@@ -70,7 +70,7 @@ struct MetricsBlock: View {
     }
 
     private func footnote(_ m: Metrics) -> String {
-        "nflverse" + (m.throughWeek.map { ", through Week \($0)" } ?? "") + ", CC BY 4.0. Season to date, per play."
+        "nflverse" + (m.throughWeek.map { ", through Week \($0)" } ?? "") + ", CC BY 4.0. " + (game.kind == .playoff ? "Regular season, per play." : "Season to date, per play.")
     }
 
     private func spoken(_ p: Pair) -> String {

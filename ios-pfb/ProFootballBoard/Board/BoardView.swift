@@ -104,12 +104,17 @@ struct BoardView: View {
     private func errorBanner(_ error: APIError) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(BoardTheme.orange)
-            Text(board.games.isEmpty ? error.message : error.message + " Showing the last data.").font(.footnote)
+            Text(bannerText(error)).font(.footnote)
             Spacer(minLength: 0)
         }
         .padding(10)
         .background(BoardTheme.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+
+    private func bannerText(_ error: APIError) -> String {
+        if board.live == nil && !board.games.isEmpty { return "Live scores unavailable. Showing the weekly schedule." }
+        return board.games.isEmpty ? error.message : error.message + " Showing the last data."
     }
 
     @ViewBuilder private var empty: some View {
@@ -130,7 +135,7 @@ struct BoardView: View {
         switch filter {
         case .live: "No live games"
         case .following: following.teams.isEmpty ? "No teams followed" : "No games for your teams"
-        case .all: "No games"
+        case .all: board.noSlate ? "Season complete" : "No games"
         }
     }
 
@@ -138,7 +143,7 @@ struct BoardView: View {
         switch filter {
         case .live: "Games show here while they are in progress."
         case .following: following.teams.isEmpty ? "Tap the star next to a team on any game to follow it." : "Your teams are not playing this week."
-        case .all: "Pull down to refresh."
+        case .all: board.noSlate ? "There is no slate right now. The board is back when the next season starts, usually in September." : "Pull down to refresh."
         }
     }
 

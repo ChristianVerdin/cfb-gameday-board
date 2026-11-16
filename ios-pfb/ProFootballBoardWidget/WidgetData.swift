@@ -36,10 +36,12 @@ struct WidgetGame: Codable, Equatable, Sendable, Identifiable {
     var redZone: Bool
     var date: Date?
     var timeTBD: Bool
+    /// Suspended or in a delay; ESPN may report these as "post". Optional so older cached slates still decode.
+    var held: Bool?
 
     var isLive: Bool { state == GameState.in.rawValue }
     var isUpcoming: Bool { state == GameState.pre.rawValue }
-    var isFinal: Bool { state == GameState.post.rawValue }
+    var isFinal: Bool { state == GameState.post.rawValue && !(held ?? false) }
     var started: Bool { !isUpcoming }
     var matchup: String { "\(away.abbr) @ \(home.abbr)" }
 
@@ -56,7 +58,10 @@ struct WidgetGame: Codable, Equatable, Sendable, Identifiable {
         possession = g.isLive ? g.situation?.possession?.rawValue : nil
         redZone = g.isLive && (g.situation?.isRedZone ?? false)
         situation = g.isLive ? Self.situationText(g.situation) : nil
+        held = g.isHeld ? true : nil
         switch g.state {
+        case _ where g.isHeld:
+            status = ([HeldStatus.pill(g.status)] + [g.periodLabel, g.clock].filter { !$0.isEmpty }).joined(separator: " ")
         case .in:
             let live = g.statusShort.isEmpty ? [g.periodLabel, g.clock].filter { !$0.isEmpty }.joined(separator: " ") : g.statusShort
             status = live.isEmpty ? "Live" : live
@@ -81,6 +86,8 @@ enum WidgetScope: Equatable, Sendable {
 struct WidgetSlate: Codable, Equatable, Sendable {
     var fetchedAt: Date
     var weekLabel: String?
+    /// The API reported no slate: the season is over. Optional so older cached slates still decode.
+    var offseason: Bool?
     /// Board order: live, then upcoming by kickoff, then finals.
     var games: [WidgetGame]
 
@@ -91,6 +98,7 @@ struct WidgetSlate: Codable, Equatable, Sendable {
     init(live: LivePayload?, snapshot: Snapshot?, fetchedAt: Date) {
         let games = BoardGame.sorted(BoardGame.build(live: live, snapshot: snapshot))
         self.init(fetchedAt: fetchedAt, weekLabel: live?.week.label ?? snapshot?.week.label, games: games.map(WidgetGame.init))
+        if live?.warnings.contains("no_slate") == true { offseason = true; weekLabel = nil }
     }
 
     func games(for scope: WidgetScope) -> [WidgetGame] {
@@ -158,6 +166,9 @@ struct SlateLoader: Sendable {
     var api: any BoardAPI = APIClient.shared
     var cache = SlateCache()
 
+    /// Older than this, cached scores are no longer shown as the latest.
+    static let cacheMaxAge: TimeInterval = 6 * 3600
+
     /// A fresh slate, or the cached one flagged offline when the live scoreboard cannot be reached.
     func load(now: Date = Date()) async -> (slate: WidgetSlate?, offline: Bool) {
         async let snapshot = try? api.snapshot()
@@ -168,8 +179,10 @@ struct SlateLoader: Sendable {
             cache.save(slate)
             return (slate, false)
         }
-        if let cached = cache.load() { return (cached, true) }
-        if let snap { return (WidgetSlate(live: nil, snapshot: snap, fetchedAt: now), true) }
+        let cached = cache.load()
+        if let cached, now.timeIntervalSince(cached.fetchedAt) < Self.cacheMaxAge || snap == nil { return (cached, true) }
+        // Nothing usable cached: the weekly schedule, dated by when it was built, not by now.
+        if let snap { return (WidgetSlate(live: nil, snapshot: snap, fetchedAt: snap.generatedAt ?? now), true) }
         return (nil, true)
     }
 }

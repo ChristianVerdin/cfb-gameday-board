@@ -189,8 +189,10 @@ struct Snapshot: Equatable, Sendable, Decodable {
         games = c.list(.games)
     }
 
-    var isPast: Bool {
+    var isPast: Bool { isPast(now: Date()) }
+
+    func isPast(now: Date) -> Bool {
         guard let end = week.end else { return false }
-        return Date() >= end
+        return now >= end
     }
 }

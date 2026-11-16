@@ -6,9 +6,15 @@ enum APIError: Error, Equatable {
     case offline
     case timeout
 
+    /// A 4xx the same request will keep getting; retrying on a timer cannot fix it.
+    var isPermanent: Bool {
+        guard case .badStatus(let code) = self else { return false }
+        return (400..<500).contains(code) && code != 408 && code != 429
+    }
+
     var message: String {
         switch self {
-        case .badStatus(let code): "The board answered with an error (\(code))."
+        case .badStatus: "The board had a problem answering."
         case .badPayload: "The board sent data this app could not read."
         case .offline: "No connection."
         case .timeout: "The board took too long to answer."

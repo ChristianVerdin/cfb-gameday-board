@@ -139,7 +139,7 @@ extension GameSheet {
     }
 
     var phase: SheetPhase {
-        if isOffGame { return .hold }
+        if isOffGame || isHeld { return .hold }
         switch state {
         case .in: return .live
         case .post: return .final
@@ -172,6 +172,7 @@ extension GameSheet {
             return "Game detail opens at kickoff"
         case .hold, .live:
             if isOffGame { return status == "STATUS_POSTPONED" ? "Postponed" : "Canceled" }
+            if isHeld { return HeldStatus.pill(status) }
             if status == "STATUS_HALFTIME" { return "Halftime" }
             if status == "STATUS_END_PERIOD" { return "End of \(periodLabel)" }
             if phase == .live { return [periodLabel, clock ?? ""].filter { !$0.isEmpty }.joined(separator: " ") }

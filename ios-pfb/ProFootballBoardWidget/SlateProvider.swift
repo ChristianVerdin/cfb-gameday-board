@@ -59,6 +59,6 @@ extension WidgetSlate {
 private extension WidgetGame {
     init(away: WidgetTeam, home: WidgetTeam, id: String, state: String, status: String, tv: String) {
         self.id = id; self.state = state; self.away = away; self.home = home; self.status = status; self.tv = tv
-        situation = nil; possession = nil; redZone = false; date = nil; timeTBD = false
+        situation = nil; possession = nil; redZone = false; date = nil; timeTBD = false; held = nil
     }
 }

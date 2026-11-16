@@ -32,6 +32,8 @@ struct BoardGame: Identifiable, Equatable, Sendable {
     var placeholder: Bool
 
     var isLive: Bool { state == .in }
+    /// Suspended or in a weather delay, whichever state ESPN reports it under.
+    var isHeld: Bool { state != .pre && HeldStatus.contains(status) }
     var tv: String { broadcasts.joined(separator: " / ") }
 
     var abroad: Bool {

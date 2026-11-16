@@ -30,6 +30,12 @@ final class GameStore {
         }
     }
 
+    /// Nil stops polling: the game is over, or the id is one the board will never serve.
+    private func waitAfterRefresh() -> TimeInterval? {
+        guard let sheet else { return error?.isPermanent == true ? nil : 30 }
+        return sheet.isHeld ? 60 : Self.interval(for: sheet.state)
+    }
+
     func start() {
         guard task == nil else { return }
         let previous = stopping
@@ -38,7 +44,7 @@ final class GameStore {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh()
-                let wait: TimeInterval? = self.sheet == nil ? 30 : Self.interval(for: self.sheet?.state)
+                let wait: TimeInterval? = self.waitAfterRefresh()
                 guard let wait else {
                     self.task = nil
                     return

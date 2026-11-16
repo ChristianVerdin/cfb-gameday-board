@@ -46,7 +46,7 @@ struct GameView: View {
             ContentUnavailableView {
                 Label("Couldn't load the game", systemImage: "wifi.exclamationmark")
             } description: {
-                Text("Check your connection and try again.")
+                Text(store.error?.isPermanent == true ? "The board has no game with that id." : "Check your connection and try again.")
             } actions: {
                 Button("Retry") { Task { await store.refresh() } }.buttonStyle(.borderedProminent)
             }

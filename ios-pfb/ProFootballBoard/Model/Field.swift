@@ -78,6 +78,8 @@ enum PollCadence {
     static let live: TimeInterval = 20
     static let nearKickoff: TimeInterval = 60
     static let idle: TimeInterval = 120
+    /// The API says there is no slate; nothing changes until the next season.
+    static let offseason: TimeInterval = 1800
 
     /// 20 s while any game is live; 60 s when an upcoming game kicks within an hour (or kicked off in the last
     /// three hours without going live); 120 s otherwise.

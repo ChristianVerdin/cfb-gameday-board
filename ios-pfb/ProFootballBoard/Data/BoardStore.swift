@@ -33,7 +33,9 @@ final class BoardStore {
         self.clock = clock
     }
 
-    var weekLabel: String? { live?.week.label ?? snapshot?.week.label }
+    /// The live API found no slate to show: the season is over (or has not started).
+    var noSlate: Bool { live?.warnings.contains("no_slate") == true }
+    var weekLabel: String? { noSlate ? nil : live?.week.label ?? snapshot?.week.label }
     var isStale: Bool { live?.stale ?? false }
     var liveCount: Int { games.filter(\.isLive).count }
 
@@ -64,7 +66,7 @@ final class BoardStore {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh()
-                let wait = PollCadence.interval(for: self.games, now: self.clock())
+                let wait = self.noSlate ? PollCadence.offseason : PollCadence.interval(for: self.games, now: self.clock())
                 try? await Task.sleep(for: .seconds(wait))
             }
         }
@@ -79,8 +81,8 @@ final class BoardStore {
         async let stats: Void = refreshMetrics(now: now)
         _ = await (snap, stats)
         do {
-            let week = snapshot.flatMap { $0.isPast ? nil : $0 }
-            let payload = try await api.live(season: week?.season.type, week: week?.week.number)
+            let week = snapshot.flatMap { $0.isPast(now: now) ? nil : $0 }
+            let payload = try await fetchLive(for: week)
             live = payload
             lastUpdated = clock()
             error = nil
@@ -91,6 +93,22 @@ final class BoardStore {
             self.error = error as? APIError ?? .badPayload
         }
         rebuild()
+    }
+
+    /// Asks for the snapshot's week only when the server accepts it (regular season 1-18, postseason 1-5). A 400 is
+    /// cached at the edge for an hour, so on one the board asks again without parameters and takes the current week.
+    private func fetchLive(for week: Snapshot?) async throws -> LivePayload {
+        let type = week?.season.type, number = week?.week.number
+        let accepted: Bool = {
+            guard let type, let number else { return false }
+            return type == 2 ? (1...18).contains(number) : type == 3 && (1...5).contains(number)
+        }()
+        guard accepted else { return try await api.live(season: nil, week: nil) }
+        do {
+            return try await api.live(season: type, week: number)
+        } catch APIError.badStatus(400) {
+            return try await api.live(season: nil, week: nil)
+        }
     }
 
     private func refreshSnapshot(now: Date) async {

@@ -74,12 +74,17 @@ private struct Header: View {
         }
     }
 
+    /// A time of day when the data is from today, otherwise the day too.
+    static func cachedLabel(_ fetched: Date, now: Date) -> String {
+        Chicago.dayKey(fetched) == Chicago.dayKey(now) ? Chicago.time(fetched) : Chicago.kickoff(fetched)
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             Text(title.uppercased()).lineLimit(1)
             Spacer(minLength: 2)
             if entry.offline, let fetched = entry.slate?.fetchedAt {
-                Text("Cached \(Chicago.time(fetched))").lineLimit(1).minimumScaleFactor(0.7)
+                Text("Cached \(Self.cachedLabel(fetched, now: entry.date))").lineLimit(1).minimumScaleFactor(0.7)
             } else if let live = entry.slate?.liveCount, live > 0 {
                 HStack(spacing: 3) {
                     Circle().frame(width: 5, height: 5)
@@ -99,14 +104,17 @@ private struct EmptyState: View {
     private var message: String {
         guard entry.slate != nil else { return "Can't reach the board" }
         switch entry.scope {
-        case .all: return "No games this week"
+        case .all: return slateOffseason ? "Season complete" : "No games this week"
         case .live: return "No live games"
         case .team(let abbr): return "\(abbr) has no game this week"
         }
     }
 
+    private var slateOffseason: Bool { entry.slate?.offseason == true }
+
     private var detail: String? {
         guard let slate = entry.slate else { return "Will retry shortly" }
+        if slate.offseason == true, entry.scope == .all { return "Back when the next season starts" }
         if case .team = entry.scope { return slate.weekLabel.map { "\($0) · bye or not scheduled" } }
         guard let next = slate.nextUp(after: entry.date) else { return nil }
         return "Next: \(next.matchup), \(next.status)"
