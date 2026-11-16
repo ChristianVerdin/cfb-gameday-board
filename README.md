@@ -124,9 +124,17 @@ needs the server because the browser cannot call ESPN directly.
 | `scripts/ci_heal.py` | Rebuilds once in CI when a run dropped kickoff forecasts (a forecast or venue-geocode failure), keeping the better result; `--verify` fails the job if still degraded |
 | `scripts/promo_text.py` | Builds the week's App Store promotional text from `games.json`; `--apply` pushes it with `asc` |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA: install metadata, UI-shell service worker, home-screen icons |
-| `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config |
+| `api/live.py`, `vercel.json` | The same ESPN proxy as a Vercel function, CDN-cached 20 s; project config for all four functions |
 | `api/game.py` | Game sheet detail (scoring, box, leaders, drives, win probability) from ESPN's game summary |
 | `.github/workflows/refresh.yml` | Scheduled snapshot rebuild that commits `games.json` / `games.js` |
+| `.github/workflows/nfl-refresh.yml`, `nfl-metrics.yml` | Scheduled rebuilds of the pro football snapshot (`nfl/games.json`) and season metrics (`nfl/metrics.json`); gated by the repo variable `NFL_REFRESH_ENABLED` |
+| `.github/workflows/pr-check.yml` | Runs `scripts/check.py` and `scripts/check_nfl.py` on pull requests |
+| `nfl/`, `nflcore/`, `api/nfl/`, `scripts/nfl/` | Pro football board at `/nfl` (stats only): client and its service worker, ESPN / weather / metrics code, the two Vercel functions, and the snapshot and metrics builders |
+| `scripts/check_nfl.py` | Offline checks for the pro football board and the repo guards (`scripts/nfl/checks/`) |
+| `ios-pfb/` | SwiftUI app for the pro football board (XcodeGen `project.yml`, widget, tests, listing copy in `APP_STORE.md`) |
+| `scripts/release_ios_pfb.sh` | Pro football app: regenerate, archive, export, upload to TestFlight (never submits) |
+| `scripts/store_shots.py` | Captioned App Store screenshots from raw simulator captures |
+| `scripts/app_video.py`, `scripts/render_text.swift` | Narrated walkthrough and promo video recorded in the simulator; the Swift helper draws caption and end-card frames |
 | `privacy.html`, `support.html`, `site.css` | Public pages required for the App Store listing; shared stylesheet |
 | `.well-known/apple-app-site-association` | Universal links: lets iOS open board links (`/` and `/index.html` only) in the app; served as JSON via `vercel.json` |
 | `ios/` | SwiftUI iPhone and iPad app (also runs on Apple silicon Macs): `project.yml` (XcodeGen spec, versions, team), sources in `CFBGameDay/`, the Today's Games widget in `CFBGameDayWidget/`, unit tests and widget renders in `CFBGameDayTests/` (frozen Week 8 snapshot), `ExportOptions.plist`, listing copy in `APP_STORE.md`, App Review reply kit `APP_REVIEW_REPLY.md`, live listing metadata in `metadata/` (asc round-trip), review narration `narration.txt` + `narrate.mts` |

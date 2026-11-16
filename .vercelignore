@@ -16,3 +16,10 @@ CONTEXT.private.md
 .heal-backup
 .vercel
 ios-pfb
+CLAUDE.md
+AGENTS.md
+CONTEXT.md
+CONTEXT_ARCHIVE*.md
+.claude
+.worktrees
+captures
