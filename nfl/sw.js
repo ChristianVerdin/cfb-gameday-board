@@ -1,6 +1,6 @@
 /* UI shell for /nfl/ only. Network-first so the board is never stale when online;
    /api/ is never cached. Offline, the last copy of a page renders. */
-const VERSION = "pfb-v1";
+const VERSION = "pfb-v2";
 const SHELL = ["/nfl/", "/nfl/index.html", "/nfl/app.js", "/nfl/sheet.js", "/nfl/nfl.css", "/nfl/sheet.css", "/site.css"];
 
 self.addEventListener("install", (e) => {

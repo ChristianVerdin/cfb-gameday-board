@@ -89,7 +89,7 @@ def test_refresh_yml(check):
 
 def test_sw(check):
     sw = (ROOT / "nfl" / "sw.js").read_text()
-    check.true("cache name", 'const VERSION = "pfb-v1"' in sw)
+    check.true("cache name", 'const VERSION = "pfb-v2"' in sw)
     check.true("activate only prunes pfb- caches", 'k.startsWith("pfb-") && k !== VERSION' in sw)
     check.true("never caches api", 'url.pathname.startsWith("/api/")) return' in sw)
     check.true("scope guard", 'startsWith("/nfl/")' in sw)

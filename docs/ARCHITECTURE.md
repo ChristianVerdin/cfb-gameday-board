@@ -522,6 +522,24 @@ the domain, the Vercel project and the visual language with the college board, b
 | `api/nfl/live.py`, `api/nfl/game.py` | Vercel functions. Whitelisted params, a game-id gate, tiered CDN caching, stale-if-error. |
 | `nfl/` | Client (board, game sheet, field tracker) and `sw.js` scoped to `/nfl/` |
 
+The `/api/nfl/game` payload carries one additive top-level key, `players`, built by `_players()` from ESPN's `boxscore.players`:
+
+```
+players: { ready, away: S, home: S }
+S: { rec[] (cap 10): {id,name,no,rec,tgt,yds,td,lng},   recMore (qualifying rows cut by the cap),
+     rush[] (cap 6): {id,name,no,car,yds,td,lng},
+     pass[] (cap 2): {id,name,no,cmp,att,yds,td,int},
+     tds[] (cap 8): {id,name,no,rush,rec,ret,def},        tdn (all touchdowns, before the cap),
+     tot: {rec,recYds,recTd,car,rushYds,rushTd} }         (summed over every athlete, before filters and caps)
+```
+
+- **Always present,** with `ready:false` and empty lists for pregame (no `boxscore.players`), the Pro Bowl shells and any team that cannot be matched.
+- **Columns are read by label,** never by zipping `keys`: live `passing.keys` has 8 entries against 7 labels and stats.
+- **`rec`** keeps REC>0 or TD>0, sorted by yards, catches, name. Targets-only receivers are dropped.
+- **`tds` merges per athlete id** over rushing, receiving, kick and punt returns, and `max(defensive TD, interceptions TD)`: an interception-return TD is listed in both categories. Passing TDs are not scorers.
+- **`tdn` reconciles** with the count of `scoringPlays` of type touchdown on every captured final; live it may trail by one.
+- **No athlete links, headshots, uids or position:** ids, names (40 characters) and jersey numbers only.
+
 ESPN details that shape the code:
 - **The current drive appears twice** (`drives.previous[-1]` and `drives.current`). Plays are deduplicated by id.
 - **Stoppages report `down` as -1.**
