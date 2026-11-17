@@ -63,7 +63,7 @@ def _team(c) -> dict:
     abbr = t.get("abbreviation") or ""
     return {"id": str(t.get("id") or c.get("id") or ""), "abbr": abbr,
             "name": t.get("name") or t.get("nickname") or t.get("shortDisplayName") or abbr,
-            "color": t.get("color") or None}
+            "color": t.get("color") or None, "alt": t.get("alternateColor") or None}
 
 
 def _competition(summary: dict) -> dict:

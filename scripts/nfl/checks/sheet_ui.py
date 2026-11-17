@@ -26,7 +26,7 @@ def _pure_source() -> str:
 
 
 def _node(expr_js: str):
-    script = f"const api = (function () {{{_pure_source()}\nreturn {{ esc, int, periodLabel, lineLabels, downText, phase, defaultTab, totals, statusText, chipStyle, wpValues, wpPath, wpTicks, isBigPlay, playMatches, allPlays, sideOf, trackerGeom, panelHtml }};\n}})();\nconsole.log(JSON.stringify({expr_js}));"
+    script = f"const api = (function () {{{_pure_source()}\nreturn {{ esc, int, periodLabel, lineLabels, downText, phase, defaultTab, totals, statusText, chipStyle, helmetColors, wpValues, wpPath, wpTicks, isBigPlay, playMatches, allPlays, sideOf, trackerGeom, panelHtml }};\n}})();\nconsole.log(JSON.stringify({expr_js}));"
     out = subprocess.run([NODE, "-"], input=script, capture_output=True, text=True, timeout=30)
     if out.returncode:
         raise RuntimeError(out.stderr.strip()[:600])
@@ -397,6 +397,10 @@ def test_sheet_render(check):
     check.true("field tracker drawn for a live game", 'class="ns-field"' in live_html and "Red zone" in live_html)
     check.true("newest drive first while live", live_html.index('data-did="d2"') < live_html.index('data-did="d1"'))
     check.true("possession marker", 'aria-label="has the ball"' in live_html)
+    check.true("helmets beside the chips, in both end zones and at the ball", live_html.count('class="ns-hel"') >= 4 and live_html.split('class="ns-field"')[1].split("ns-fcap")[0].count('viewBox="0 0 24 20"') == 3)
+    check.true("helmet is a drawn shape, never an image", "<img" not in live_html and "<image" not in live_html and "href=" not in live_html)
+    check("helmet colours: second colour, or grey when it would vanish or match", _node("[{color:'0080c6',alt:'ffc20e'},{color:'29126f',alt:'000000'},{color:'d3bc8d',alt:'d3bc8d'},{color:'zz'},null].map(api.helmetColors)"),
+          [{"shell": "#0080c6", "mask": "#ffc20e"}, {"shell": "#29126f", "mask": "#d5dbe6"}, {"shell": "#d3bc8d", "mask": "#d5dbe6"}, {"shell": "#22314d", "mask": "#d5dbe6"}, {"shell": "#22314d", "mask": "#d5dbe6"}])
     check.true("live default has LIVE pill", ">LIVE<" in live_html)
     check.true("dialog heading", 'id="ns-title"' in live_html and "KC at ATL game detail" in live_html)
     check.true("tablist has six tabs", live_html.count('role="tab"') == 6)

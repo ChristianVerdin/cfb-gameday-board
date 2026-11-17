@@ -378,7 +378,7 @@ def test_superbowl(check):
     check("tracker none on final", o["tracker"], None)
     check("team color kept", o["teams"]["away"]["color"] is not None, True)
     check("scoring count", len(o["scoring"]), len(check.fixture(SB)["scoringPlays"]))
-    check("teams keys", sorted(o["teams"]["away"]), ["abbr", "color", "id", "name", "score"])
+    check("teams keys", sorted(o["teams"]["away"]), ["abbr", "alt", "color", "id", "name", "score"])
 
 
 def test_box_leaders(check):

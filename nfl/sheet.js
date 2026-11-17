@@ -73,12 +73,32 @@
     return st.replace(/_/g, " ").toLowerCase().replace(/^./, c => c.toUpperCase());
   }
 
-  function chipStyle(hex) {
+  function hexLum(hex) {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ""));
-    if (!m) return "background:#22314d;color:#f4f7fb";
+    if (!m) return null;
     const n = parseInt(m[1], 16), ch = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
-    const lum = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-    return "background:#" + m[1].toLowerCase() + ";color:" + (lum > 0.4 ? "#0b1220" : "#ffffff");
+    return { hex: "#" + m[1].toLowerCase(), lum: 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2] };
+  }
+  function chipStyle(hex) {
+    const c = hexLum(hex);
+    if (!c) return "background:#22314d;color:#f4f7fb";
+    return "background:" + c.hex + ";color:" + (c.lum > 0.4 ? "#0b1220" : "#ffffff");
+  }
+  // Helmet glyph: one plain shape for every team, tinted with the team's two colours. It carries no team mark.
+  // The facemask falls back to light grey when the second colour would vanish on the dark sheet or match the shell.
+  function helmetColors(t) {
+    const a = hexLum(t && t.color), b = hexLum(t && t.alt);
+    const shell = a ? a.hex : "#22314d";
+    return { shell, mask: b && b.lum >= 0.12 && b.hex !== shell ? b.hex : "#d5dbe6" };
+  }
+  function helmetHtml(t, flip, box) {
+    const c = helmetColors(t);
+    const tfHtml = flip ? ` transform="translate(24 0) scale(-1 1)"` : "";
+    const boxHtml = box ? ` x="${f1(box.x)}" y="${f1(box.y)}" width="${f1(box.w)}" height="${f1(box.w * 20 / 24)}"` : ` class="ns-hel" aria-hidden="true"`;
+    return `<svg${boxHtml} viewBox="0 0 24 20"><path class="ns-hsh" fill="${esc(c.shell)}"${tfHtml} d="M2.6 11.6C2.6 5.9 7.1 1.8 12.8 1.8c5 0 8.6 3.3 9.2 7.9l-6.3.5c-1.5.1-2.4 1.3-2.1 2.8l.8 3.9c-2.3 1.4-5.3 1.7-7.9.7-2.4-.9-3.9-3-3.9-6z"/>
+      <path class="ns-hst" stroke="${esc(c.mask)}"${tfHtml} d="M4.6 7.6C6.4 4.6 9.4 3.1 12.8 3.1c2.9 0 5.3 1.1 6.9 3"/>
+      <circle class="ns-hear" cx="9.4" cy="11.8" r="1.3"${tfHtml}/>
+      <path class="ns-hmk" stroke="${esc(c.mask)}"${tfHtml} d="M22 9.7l1 4.3c.3 1.4-.4 2.5-1.8 2.6l-6.8.3M13.7 13.4l9.1-.2"/></svg>`;
   }
   function teamOf(d, abbr) {
     const t = (d && d.teams) || {};
@@ -87,7 +107,7 @@
   }
   function chipHtml(d, abbr) {
     const t = teamOf(d, abbr);
-    return `<span class="ns-chip" style="${esc(chipStyle(t && t.color))}">${esc(abbr)}</span>`;
+    return `<span class="ns-tm">${helmetHtml(t, false, null)}<span class="ns-chip" style="${esc(chipStyle(t && t.color))}">${esc(abbr)}</span></span>`;
   }
 
   // Win probability. Points carry the home side's chance, 0-1 (percent tolerated).
@@ -165,7 +185,10 @@
     const from = (dr.start && dr.start.yard_text) || "", at = lastPlay.yard_text || (dr.end && dr.end.yard_text) || "";
     const tip = g.x1 + g.dir * 7;
     const away = chipStyle(tm.away.color).split(";")[0].replace("background:", ""), home = chipStyle(tm.home.color).split(";")[0].replace("background:", "");
-    const capHtml = [esc(side === "away" ? tm.away.abbr : tm.home.abbr) + " ball", from ? "from " + esc(from) : "", at ? "now " + esc(at) : ""].filter(Boolean).join(" · ");
+    const off = side === "away" ? tm.away : tm.home;
+    const offHtml = helmetHtml(off, g.dir < 0, { x: g.x1 - g.dir * 6.4 - 5.5, y: 13.4, w: 11 });
+    const ezHtml = helmetHtml(tm.away, false, { x: 1.2, y: 14.8, w: 7.6 }) + helmetHtml(tm.home, true, { x: 111.2, y: 14.8, w: 7.6 });
+    const capHtml = [helmetHtml(off, false, null) + esc(off.abbr) + " ball", from ? "from " + esc(from) : "", at ? "now " + esc(at) : ""].filter(Boolean).join(" · ");
     const metaHtml = [t.plays != null ? int(t.plays) + " plays" : "", t.yards != null ? int(t.yards) + " yds" : "", t.elapsed ? esc(t.elapsed) : ""].filter(Boolean).join(" · ");
     const linesHtml = [20, 30, 40, 50, 60, 70, 80, 90, 100].map(x => `<line x1="${int(x)}" x2="${int(x)}" y1="0" y2="36" class="ns-yl"/>`).join("");
     const rzHtml = `<rect x="${int(g.rzX)}" y="0" width="20" height="36" class="ns-rz${g.red ? " on" : ""}"/>`;
@@ -173,11 +196,12 @@
       <rect width="120" height="36" class="ns-turf"/>
       <rect width="10" height="36" fill="${esc(away)}" opacity=".7"/><rect x="110" width="10" height="36" fill="${esc(home)}" opacity=".7"/>
       ${linesHtml}${rzHtml}
+      <line x1="${f1(g.x1)}" x2="${f1(g.x1)}" y1="0" y2="36" class="ns-los"/>
       <line x1="${f1(g.x0)}" x2="${f1(g.x1)}" y1="18" y2="18" class="ns-path"/>
       <rect x="${f1(g.x0 - 1.5)}" y="12" width="3" height="12" class="ns-start"/>
       <polygon points="${f1(tip)},18 ${f1(g.x1 + g.dir * 1)},12.5 ${f1(g.x1 + g.dir * 1)},23.5" class="ns-arrow"/>
-      <circle cx="${f1(g.x1)}" cy="18" r="3.6" class="ns-now"/></svg>
-      <div class="ns-fcap"><span>${capHtml}</span>${g.red ? `<b class="ns-rzchip">Red zone</b>` : ""}</div>${metaHtml ? `<div class="ns-fmeta">${metaHtml}</div>` : ""}</div>`;
+      ${ezHtml}${offHtml}</svg>
+      <div class="ns-fcap"><span class="ns-fwho">${capHtml}</span>${g.red ? `<b class="ns-rzchip">Red zone</b>` : ""}</div>${metaHtml ? `<div class="ns-fmeta">${metaHtml}</div>` : ""}</div>`;
   }
 
   // Plays
