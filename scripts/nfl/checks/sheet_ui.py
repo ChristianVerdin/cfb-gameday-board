@@ -26,7 +26,7 @@ def _pure_source() -> str:
 
 
 def _node(expr_js: str):
-    script = f"const api = (function () {{{_pure_source()}\nreturn {{ esc, int, periodLabel, lineLabels, downText, phase, defaultTab, totals, statusText, chipStyle, helmetColors, wpValues, wpPath, wpTicks, isBigPlay, playMatches, allPlays, sideOf, trackerGeom, panelHtml, playerDiff, sortRec, validPsort, validPteam, boxTabHtml, tdStripHtml, recTableHtml, rushTableHtml, passLineHtml, playersControlsHtml, shortName, topSet }};\n}})();\nconsole.log(JSON.stringify({expr_js}));"
+    script = f"const api = (function () {{{_pure_source()}\nreturn {{ esc, int, periodLabel, lineLabels, downText, phase, defaultTab, totals, statusText, chipStyle, helmetColors, wpValues, wpPath, wpTicks, isBigPlay, playMatches, allPlays, sideOf, trackerGeom, panelHtml, playerDiff, sortRec, validPsort, validPteam, boxTabHtml, tdStripHtml, recTableHtml, rushTableHtml, passLineHtml, playersControlsHtml, shortName, topSet, flashFor, flashNote }};\n}})();\nconsole.log(JSON.stringify({expr_js}));"
     out = subprocess.run([NODE, "-"], input=script, capture_output=True, text=True, timeout=30)
     if out.returncode:
         raise RuntimeError(out.stderr.strip()[:600])
@@ -489,8 +489,10 @@ def test_sheet_box(check):
     tdchg = copy.deepcopy(live)
     tdchg["players"]["away"]["rec"][0].update(td=2)
     tdchg["players"]["away"]["tds"][0]["rec"] = 2
+    final_nop = copy.deepcopy(nop)
+    final_nop["state"] = "FINAL"
     expr = f"""(() => {{
-  const L = {json.dumps(live)}, N = {json.dumps(nxt)}, T = {json.dumps(tdchg)}, P = {json.dumps(nop)}, R = {json.dumps(notready)}, E = {json.dumps(early)}, H = {json.dumps(_hostile())};
+  const L = {json.dumps(live)}, F = {json.dumps(final_nop)}, N = {json.dumps(nxt)}, T = {json.dumps(tdchg)}, P = {json.dumps(nop)}, R = {json.dumps(notready)}, E = {json.dumps(early)}, H = {json.dumps(_hostile())};
   const B = (d, ui) => api.boxTabHtml(d, ui || {{}});
   const names = html => (html.split('<h3 class="ns-ph">Receiving</h3>')[1] || '').split('<h3 class="ns-ph">Rushing</h3>')[0];
   const order = html => Array.from(names(html).matchAll(/class="ns-jn">#\\d+<\\/i><span>([^<]+)</g)).map(m => m[1]);
@@ -506,6 +508,24 @@ def test_sheet_box(check):
     hostile: ["drives", "plays", "wp", "scoring", "box", "leaders"].map(t => api.panelHtml({{ id: "1", d: H, tab: t, psort: "td", pteam: "both", flash: {{ keys: [], notes: ["<script>x</script>"] }} }})),
     hostbox: B(H, {{ flash: {{ keys: [], notes: ['"><script>alert(1)</script>'] }} }}),
     order: [order(B(L)), order(B(L, {{ psort: "yds" }})), order(B(L, {{ psort: "td" }}))],
+    final_nop: B(F), live_idle: B(L, {{ flash: {{ keys: [], notes: [] }} }}), final_ready: B(Object.assign({{}}, L, {{ state: "FINAL" }})),
+    tied: api.recTableHtml(L, "away", {{ rec: [{{ id: "1", name: "A One", no: "1", rec: 5, tgt: 6, yds: 50, td: 0, lng: 20 }}, {{ id: "2", name: "B Two", no: "2", rec: 5, tgt: 7, yds: 40, td: 0, lng: 15 }}], tot: {{}} }}, {{}}, null),
+    zeros: api.recTableHtml(L, "away", {{ rec: [{{ id: "3", name: "C Three", no: "3", rec: 0, tgt: 1, yds: 0, td: 1, lng: 0 }}], tot: {{}} }}, {{}}, null),
+    short2: ["A.J. Brown", "D.J. Moore", "C.J. Stroud", "T.J. Hockenson", "J. Smith", "Odell Beckham Jr.", "Deebo Samuel"].map(api.shortName),
+    flashfor: [api.flashFor(null, N, true, null), api.flashFor(L, N, true, "boom"), api.flashFor(L, N, false, null), api.flashFor(L, N, true, null).keys.length > 0],
+    junk: [
+      {{ ready: true, away: {{ rec: {{}} }}, home: {{}} }}, {{ ready: true, away: {{ rec: [null], rush: [null, 3], pass: "x", tds: [null] }}, home: {{ rec: "x", tot: 7 }} }},
+      {{ ready: true, away: "x", home: 5 }}, {{ ready: true }}, {{ ready: true, away: {{ tds: [{{ id: 1, name: null, no: null }}] }} }},
+    ].map(pl => {{
+      const safe = f => {{ try {{ f(); return "ok"; }} catch (e) {{ return String(e && e.message); }} }};
+      const d = Object.assign({{}}, L, {{ players: pl }});
+      return [safe(() => B(d)), safe(() => api.playerDiff(d, d)), safe(() => api.playerDiff(L, d)), safe(() => api.playerDiff(d, L)), safe(() => B(L, {{ flash: {{ keys: 5, notes: "x" }} }})), safe(() => B(L, {{ flash: {{ keys: [null, 1], notes: [null, 2] }} }}))];
+    }}),
+    helmets: ["KC", "ATL"].map(team => [0, 1, 5, 50, 95, 99, 100].map(cur => {{
+      const g = Object.assign({{}}, L, {{ tracker: {{ drive_id: "d2", team, start_yl: 50, cur_yl: cur, plays: 3, yards: 5, elapsed: "1:00" }} }});
+      const field = api.panelHtml({{ id: "1", d: g, tab: "drives" }}).split('class="ns-field"')[1].split('class="ns-fcap"')[0];
+      return Array.from(field.matchAll(/<svg x="([-\\d.]+)" y="[\\d.]+" width="([\\d.]+)"/g)).map(m => [Number(m[1]), Number(m[2])]);
+    }})),
   }};
 }})()"""
     r = _node(expr)
@@ -542,8 +562,27 @@ def test_sheet_box(check):
     check("diff of a second TD for the same scorer", dl[3]["keys"], ["away:rec:11:td", "away:tds:11:rec"])
     check("diff note for a second TD", dl[3]["notes"], ["T. Kelce TD"])
     fl = r["flash"]
-    check.true("changed cells and rows get ns-chg and the note shows", fl.count("ns-chg") >= 4 and 'class="ns-note ns-fnote" role="status">Updated: D. London TD · X. Worthy +1 REC · D. London +1 REC' in fl)
-    check.true("a render without flash has no highlight or note", "ns-chg" not in r["plain"] and "ns-fnote" not in r["plain"])
+    check.true("changed cells and rows get ns-chg and the note shows", fl.count("ns-chg") >= 4 and 'class="ns-note ns-fnote" aria-hidden="true">Updated: D. London TD · X. Worthy +1 REC · D. London +1 REC' in fl)
+    check.true("a render without flash has no highlight and an empty, space-reserving note line", "ns-chg" not in r["plain"] and 'class="ns-note ns-fnote" aria-hidden="true"></p>' in r["plain"] and "Updated:" not in r["plain"])
+    check.true("the note line is always there on a live sheet with players, never on a final", r["live_idle"].count("ns-fnote") == 1 and "ns-fnote" not in r["final_ready"])
+    check.true("the change note is not itself a live region (a persistent one announces it)", "role=\"status\"" not in r["flash"])
+    check.true("final without player data says it is unavailable, not under way", "Player stats are not available for this game." in r["final_nop"] and "under way" not in r["final_nop"] and "data-box open" in r["final_nop"] and "First downs" in r["final_nop"])
+    check.true("live without player data keeps the under-way copy", "under way" in r["nop"] and "not available" not in r["nop"])
+    check("tied leaders are all bold, a lower value is not", [r["tied"].count('<b class="ns-top">5</b>'), r["tied"].count('<b class="ns-top">50</b>'), r["tied"].count('<b class="ns-top">40</b>')], [2, 1, 0])
+    check.true("zeros are never bold as leaders, a TD scorer's zero-catch row still shows its TD", "ns-top" not in r["zeros"] and '<b class="ns-td">1</b>' in r["zeros"])
+    check("dotted initials are kept, plain first names are abbreviated", r["short2"], ["A.J. Brown", "D.J. Moore", "C.J. Stroud", "T.J. Hockenson", "J. Smith", "O. Beckham Jr.", "D. Samuel"])
+    check("flash decision: first load, error retry and an unchanged poll flash nothing; a changed poll does", r["flashfor"], [None, None, None, True])
+    check("malformed players data never throws", r["junk"], [["ok"] * 6] * 5)
+    boxes = [b for side in r["helmets"] for cur in side for b in [cur]]
+    inside = all(len(b) in (2, 3) and all(x >= 0 and x + w <= 120 for x, w in b) for b in boxes)
+    clear = all(all(a[0] + a[1] <= c[0] or c[0] + c[1] <= a[0] for i, a in enumerate(b) for c in b[i + 1:]) for b in boxes)
+    check.true("field helmets stay inside the field and never overlap, even backed up at the goal line", inside and clear and len(boxes) == 14)
+    js = JS.read_text()
+    rend = js[js.index("function render()"):js.index("function stamp()")]
+    check.true("render consumes the flash exactly once (cleared right after the markup is built)", rend.index("panelHtml(S)") < rend.index("S.flash = null") < rend.index("p.innerHTML"))
+    check.true("load decides the flash through flashFor", "mine.flash = flashFor(prevD, data, changed, mine.error)" in js)
+    check.true("focus on the team stats and drive summaries survives a re-render", 'details[data-box] > summary' in rend and 'details[data-did=' in rend)
+    check.true("a persistent live region announces change notes", 'setAttribute("role", "status")' in js and "liveEl.textContent = said" in rend)
     allowed_tags = {"div", "span", "button", "h2", "h3", "table", "thead", "tbody", "tr", "th", "td", "b", "i", "svg", "rect", "line", "path", "circle", "polygon", "details", "summary", "p"}
     for name in ("def", "yds", "away", "nop", "early", "flash", "hostbox"):
         p = _parse(r[name])

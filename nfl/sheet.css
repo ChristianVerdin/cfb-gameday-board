@@ -108,7 +108,7 @@ body.ns-open { overflow: hidden; }
 .ns-pgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 14px; }
 .ns-pgrid.one { grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 900px) { .ns-pgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-.ns-fnote { color: var(--gold2, #f3d78a); font-size: 12px; font-weight: 700; margin: 2px 0 8px; }
+.ns-fnote { color: var(--gold2, #f3d78a); font-size: 12px; line-height: 16px; min-height: 16px; font-weight: 700; margin: 2px 0 6px; }
 .ns-tdb { border: 1px solid var(--line, #2a3a5a); border-radius: 10px; background: var(--card, #162036); padding: 8px 12px 6px; min-width: 0; }
 .ns-pbh { display: flex; align-items: center; gap: 8px; min-height: 28px; margin: 0 0 2px; }
 .ns-tdh { margin: 0; flex: 1; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #9aa8bf); }

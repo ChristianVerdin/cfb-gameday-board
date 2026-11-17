@@ -289,11 +289,17 @@ def _player_side(team_players: dict) -> dict:
 
     def rows(name):
         cat = cats.get(name) or {}
-        for a in cat.get("athletes") or []:
-            ath = a.get("athlete") or {}
-            stats = a.get("stats") or []
-            ident = {"id": str(ath.get("id") or ""), "name": clean_text(ath.get("displayName"), 40),
-                     "no": str(ath.get("jersey") or "")[:3]}
+        ath_list = cat.get("athletes")
+        for a in ath_list if isinstance(ath_list, list) else []:
+            if not isinstance(a, dict):
+                continue
+            ath = a.get("athlete") if isinstance(a.get("athlete"), dict) else {}
+            stats = a.get("stats") if isinstance(a.get("stats"), list) else []
+            pname = clean_text(str(ath.get("displayName") or ""), 40)
+            pno = str(ath.get("jersey") or "")[:3]
+            # A scorer without an ESPN id still needs one key shared by every category it appears in.
+            pid = str(ath.get("id") or "") or ("~" + pname + "~" + pno if pname or pno else "")
+            ident = {"id": pid, "name": pname, "no": pno}
             yield cat, ident, (lambda lab, cat=cat, stats=stats: _num(_col(cat, lab, stats))), stats
 
     rec, rush, pas = [], [], []

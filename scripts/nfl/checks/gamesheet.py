@@ -593,7 +593,7 @@ def test_players_shape(check):
             check.true(f"{name} {side} pass sort", t["pass"] == sorted(t["pass"], key=lambda r: (-r["att"], r["name"])))
             totals = [sum(r[k] for k in ("rush", "rec", "ret", "def")) for r in t["tds"]]
             check.true(f"{name} {side} tds sort", totals == sorted(totals, reverse=True) and all(x > 0 for x in totals))
-            check.true(f"{name} {side} tdn covers listed", t["tdn"] >= sum(totals))
+            check.true(f"{name} {side} tdn is at least the sum of listed scorers", t["tdn"] >= sum(totals))
         check(f"{name} ready", pl["ready"], any(pl[s][k] for s in ("away", "home") for k in ("rec", "rush", "pass", "tds")))
 
 
@@ -688,6 +688,23 @@ def test_players_synthetic(check):
         c["athletes"] = [{**_ath(str(9100 + i), f"P{i:02d}"), "stats": ["1", str(i), "1.0", "0", "1", "1"]} for i in range(13)]
     mm = build(many)
     check("rec cap and recMore", [len(mm["rec"]), mm["recMore"], mm["tot"]["rec"], mm["rec"][0]["yds"]], [10, 3, 13, 12])
+
+    def junk_rows(s):
+        c = _team_cat(s, 0, "receiving")
+        good = {**_ath("9201", "Good Hands"), "stats": ["4", "5", "40", "1", "20"]}
+        c["labels"] = ["REC", "TGTS", "YDS", "TD", "LONG"]
+        c["athletes"] = [None, "x", {**_ath("9202", 123), "stats": ["1", "1", "9", "0", "9"]}, {"athlete": "z", "stats": "q"}, good]
+    j = build(junk_rows)
+    check("junk athlete rows are skipped, the rest of the team survives", [(r["id"], r["name"]) for r in j["rec"]], [("9201", "Good Hands"), ("9202", "123")])
+    check("junk rows keep the scorer", [(r["id"], r["rec"]) for r in j["tds"]], [("9201", 1)])
+
+    def no_ids(s):
+        put(s, "rushing", None, {"CAR": "3", "TD": "1"}); put(s, "receiving", None, {"REC": "2", "TD": "1"})
+        for c in (_team_cat(s, 0, "rushing"), _team_cat(s, 0, "receiving")):
+            c["athletes"][-1]["athlete"]["id"] = None
+    ni = build(no_ids)
+    check("athlete without an id keeps one shared key and its touchdowns", [(r["id"] != "" and r["id"], r["rush"], r["rec"]) for r in ni["tds"]], [(ni["tds"][0]["id"], 1, 1)])
+    check("missing id row count matches tdn", [ni["tdn"], ni["rec"][0]["id"] == ni["tds"][0]["id"], ni["rush"][0]["id"] == ni["tds"][0]["id"]], [2, True, True])
 
     lonely = copy.deepcopy(base)
     lonely["boxscore"]["players"][0]["team"]["id"] = "99999"

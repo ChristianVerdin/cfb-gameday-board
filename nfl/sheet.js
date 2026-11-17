@@ -186,8 +186,11 @@
     const tip = g.x1 + g.dir * 7;
     const away = chipStyle(tm.away.color).split(";")[0].replace("background:", ""), home = chipStyle(tm.home.color).split(";")[0].replace("background:", "");
     const off = side === "away" ? tm.away : tm.home;
-    const offHtml = helmetHtml(off, g.dir < 0, { x: g.x1 - g.dir * 6.4 - 5.5, y: 13.4, w: 11 });
-    const ezHtml = helmetHtml(tm.away, false, { x: 1.2, y: 14.8, w: 7.6 }) + helmetHtml(tm.home, true, { x: 111.2, y: 14.8, w: 7.6 });
+    // Keep the ball-carrier helmet inside the 120-wide field; when backed up against its own end zone it replaces that end-zone helmet.
+    const hx = Math.max(0.5, Math.min(120 - 11 - 0.5, g.x1 - g.dir * 6.4 - 5.5));
+    const offHtml = helmetHtml(off, g.dir < 0, { x: hx, y: 13.4, w: 11 });
+    const hideAway = side === "away" && hx < 8.8 + 0.5, hideHome = side === "home" && hx + 11 > 111.2 - 0.5;
+    const ezHtml = (hideAway ? "" : helmetHtml(tm.away, false, { x: 1.2, y: 14.8, w: 7.6 })) + (hideHome ? "" : helmetHtml(tm.home, true, { x: 111.2, y: 14.8, w: 7.6 }));
     const capHtml = [helmetHtml(off, false, null) + esc(off.abbr) + " ball", from ? "from " + esc(from) : "", at ? "now " + esc(at) : ""].filter(Boolean).join(" · ");
     const metaHtml = [t.plays != null ? int(t.plays) + " plays" : "", t.yards != null ? int(t.yards) + " yds" : "", t.elapsed ? esc(t.elapsed) : ""].filter(Boolean).join(" · ");
     const linesHtml = [20, 30, 40, 50, 60, 70, 80, 90, 100].map(x => `<line x1="${int(x)}" x2="${int(x)}" y1="0" y2="36" class="ns-yl"/>`).join("");
@@ -290,21 +293,24 @@
   const TD_KINDS = [["rush", "RUSH"], ["rec", "REC"], ["ret", "RET"], ["def", "DEF"]];
   function validPsort(v) { return PSORTS.some(s => s[0] === v) ? v : "rec"; }
   function validPteam(v) { return v === "away" || v === "home" ? v : "both"; }
+  // Rows from the payload: objects only, so one malformed entry never takes the whole sheet down.
+  function rowsOf(v) { return Array.isArray(v) ? v.filter(r => r && typeof r === "object") : []; }
   function playersReady(d) { return Boolean(d && d.players && d.players.ready); }
   function shortName(n) {
     const parts = String(n == null ? "" : n).trim().split(/\s+/).filter(Boolean);
     if (parts.length < 2) return parts[0] || "";
+    if (/^(?:[A-Za-z]\.){2,}$/.test(parts[0])) return parts.join(" ");
     return parts[0].charAt(0).toUpperCase() + ". " + parts.slice(1).join(" ");
   }
   function sortRec(rows, key) {
     const order = { rec: ["rec", "yds"], yds: ["yds", "rec"], td: ["td", "yds"] }[validPsort(key)];
-    return (rows || []).slice().sort((a, b) => (int(b[order[0]]) - int(a[order[0]])) || (int(b[order[1]]) - int(a[order[1]])) || String(a.name).localeCompare(String(b.name)));
+    return rowsOf(rows).slice().sort((a, b) => (int(b[order[0]]) - int(a[order[0]])) || (int(b[order[1]]) - int(a[order[1]])) || String(a.name).localeCompare(String(b.name)));
   }
   // Highest value in a column (0 when nobody is above zero); every row holding it is a leader.
   function topSet(rows, field) {
-    return (rows || []).reduce((m, r) => Math.max(m, int(r[field])), 0);
+    return rowsOf(rows).reduce((m, r) => Math.max(m, int(r[field])), 0);
   }
-  function flashSet(ui) { return new Set((ui && ui.flash && ui.flash.keys) || []); }
+  function flashSet(ui) { return new Set(Array.isArray(ui && ui.flash && ui.flash.keys) ? ui.flash.keys : []); }
   function flashKey(side, cat, id, field) { return side + ":" + cat + ":" + id + ":" + field; }
 
   function statCellHtml(v, o) {
@@ -334,7 +340,7 @@
     const fl = flash || new Set();
     const blocksHtml = PSIDES.map(side => {
       const t = (p && p[side]) || {}, abbr = d.teams[side].abbr;
-      const scorers = t.tds || [];
+      const scorers = rowsOf(t.tds);
       const shown = scorers.reduce((n, r) => n + TD_KINDS.reduce((m, k) => m + int(r[k[0]]), 0), 0);
       const rowsHtml = scorers.map(r => {
         const tagsHtml = TD_KINDS.filter(k => int(r[k[0]]) > 0).map(k => `<b class="ns-tag sc">${esc(k[1] + (int(r[k[0]]) > 1 ? " x" + int(r[k[0]]) : ""))}</b>`).join("");
@@ -358,7 +364,7 @@
   }
 
   function recTableHtml(d, side, t, ui, flash) {
-    const fl = flash || new Set(), rows = sortRec((t && t.rec) || [], ui && ui.psort), tot = (t && t.tot) || {};
+    const fl = flash || new Set(), rows = sortRec(t && t.rec, ui && ui.psort), tot = (t && t.tot) || {};
     const topRec = topSet(rows, "rec"), topYds = topSet(rows, "yds");
     const bodyRowsHtml = rows.map(r => {
       const c = f => fl.has(flashKey(side, "rec", r.id, f));
@@ -371,7 +377,7 @@
     return `<div class="ns-pw"><table class="ns-pt" aria-label="${esc("Receiving, " + d.teams[side].abbr)}"><thead><tr><th scope="col" class="ns-pn">Player</th><th scope="col" class="ns-n ns-k">REC</th><th scope="col" class="ns-n">TGT</th><th scope="col" class="ns-n">YDS</th><th scope="col" class="ns-n">TD</th><th scope="col" class="ns-n ns-hs">LNG</th></tr></thead><tbody>${bodyRowsHtml || emptyHtml}${moreHtml}${totalHtml}</tbody></table></div>`;
   }
   function rushTableHtml(d, side, t, ui, flash) {
-    const fl = flash || new Set(), rows = (t && t.rush) || [], tot = (t && t.tot) || {};
+    const fl = flash || new Set(), rows = rowsOf(t && t.rush), tot = (t && t.tot) || {};
     const topCar = topSet(rows, "car"), topYds = topSet(rows, "yds");
     const bodyRowsHtml = rows.map(r => {
       const c = f => fl.has(flashKey(side, "rush", r.id, f));
@@ -382,7 +388,7 @@
     return `<div class="ns-pw"><table class="ns-pt ns-rt" aria-label="${esc("Rushing, " + d.teams[side].abbr)}"><thead><tr><th scope="col" class="ns-pn">Player</th><th scope="col" class="ns-n ns-k">CAR</th><th scope="col" class="ns-n">YDS</th><th scope="col" class="ns-n">TD</th><th scope="col" class="ns-n ns-hs">LNG</th></tr></thead><tbody>${bodyRowsHtml || emptyHtml}${totalHtml}</tbody></table></div>`;
   }
   function passLineHtml(d, side, t, ui, flash) {
-    const fl = flash || new Set(), r = ((t && t.pass) || [])[0];
+    const fl = flash || new Set(), r = rowsOf(t && t.pass)[0];
     if (!r) return `<div class="ns-pass ns-dimline">No attempts yet</div>`;
     const chg = fl.has(flashKey(side, "pass", r.id, "td")) || fl.has(flashKey(side, "pass", r.id, "int"));
     const lineHtml = `<b class="ns-pk">${int(r.cmp)}/${int(r.att)}</b>, ${int(r.yds)} yds, ${int(r.td)} TD, ${int(r.int)} INT`;
@@ -396,11 +402,16 @@
     const tableHtml = box.length ? `<table class="ns-box"><thead><tr><th></th><th>${esc(d.teams.away.abbr)}</th><th>${esc(d.teams.home.abbr)}</th></tr></thead><tbody>${rowsHtml}</tbody></table>` : `<div class="ns-empty">Box score not available yet.</div>`;
     return `<details class="ns-tstats" data-box${open ? " open" : ""}><summary>Team stats</summary>${tableHtml}</details>`;
   }
+  function flashNote(flash) {
+    const notes = flash && Array.isArray(flash.notes) ? flash.notes.filter(n => typeof n === "string" && n) : [];
+    return notes.length ? "Updated: " + notes.join(" · ") : "";
+  }
   function boxTabHtml(d, ui) {
     const u = ui || {}, fl = flashSet(u), ready = playersReady(d);
-    const notes = (u.flash && u.flash.notes) || [];
-    const noteHtml = notes.length ? `<p class="ns-note ns-fnote" role="status">${esc("Updated: " + notes.join(" · "))}</p>` : "";
-    let playersHtml = `<p class="ns-note">Player stats appear once the game is under way.</p>`;
+    const noteText = flashNote(u.flash);
+    // Live games keep this line in the layout (empty when idle) so a change note never shifts the tables; a persistent live region announces it.
+    const noteHtml = phase(d) === "live" && ready ? `<p class="ns-note ns-fnote" aria-hidden="true">${esc(noteText)}</p>` : "";
+    let playersHtml = `<p class="ns-note">${esc(phase(d) === "final" ? "Player stats are not available for this game." : "Player stats appear once the game is under way.")}</p>`;
     if (ready) {
       const p = d.players;
       const recHtml = sectionHtml("Receiving", d, u, s => teamBlockHtml(d, s, recTableHtml(d, s, p[s], u, fl)));
@@ -418,25 +429,25 @@
     if (!a || !b || !a.ready || !b.ready) return out;
     const tdNotes = [], recNotes = [];
     for (const side of PSIDES) {
-      const pa = a[side] || {}, pb = b[side] || {};
-      const prior = (cat, id) => (pa[cat] || []).find(r => String(r.id) === String(id));
-      for (const r of pb.rec || []) {
+      const pa = a[side] && typeof a[side] === "object" ? a[side] : {}, pb = b[side] && typeof b[side] === "object" ? b[side] : {};
+      const prior = (cat, id) => rowsOf(pa[cat]).find(r => String(r.id) === String(id));
+      for (const r of rowsOf(pb.rec)) {
         const o = prior("rec", r.id), base = (f) => flashKey(side, "rec", r.id, f);
         if (!o) out.keys.push(base("row"));
         else for (const f of ["rec", "yds", "td"]) if (int(r[f]) !== int(o[f])) out.keys.push(base(f));
         const gain = int(r.rec) - int(o && o.rec);
         if (gain > 0) recNotes.push(shortName(r.name) + " +" + gain + " REC");
       }
-      for (const r of pb.rush || []) {
+      for (const r of rowsOf(pb.rush)) {
         const o = prior("rush", r.id);
         if (!o) out.keys.push(flashKey(side, "rush", r.id, "row"));
         else for (const f of ["car", "yds", "td"]) if (int(r[f]) !== int(o[f])) out.keys.push(flashKey(side, "rush", r.id, f));
       }
-      for (const r of pb.pass || []) {
+      for (const r of rowsOf(pb.pass)) {
         const o = prior("pass", r.id);
         if (o) for (const f of ["td", "int"]) if (int(r[f]) !== int(o[f])) out.keys.push(flashKey(side, "pass", r.id, f));
       }
-      for (const r of pb.tds || []) {
+      for (const r of rowsOf(pb.tds)) {
         const o = prior("tds", r.id);
         if (!o) out.keys.push(flashKey(side, "tds", r.id, "row"));
         let gain = 0;
@@ -449,6 +460,10 @@
     }
     out.notes = tdNotes.concat(recNotes).slice(0, 3);
     return out;
+  }
+  // What the next render highlights: only a changed poll on a sheet that already showed data, never the first load or a retry after an error.
+  function flashFor(prevD, nextD, changed, hadError) {
+    return changed && prevD && !hadError ? playerDiff(prevD, nextD) : null;
   }
   function leadersTabHtml(d) {
     const L = d.leaders || {};
@@ -516,7 +531,7 @@
   // pure:end
 
   let S = null;          // { id, d, error, tab, filter, drv, psort, pteam, boxOpen, flash, seq, sig, opener, fromBoard }
-  let timer = null, inflight = false, overlay = null, inerted = [];
+  let timer = null, inflight = false, overlay = null, liveEl = null, inerted = [];
 
   function chicago(iso) {
     const t = Date.parse(iso);
@@ -529,6 +544,10 @@
     overlay.className = "ns-sheet";
     overlay.hidden = true;
     overlay.innerHTML = `<div class="ns-panel" role="dialog" aria-modal="true" aria-labelledby="ns-title" tabindex="-1"></div>`;
+    liveEl = document.createElement("div");
+    liveEl.className = "ns-sr";
+    liveEl.setAttribute("role", "status");
+    liveEl.setAttribute("aria-live", "polite");
     document.body.appendChild(overlay);
     overlay.addEventListener("click", onClick);
     overlay.addEventListener("keydown", onPanelKey);
@@ -596,11 +615,17 @@
   function render() {
     if (!S || !overlay) return;
     const p = panel(), a = document.activeElement;
-    const keep = a && p.contains(a) ? (a.dataset.tab ? `[data-tab="${CSS.escape(a.dataset.tab)}"]` : a.dataset.filter ? `[data-filter="${CSS.escape(a.dataset.filter)}"]` : a.dataset.psort ? `[data-psort="${CSS.escape(a.dataset.psort)}"]` : a.dataset.pteam ? `[data-pteam="${CSS.escape(a.dataset.pteam)}"]` : a.hasAttribute("data-close") ? "[data-close]" : "") : "";
+    const owner = a && a.tagName === "SUMMARY" ? a.parentElement : null;
+    const keep = a && p.contains(a) ? (a.dataset.tab ? `[data-tab="${CSS.escape(a.dataset.tab)}"]` : a.dataset.filter ? `[data-filter="${CSS.escape(a.dataset.filter)}"]` : a.dataset.psort ? `[data-psort="${CSS.escape(a.dataset.psort)}"]` : a.dataset.pteam ? `[data-pteam="${CSS.escape(a.dataset.pteam)}"]` : a.hasAttribute("data-close") ? "[data-close]" : owner && owner.hasAttribute("data-box") ? "details[data-box] > summary" : owner && owner.dataset.did != null ? `details[data-did="${CSS.escape(owner.dataset.did)}"] > summary` : "") : "";
     const body = p.querySelector(".ns-body"), top = body ? body.scrollTop : 0;
-    const fullHtml = panelHtml(S);
+    const fullHtml = panelHtml(S), said = flashNote(S.flash);
     S.flash = null;
     p.innerHTML = fullHtml;
+    if (liveEl) {
+      p.appendChild(liveEl);
+      liveEl.textContent = "";
+      if (said) setTimeout(() => { if (liveEl.isConnected) liveEl.textContent = said; }, 60);
+    }
     const fresh = p.querySelector(".ns-body"); if (fresh) fresh.scrollTop = top;
     if (keep) { const el = p.querySelector(keep); if (el) el.focus(); }
     stamp();
@@ -628,7 +653,7 @@
       const sig = JSON.stringify(rest);
       const changed = sig !== mine.sig || mine.error;
       const prevD = mine.d;
-      mine.flash = changed && prevD && !mine.error ? playerDiff(prevD, data) : null;
+      mine.flash = flashFor(prevD, data, changed, mine.error);
       mine.d = data; mine.error = null; mine.sig = sig; mine.fetchedAt = fetched_at;
       if (changed) render(); else stamp();
     } catch (err) {
