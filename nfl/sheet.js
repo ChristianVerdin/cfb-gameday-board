@@ -284,11 +284,171 @@
       <div class="ns-psc">${esc(d.teams.away.abbr)} ${int(s.away)} – ${esc(d.teams.home.abbr)} ${int(s.home)}</div></div></div>`).join("");
     return rowsHtml || `<div class="ns-empty">No scoring yet.</div>`;
   }
-  function boxTabHtml(d) {
+  // Player stats. d.players is optional; every builder tolerates it being absent or not ready.
+  const PSORTS = [["rec", "REC"], ["yds", "YDS"], ["td", "TD"]];
+  const PSIDES = ["away", "home"];
+  const TD_KINDS = [["rush", "RUSH"], ["rec", "REC"], ["ret", "RET"], ["def", "DEF"]];
+  function validPsort(v) { return PSORTS.some(s => s[0] === v) ? v : "rec"; }
+  function validPteam(v) { return v === "away" || v === "home" ? v : "both"; }
+  function playersReady(d) { return Boolean(d && d.players && d.players.ready); }
+  function shortName(n) {
+    const parts = String(n == null ? "" : n).trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return parts[0] || "";
+    return parts[0].charAt(0).toUpperCase() + ". " + parts.slice(1).join(" ");
+  }
+  function sortRec(rows, key) {
+    const order = { rec: ["rec", "yds"], yds: ["yds", "rec"], td: ["td", "yds"] }[validPsort(key)];
+    return (rows || []).slice().sort((a, b) => (int(b[order[0]]) - int(a[order[0]])) || (int(b[order[1]]) - int(a[order[1]])) || String(a.name).localeCompare(String(b.name)));
+  }
+  // Highest value in a column (0 when nobody is above zero); every row holding it is a leader.
+  function topSet(rows, field) {
+    return (rows || []).reduce((m, r) => Math.max(m, int(r[field])), 0);
+  }
+  function flashSet(ui) { return new Set((ui && ui.flash && ui.flash.keys) || []); }
+  function flashKey(side, cat, id, field) { return side + ":" + cat + ":" + id + ":" + field; }
+
+  function statCellHtml(v, o) {
+    const n = int(v), x = o || {};
+    const cls = ["ns-n", x.hs ? "ns-hs" : "", x.chg ? "ns-chg" : "", x.td && n <= 0 ? "ns-z" : "", x.k ? "ns-k" : ""].filter(Boolean).join(" ");
+    const innerHtml = x.td && n > 0 ? `<b class="ns-td">${int(n)}</b>` : x.top && n > 0 ? `<b class="ns-top">${int(n)}</b>` : `${int(n)}`;
+    return `<td class="${esc(cls)}">${innerHtml}</td>`;
+  }
+  function nameCellHtml(r, chg) {
+    const jerseyHtml = r.no ? `<i class="ns-jn">#${esc(r.no)}</i>` : "";
+    return `<th scope="row" class="ns-pn${chg ? " ns-chg" : ""}" title="${esc(r.name)}">${jerseyHtml}<span>${esc(shortName(r.name))}</span></th>`;
+  }
+  function teamBlockHtml(d, side, bodyHtml) {
+    return `<div class="ns-pblk"><div class="ns-pbh">${chipHtml(d, d.teams[side].abbr)}</div>${bodyHtml}</div>`;
+  }
+  function sidesOf(ui) {
+    const pt = validPteam(ui && ui.pteam);
+    return pt === "both" ? PSIDES : [pt];
+  }
+  function sectionHtml(title, d, ui, fn) {
+    const sides = sidesOf(ui);
+    const blocksHtml = sides.map(s => fn(s)).join("");
+    return `<h3 class="ns-ph">${esc(title)}</h3><div class="${esc(sides.length === 1 ? "ns-pgrid one" : "ns-pgrid")}">${blocksHtml}</div>`;
+  }
+
+  function tdStripHtml(d, p, ui, flash) {
+    const fl = flash || new Set();
+    const blocksHtml = PSIDES.map(side => {
+      const t = (p && p[side]) || {}, abbr = d.teams[side].abbr;
+      const scorers = t.tds || [];
+      const shown = scorers.reduce((n, r) => n + TD_KINDS.reduce((m, k) => m + int(r[k[0]]), 0), 0);
+      const rowsHtml = scorers.map(r => {
+        const tagsHtml = TD_KINDS.filter(k => int(r[k[0]]) > 0).map(k => `<b class="ns-tag sc">${esc(k[1] + (int(r[k[0]]) > 1 ? " x" + int(r[k[0]]) : ""))}</b>`).join("");
+        const chg = fl.has(flashKey(side, "tds", r.id, "row")) || TD_KINDS.some(k => fl.has(flashKey(side, "tds", r.id, k[0])));
+        return `<div class="ns-sc${chg ? " ns-chg" : ""}"><span class="ns-scn">${r.no ? `<i class="ns-jn">#${esc(r.no)}</i>` : ""}<span>${esc(shortName(r.name))}</span></span><span class="ns-sct">${tagsHtml}</span></div>`;
+      }).join("");
+      const more = int(t.tdn) - shown;
+      const moreHtml = more > 0 ? `<div class="ns-sc ns-more">+${int(more)} more</div>` : "";
+      return `<div class="ns-tdb"><div class="ns-pbh">${chipHtml(d, abbr)}<h3 class="ns-tdh">Touchdowns</h3><b class="ns-tdn${int(t.tdn) > 0 ? " on" : ""}">${int(t.tdn)}</b></div>${rowsHtml || `<div class="ns-empty ns-tdnone">No touchdowns yet</div>`}${moreHtml}</div>`;
+    }).join("");
+    return `<div class="ns-pgrid ns-tds">${blocksHtml}</div>`;
+  }
+
+  function playersControlsHtml(d, ui) {
+    const pt = validPteam(ui && ui.pteam), ps = validPsort(ui && ui.psort);
+    const teams = [["both", "Both"], ["away", d.teams.away.abbr], ["home", d.teams.home.abbr]];
+    const teamBtnHtml = teams.map(([id, label]) => `<button class="ns-fbtn${pt === id ? " active" : ""}" data-pteam="${esc(id)}" aria-pressed="${pt === id ? "true" : "false"}">${esc(label)}</button>`).join("");
+    const sortBtnHtml = PSORTS.map(([id, label]) => `<button class="ns-fbtn${ps === id ? " active" : ""}" data-psort="${esc(id)}" aria-pressed="${ps === id ? "true" : "false"}">${esc(label)}</button>`).join("");
+    return `<div class="ns-pctl"><div class="ns-pgrp" role="group" aria-label="Show team"><span class="ns-plab">Show</span>${teamBtnHtml}</div>
+      <div class="ns-pgrp" role="group" aria-label="Sort receivers"><span class="ns-plab">Sort receivers</span>${sortBtnHtml}</div></div>`;
+  }
+
+  function recTableHtml(d, side, t, ui, flash) {
+    const fl = flash || new Set(), rows = sortRec((t && t.rec) || [], ui && ui.psort), tot = (t && t.tot) || {};
+    const topRec = topSet(rows, "rec"), topYds = topSet(rows, "yds");
+    const bodyRowsHtml = rows.map(r => {
+      const c = f => fl.has(flashKey(side, "rec", r.id, f));
+      const rowChg = c("row");
+      return `<tr class="${esc(rowChg ? "ns-chg" : "")}">${nameCellHtml(r, false)}${statCellHtml(r.rec, { top: int(r.rec) === topRec, chg: c("rec"), k: true })}${statCellHtml(r.tgt, {})}${statCellHtml(r.yds, { top: int(r.yds) === topYds, chg: c("yds") })}${statCellHtml(r.td, { td: true, chg: c("td") })}${statCellHtml(r.lng, { hs: true })}</tr>`;
+    }).join("");
+    const emptyHtml = `<tr class="ns-pe"><td colspan="5">No catches yet</td><td class="ns-n ns-hs"></td></tr>`;
+    const totalHtml = rows.length ? `<tr class="ns-ptot"><th scope="row">Total</th>${statCellHtml(tot.rec, { k: true })}<td class="ns-n"></td>${statCellHtml(tot.recYds, {})}${statCellHtml(tot.recTd, { td: true })}<td class="ns-n ns-hs"></td></tr>` : "";
+    const moreHtml = int(t && t.recMore) > 0 ? `<tr class="ns-pmore"><td colspan="5">+${int(t.recMore)} more</td><td class="ns-n ns-hs"></td></tr>` : "";
+    return `<div class="ns-pw"><table class="ns-pt" aria-label="${esc("Receiving, " + d.teams[side].abbr)}"><thead><tr><th scope="col" class="ns-pn">Player</th><th scope="col" class="ns-n ns-k">REC</th><th scope="col" class="ns-n">TGT</th><th scope="col" class="ns-n">YDS</th><th scope="col" class="ns-n">TD</th><th scope="col" class="ns-n ns-hs">LNG</th></tr></thead><tbody>${bodyRowsHtml || emptyHtml}${moreHtml}${totalHtml}</tbody></table></div>`;
+  }
+  function rushTableHtml(d, side, t, ui, flash) {
+    const fl = flash || new Set(), rows = (t && t.rush) || [], tot = (t && t.tot) || {};
+    const topCar = topSet(rows, "car"), topYds = topSet(rows, "yds");
+    const bodyRowsHtml = rows.map(r => {
+      const c = f => fl.has(flashKey(side, "rush", r.id, f));
+      return `<tr class="${esc(c("row") ? "ns-chg" : "")}">${nameCellHtml(r, false)}${statCellHtml(r.car, { top: int(r.car) === topCar, chg: c("car"), k: true })}${statCellHtml(r.yds, { top: int(r.yds) === topYds, chg: c("yds") })}${statCellHtml(r.td, { td: true, chg: c("td") })}${statCellHtml(r.lng, { hs: true })}</tr>`;
+    }).join("");
+    const emptyHtml = `<tr class="ns-pe"><td colspan="4">No carries yet</td><td class="ns-n ns-hs"></td></tr>`;
+    const totalHtml = rows.length ? `<tr class="ns-ptot"><th scope="row">Total</th>${statCellHtml(tot.car, { k: true })}${statCellHtml(tot.rushYds, {})}${statCellHtml(tot.rushTd, { td: true })}<td class="ns-n ns-hs"></td></tr>` : "";
+    return `<div class="ns-pw"><table class="ns-pt ns-rt" aria-label="${esc("Rushing, " + d.teams[side].abbr)}"><thead><tr><th scope="col" class="ns-pn">Player</th><th scope="col" class="ns-n ns-k">CAR</th><th scope="col" class="ns-n">YDS</th><th scope="col" class="ns-n">TD</th><th scope="col" class="ns-n ns-hs">LNG</th></tr></thead><tbody>${bodyRowsHtml || emptyHtml}${totalHtml}</tbody></table></div>`;
+  }
+  function passLineHtml(d, side, t, ui, flash) {
+    const fl = flash || new Set(), r = ((t && t.pass) || [])[0];
+    if (!r) return `<div class="ns-pass ns-dimline">No attempts yet</div>`;
+    const chg = fl.has(flashKey(side, "pass", r.id, "td")) || fl.has(flashKey(side, "pass", r.id, "int"));
+    const lineHtml = `<b class="ns-pk">${int(r.cmp)}/${int(r.att)}</b>, ${int(r.yds)} yds, ${int(r.td)} TD, ${int(r.int)} INT`;
+    return `<div class="ns-pass${chg ? " ns-chg" : ""}"><span class="ns-pnm">${r.no ? `<i class="ns-jn">#${esc(r.no)}</i>` : ""}${esc(shortName(r.name))}</span><span class="ns-pln">${lineHtml}</span></div>`;
+  }
+
+  function teamStatsHtml(d, ui) {
     const box = d.box || [];
-    if (!box.length) return `<div class="ns-empty">Box score not available yet.</div>`;
+    const open = ui && ui.boxOpen != null ? Boolean(ui.boxOpen) : !playersReady(d);
     const rowsHtml = box.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("");
-    return `<table class="ns-box"><thead><tr><th></th><th>${esc(d.teams.away.abbr)}</th><th>${esc(d.teams.home.abbr)}</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    const tableHtml = box.length ? `<table class="ns-box"><thead><tr><th></th><th>${esc(d.teams.away.abbr)}</th><th>${esc(d.teams.home.abbr)}</th></tr></thead><tbody>${rowsHtml}</tbody></table>` : `<div class="ns-empty">Box score not available yet.</div>`;
+    return `<details class="ns-tstats" data-box${open ? " open" : ""}><summary>Team stats</summary>${tableHtml}</details>`;
+  }
+  function boxTabHtml(d, ui) {
+    const u = ui || {}, fl = flashSet(u), ready = playersReady(d);
+    const notes = (u.flash && u.flash.notes) || [];
+    const noteHtml = notes.length ? `<p class="ns-note ns-fnote" role="status">${esc("Updated: " + notes.join(" · "))}</p>` : "";
+    let playersHtml = `<p class="ns-note">Player stats appear once the game is under way.</p>`;
+    if (ready) {
+      const p = d.players;
+      const recHtml = sectionHtml("Receiving", d, u, s => teamBlockHtml(d, s, recTableHtml(d, s, p[s], u, fl)));
+      const rushHtml = sectionHtml("Rushing", d, u, s => teamBlockHtml(d, s, rushTableHtml(d, s, p[s], u, fl)));
+      const passHtml = sectionHtml("Passing", d, u, s => teamBlockHtml(d, s, passLineHtml(d, s, p[s], u, fl)));
+      playersHtml = tdStripHtml(d, p, u, fl) + playersControlsHtml(d, u) + recHtml + rushHtml + passHtml;
+    }
+    return `${noteHtml}${playersHtml}${teamStatsHtml(d, u)}`;
+  }
+
+  // Changed player stats between two payloads: cell keys to highlight plus up to three plain-text notes.
+  function playerDiff(prevD, nextD) {
+    const out = { keys: [], notes: [] };
+    const a = prevD && prevD.players, b = nextD && nextD.players;
+    if (!a || !b || !a.ready || !b.ready) return out;
+    const tdNotes = [], recNotes = [];
+    for (const side of PSIDES) {
+      const pa = a[side] || {}, pb = b[side] || {};
+      const prior = (cat, id) => (pa[cat] || []).find(r => String(r.id) === String(id));
+      for (const r of pb.rec || []) {
+        const o = prior("rec", r.id), base = (f) => flashKey(side, "rec", r.id, f);
+        if (!o) out.keys.push(base("row"));
+        else for (const f of ["rec", "yds", "td"]) if (int(r[f]) !== int(o[f])) out.keys.push(base(f));
+        const gain = int(r.rec) - int(o && o.rec);
+        if (gain > 0) recNotes.push(shortName(r.name) + " +" + gain + " REC");
+      }
+      for (const r of pb.rush || []) {
+        const o = prior("rush", r.id);
+        if (!o) out.keys.push(flashKey(side, "rush", r.id, "row"));
+        else for (const f of ["car", "yds", "td"]) if (int(r[f]) !== int(o[f])) out.keys.push(flashKey(side, "rush", r.id, f));
+      }
+      for (const r of pb.pass || []) {
+        const o = prior("pass", r.id);
+        if (o) for (const f of ["td", "int"]) if (int(r[f]) !== int(o[f])) out.keys.push(flashKey(side, "pass", r.id, f));
+      }
+      for (const r of pb.tds || []) {
+        const o = prior("tds", r.id);
+        if (!o) out.keys.push(flashKey(side, "tds", r.id, "row"));
+        let gain = 0;
+        for (const k of TD_KINDS) {
+          const g = int(r[k[0]]) - int(o && o[k[0]]);
+          if (g > 0) { gain += g; if (o) out.keys.push(flashKey(side, "tds", r.id, k[0])); }
+        }
+        if (gain > 0) tdNotes.push(shortName(r.name) + (gain > 1 ? " +" + gain + " TD" : " TD"));
+      }
+    }
+    out.notes = tdNotes.concat(recNotes).slice(0, 3);
+    return out;
   }
   function leadersTabHtml(d) {
     const L = d.leaders || {};
@@ -324,13 +484,13 @@
     if (tab === "plays") return playsTabHtml(d, ui);
     if (tab === "wp") return wpHtml(d);
     if (tab === "scoring") return scoringTabHtml(d);
-    if (tab === "box") return boxTabHtml(d);
+    if (tab === "box") return boxTabHtml(d, ui);
     if (tab === "leaders") return leadersTabHtml(d);
     return drivesTabHtml(d, ui);
   }
   function validTab(tab) { return TABS.some(t => t[0] === tab); }
 
-  // ui: { id, d, error, loading, tab, filter, drv }
+  // ui: { id, d, error, loading, tab, filter, drv, psort, pteam, boxOpen, flash }
   function panelHtml(ui) {
     const d = ui.d;
     const closeHtml = `<button class="ns-x" data-close aria-label="Close game detail">×</button>`;
@@ -355,7 +515,7 @@
   }
   // pure:end
 
-  let S = null;          // { id, d, error, tab, filter, drv, seq, sig, opener, fromBoard }
+  let S = null;          // { id, d, error, tab, filter, drv, psort, pteam, boxOpen, flash, seq, sig, opener, fromBoard }
   let timer = null, inflight = false, overlay = null, inerted = [];
 
   function chicago(iso) {
@@ -383,10 +543,18 @@
     if (tab) { S.tab = tab.dataset.tab; render(); const b = overlay.querySelector(".ns-body"); if (b) b.scrollTop = 0; return; }
     const f = e.target.closest("[data-filter]");
     if (f) { S.filter = f.dataset.filter; render(); return; }
+    const ps = e.target.closest("[data-psort]");
+    if (ps) { S.psort = validPsort(ps.dataset.psort); render(); return; }
+    const pt = e.target.closest("[data-pteam]");
+    if (pt) { S.pteam = validPteam(pt.dataset.pteam); render(); return; }
     if (e.target.closest("[data-retry]")) load(true);
   }
   function onToggle(e) {
     const el = e.target;
+    if (S && S.d && el.hasAttribute && el.hasAttribute("data-box")) {
+      if (el.open !== !playersReady(S.d) || S.boxOpen != null) S.boxOpen = el.open;
+      return;
+    }
     if (!S || !S.d || !el.dataset || el.dataset.did == null) return;
     const dr = (S.d.drives || []).find(r => String(r.id) === el.dataset.did);
     if (!dr) return;
@@ -428,9 +596,10 @@
   function render() {
     if (!S || !overlay) return;
     const p = panel(), a = document.activeElement;
-    const keep = a && p.contains(a) ? (a.dataset.tab ? `[data-tab="${CSS.escape(a.dataset.tab)}"]` : a.dataset.filter ? `[data-filter="${CSS.escape(a.dataset.filter)}"]` : a.hasAttribute("data-close") ? "[data-close]" : "") : "";
+    const keep = a && p.contains(a) ? (a.dataset.tab ? `[data-tab="${CSS.escape(a.dataset.tab)}"]` : a.dataset.filter ? `[data-filter="${CSS.escape(a.dataset.filter)}"]` : a.dataset.psort ? `[data-psort="${CSS.escape(a.dataset.psort)}"]` : a.dataset.pteam ? `[data-pteam="${CSS.escape(a.dataset.pteam)}"]` : a.hasAttribute("data-close") ? "[data-close]" : "") : "";
     const body = p.querySelector(".ns-body"), top = body ? body.scrollTop : 0;
     const fullHtml = panelHtml(S);
+    S.flash = null;
     p.innerHTML = fullHtml;
     const fresh = p.querySelector(".ns-body"); if (fresh) fresh.scrollTop = top;
     if (keep) { const el = p.querySelector(keep); if (el) el.focus(); }
@@ -458,6 +627,8 @@
       const { fetched_at, ...rest } = data;
       const sig = JSON.stringify(rest);
       const changed = sig !== mine.sig || mine.error;
+      const prevD = mine.d;
+      mine.flash = changed && prevD && !mine.error ? playerDiff(prevD, data) : null;
       mine.d = data; mine.error = null; mine.sig = sig; mine.fetchedAt = fetched_at;
       if (changed) render(); else stamp();
     } catch (err) {
@@ -476,7 +647,7 @@
     if (S && S.id === id) { refresh(); return; }
     if (S) teardown();
     ensureOverlay();
-    S = { id, d: null, error: null, tab: null, filter: "all", drv: {}, seq: 0, sig: "", fetchedAt: "", opener: document.activeElement, fromBoard: Boolean(opts && opts.fromBoard) };
+    S = { id, d: null, error: null, tab: null, filter: "all", drv: {}, psort: "rec", pteam: "both", boxOpen: null, flash: null, seq: 0, sig: "", fetchedAt: "", opener: document.activeElement, fromBoard: Boolean(opts && opts.fromBoard) };
     document.body.classList.add("ns-open");
     inerted = Array.from(document.body.children).filter(el => el !== overlay && !el.inert);
     inerted.forEach(el => { el.inert = true; });

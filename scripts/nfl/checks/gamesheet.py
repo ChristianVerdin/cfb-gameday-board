@@ -6,19 +6,21 @@ import gzip
 import json
 
 from nflcore import sanitize
-from nflcore.gamesheet import ADMIN, BOX, clean_text, norm_summary, period_label
+from nflcore.gamesheet import ADMIN, BOX, _num, _players, clean_text, norm_summary, period_label
 
 OT = "summary_ot_final_2025w2_nyg_dal.json"
 TIE = "summary_tie_final_2025w4_gb_dal.json"
 SB = "summary_superbowl_lx.json"
 PRO = "summary_probowl_2025.json"
+HC = "summary_final_fresh_hou_cle.json"
+TD_STRUCT = ("summary_live_end_period_min_gb.json", "summary_live_two_minute_hou_cle.json")
 EARLY, LATE = "live_summary_early.json", "live_summary_late.json"
 TRIGGERS = ("live_trigger_401873054_fg_good.json", "live_trigger_401873054_timeout.json",
             "live_trigger_401873055_rush_td.json", "live_trigger_401873056_timeout.json",
             "live_trigger_401873057_fg_good.json", "live_trigger_401873060_timeout.json")
 KEYS = {"ok", "v", "id", "fetched_at", "state", "status", "period", "periodLabel", "clock", "last_play_wallclock",
         "teams", "linescores", "ot_periods", "result", "scoring", "drives", "current_drive_id", "tracker", "winprob",
-        "box", "leaders", "warnings"}
+        "box", "leaders", "players", "warnings"}
 
 
 def plays(out):
@@ -530,6 +532,9 @@ def test_payload_budgets(check):
         raw, gz = size(norm_summary(check.fixture(name)))
         check.true(f"{name} raw under 60 KB", raw < 60_000, raw)
         check.true(f"{name} gzip under 15 KB", gz < 15_000, gz)
+    for name in (OT, TIE, SB, HC, EARLY, LATE, *TRIGGERS):
+        pl = len(json.dumps(norm_summary(check.fixture(name))["players"], separators=(",", ":")))
+        check.true(f"{name} players under 4500 bytes", pl < 4_500, pl)
     raw, gz = size(norm_summary(check.fixture(PRO)))
     check.true("pro bowl tiny", raw < 2_000, raw)
 
@@ -540,3 +545,155 @@ def test_drive_yl100_by_side(check):
     check("away drive at yardLine 70 (own 30) has 70 to go", _yl100(70, "away"), 70)
     check("unknown side", _yl100(70, None), None)
     check("out of range", _yl100(101, "home"), None)
+
+
+EMPTY_SIDE = {"rec": [], "rush": [], "pass": [], "tds": [], "tdn": 0, "recMore": 0,
+              "tot": {"rec": 0, "recYds": 0, "recTd": 0, "car": 0, "rushYds": 0, "rushTd": 0}}
+EMPTY_PLAYERS = {"ready": False, "away": EMPTY_SIDE, "home": EMPTY_SIDE}
+ROW_KEYS = {"rec": {"id", "name", "no", "rec", "tgt", "yds", "td", "lng"},
+            "rush": {"id", "name", "no", "car", "yds", "td", "lng"},
+            "pass": {"id", "name", "no", "cmp", "att", "yds", "td", "int"},
+            "tds": {"id", "name", "no", "rush", "rec", "ret", "def"}}
+ALL_FIXTURES = (OT, TIE, SB, HC, PRO, EARLY, LATE, *TD_STRUCT, *TRIGGERS)
+
+
+def no_players(s):
+    s = copy.deepcopy(s)
+    s["boxscore"].pop("players", None)
+    return s
+
+
+def test_players_shape(check):
+    check("num parse", [_num(x) for x in (None, "", "--", "-", " 7 ", "-2", "22.0", "x", "1-14")], [0, 0, 0, 0, 7, -2, 22, 0, 0])
+    check("pregame without players key", norm_summary(no_players(pre_game(check.fixture(LATE))))["players"], EMPTY_PLAYERS)
+    check("empty summary", norm_summary({})["players"], EMPTY_PLAYERS)
+    check("probowl shells", norm_summary(check.fixture(PRO))["players"], EMPTY_PLAYERS)
+    for name in ALL_FIXTURES:
+        pl = norm_summary(check.fixture(name))["players"]
+        check(f"{name} players keys", set(pl), {"ready", "away", "home"})
+        check.true(f"{name} ready is bool", isinstance(pl["ready"], bool))
+        blob = json.dumps(pl).lower()
+        check(f"{name} players text clean", [w for w in ("http", "$ref", "logo", ".pvt") if w in blob], [])
+        for side in ("away", "home"):
+            t = pl[side]
+            check(f"{name} {side} side keys", set(t), set(EMPTY_SIDE))
+            check(f"{name} {side} tot keys", set(t["tot"]), set(EMPTY_SIDE["tot"]))
+            check.true(f"{name} {side} ints", all(type(v) is int for v in t["tot"].values()) and type(t["tdn"]) is int and type(t["recMore"]) is int)
+            for kind, keys in ROW_KEYS.items():
+                for r in t[kind]:
+                    check(f"{name} {side} {kind} row keys", set(r), keys)
+                    check.true(f"{name} {side} {kind} row types", all(isinstance(r[k], str) if k in ("id", "name", "no") else type(r[k]) is int for k in keys))
+                    check.true(f"{name} {side} {kind} name bounded", len(r["name"]) <= 40 and len(r["no"]) <= 3 and r["id"] != "")
+            check.true(f"{name} {side} caps", len(t["rec"]) <= 10 and len(t["rush"]) <= 6 and len(t["pass"]) <= 2 and len(t["tds"]) <= 8)
+            check.true(f"{name} {side} rec rows qualify", all(r["rec"] > 0 or r["td"] > 0 for r in t["rec"]))
+            check.true(f"{name} {side} rush rows qualify", all(r["car"] > 0 for r in t["rush"]))
+            check.true(f"{name} {side} pass rows qualify", all(r["att"] > 0 or r["cmp"] > 0 for r in t["pass"]))
+            check.true(f"{name} {side} rec sort", t["rec"] == sorted(t["rec"], key=lambda r: (-r["yds"], -r["rec"], r["name"])))
+            check.true(f"{name} {side} rush sort", t["rush"] == sorted(t["rush"], key=lambda r: (-r["yds"], -r["car"], r["name"])))
+            check.true(f"{name} {side} pass sort", t["pass"] == sorted(t["pass"], key=lambda r: (-r["att"], r["name"])))
+            totals = [sum(r[k] for k in ("rush", "rec", "ret", "def")) for r in t["tds"]]
+            check.true(f"{name} {side} tds sort", totals == sorted(totals, reverse=True) and all(x > 0 for x in totals))
+            check.true(f"{name} {side} tdn covers listed", t["tdn"] >= sum(totals))
+        check(f"{name} ready", pl["ready"], any(pl[s][k] for s in ("away", "home") for k in ("rec", "rush", "pass", "tds")))
+
+
+def test_players_known(check):
+    o = norm_summary(check.fixture(HC))
+    rows = [r for side in ("away", "home") for r in o["players"][side]["tds"] if "Collins" in r["name"]]
+    check("Collins one scorer row", len(rows), 1)
+    check("Collins rec TDs (his 12-yard catch; HOU has 3 TDs in all)", [rows[0]["rec"], rows[0]["rush"]], [1, 0])
+    check("HOU scorers", sorted(r["name"] for side in ("away", "home") for r in o["players"][side]["tds"] if r["rec"]),
+          ["Dalton Schultz", "Nico Collins", "Xavier Hutchinson"])
+    r = norm_summary(check.fixture("live_trigger_401873055_rush_td.json"))
+    scorers = [x for side in ("away", "home") for x in r["players"][side]["tds"] if x["rush"] == 1]
+    check.true("rush trigger has a rushing scorer", len(scorers) >= 1, scorers)
+    live = norm_summary(check.fixture(LATE))["players"]
+    check.true("live passing parsed despite key drift", all(p["att"] >= p["cmp"] > 0 for side in ("away", "home") for p in live[side]["pass"]) and live["ready"])
+
+
+def test_players_td_reconcile(check):
+    for name in (OT, TIE, SB, HC, *TD_STRUCT, EARLY, LATE, *TRIGGERS):
+        o = norm_summary(check.fixture(name))
+        final = o["state"] == "post"
+        for side in ("away", "home"):
+            n = sum(1 for x in o["scoring"] if x["kind"] == "TD" and x["team"] == o["teams"][side]["abbr"])
+            diff = abs(o["players"][side]["tdn"] - n)
+            check.true(f"{name} {side} tdn {o['players'][side]['tdn']} vs scoring TDs {n}", diff == 0 if final else diff <= 1)
+
+
+def _team_cat(s, side_idx, cat):
+    return next(c for c in s["boxscore"]["players"][side_idx]["statistics"] if c["name"] == cat)
+
+
+def _ath(i, name="Zed Test", jersey="12"):
+    return {"athlete": {"id": i, "displayName": name, "jersey": jersey, "links": [{"href": "https://x"}]}}
+
+
+def test_players_synthetic(check):
+    base = check.fixture(HC)
+    ids = {str(t["team"]["id"]): ("away" if i == 0 else "home") for i, t in enumerate(base["boxscore"]["players"])}
+
+    def build(mut):
+        s = copy.deepcopy(base)
+        for c in s["boxscore"]["players"][0]["statistics"]:
+            if c["name"] in ("defensive", "interceptions", "kickReturns", "puntReturns", "rushing", "receiving"):
+                c["athletes"] = []
+        mut(s)
+        return norm_summary(s)["players"]["away"]
+
+    def put(s, cat, ident, tdlab_stats):
+        c = _team_cat(s, 0, cat)
+        n = len(c["labels"])
+        stats = ["0"] * n
+        for lab, v in tdlab_stats.items():
+            stats[c["labels"].index(lab)] = v
+        c["athletes"].append({**_ath(ident), "stats": stats})
+
+    def both(s):
+        put(s, "defensive", "9001", {"TD": "1"}); put(s, "interceptions", "9001", {"TD": "1"})
+    check("same id in defensive and interceptions counts once", [(r["id"], r["def"]) for r in build(both)["tds"]], [("9001", 1)])
+    check("tdn once", build(both)["tdn"], 1)
+
+    def only_def(s):
+        put(s, "defensive", "9002", {"TD": "1"})
+    check("defensive only", [r["def"] for r in build(only_def)["tds"]], [1])
+
+    def rets(s):
+        put(s, "kickReturns", "9003", {"TD": "1"}); put(s, "puntReturns", "9003", {"TD": "1"})
+    check("kick plus punt return", [(r["ret"], r["rush"], r["rec"], r["def"]) for r in build(rets)["tds"]], [(2, 0, 0, 0)])
+
+    def mixed(s):
+        put(s, "rushing", "9004", {"CAR": "3", "TD": "1"}); put(s, "receiving", "9004", {"REC": "2", "TD": "1"})
+    row = build(mixed)["tds"][0]
+    check("one row per athlete across categories", [row["rush"], row["rec"]], [1, 1])
+
+    def drift(s):
+        c = _team_cat(s, 0, "passing")
+        c["keys"] = c["keys"] + ["extra"]
+        c["labels"] = ["C/ATT", "YDS", "AVG", "TD", "INT", "SACKS", "RTG"]
+        c["athletes"] = [{**_ath("9005"), "stats": ["11/18", "108", "6.0", "1", "2", "1-5", "88.1"]}]
+    check("passing key/label drift", build(drift)["pass"], [{"id": "9005", "name": "Zed Test", "no": "12", "cmp": 11, "att": 18, "yds": 108, "td": 1, "int": 2}])
+
+    def messy(s):
+        s["boxscore"]["players"][0]["statistics"] = [c for c in s["boxscore"]["players"][0]["statistics"] if c["name"] != "rushing"]
+        c = _team_cat(s, 0, "receiving")
+        c["athletes"] = [{**_ath("9006"), "stats": ["--", "-", "", "--", "--", "2"]}, {**_ath("9007", "A" * 80), "stats": ["3", "-2", "-0.7", "0", "-2", "x"]}]
+    m = build(messy)
+    check("missing category and dashes do not raise", [m["rush"], [r["id"] for r in m["rec"]]], [[], ["9007"]])
+    check("long name truncated", len(m["rec"][0]["name"]) <= 40, True)
+    check("negative yards parsed", [m["rec"][0]["yds"], m["rec"][0]["tgt"]], [-2, 0])
+
+    def many(s):
+        c = _team_cat(s, 0, "receiving")
+        c["athletes"] = [{**_ath(str(9100 + i), f"P{i:02d}"), "stats": ["1", str(i), "1.0", "0", "1", "1"]} for i in range(13)]
+    mm = build(many)
+    check("rec cap and recMore", [len(mm["rec"]), mm["recMore"], mm["tot"]["rec"], mm["rec"][0]["yds"]], [10, 3, 13, 12])
+
+    lonely = copy.deepcopy(base)
+    lonely["boxscore"]["players"][0]["team"]["id"] = "99999"
+    out = norm_summary(lonely)["players"]
+    check("unmapped team skipped", out["away"], EMPTY_SIDE)
+    broken = copy.deepcopy(base)
+    broken["boxscore"]["players"][1] = {"team": broken["boxscore"]["players"][1]["team"], "statistics": [None, {"name": "receiving", "athletes": [{"athlete": None, "stats": None}]}]}
+    check("malformed team does not raise", norm_summary(broken)["players"]["home"], EMPTY_SIDE)
+    check("players from direct call", _players({}, {}), EMPTY_PLAYERS)

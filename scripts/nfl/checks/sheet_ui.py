@@ -26,7 +26,7 @@ def _pure_source() -> str:
 
 
 def _node(expr_js: str):
-    script = f"const api = (function () {{{_pure_source()}\nreturn {{ esc, int, periodLabel, lineLabels, downText, phase, defaultTab, totals, statusText, chipStyle, helmetColors, wpValues, wpPath, wpTicks, isBigPlay, playMatches, allPlays, sideOf, trackerGeom, panelHtml }};\n}})();\nconsole.log(JSON.stringify({expr_js}));"
+    script = f"const api = (function () {{{_pure_source()}\nreturn {{ esc, int, periodLabel, lineLabels, downText, phase, defaultTab, totals, statusText, chipStyle, helmetColors, wpValues, wpPath, wpTicks, isBigPlay, playMatches, allPlays, sideOf, trackerGeom, panelHtml, playerDiff, sortRec, validPsort, validPteam, boxTabHtml, tdStripHtml, recTableHtml, rushTableHtml, passLineHtml, playersControlsHtml, shortName, topSet }};\n}})();\nconsole.log(JSON.stringify({expr_js}));"
     out = subprocess.run([NODE, "-"], input=script, capture_output=True, text=True, timeout=30)
     if out.returncode:
         raise RuntimeError(out.stderr.strip()[:600])
@@ -69,14 +69,45 @@ def _game(state="IN_PROGRESS", **over):
         "box": [["First downs", "12", "9"], ["Total yards", "250", "180"]],
         "leaders": {"away": [{"cat": "Passing", "name": "Mahomes", "line": "20/30, 250"}], "home": [{"cat": "Rushing", "name": "Robinson", "line": "12 car, 60"}]},
         "warnings": [],
+        "players": _players(),
     }
     d.update(over)
     return d
 
 
+def _row(i, name, **kw):
+    r = {"id": str(i), "name": name, "no": str(i % 90)}
+    r.update(kw)
+    return r
+
+
+def _team_players(tag, rec, rush, pas, tds, tdn=None, more=0):
+    tot = {"rec": sum(r["rec"] for r in rec), "recYds": sum(r["yds"] for r in rec), "recTd": sum(r["td"] for r in rec),
+           "car": sum(r["car"] for r in rush), "rushYds": sum(r["yds"] for r in rush), "rushTd": sum(r["td"] for r in rush)}
+    return {"rec": rec, "rush": rush, "pass": pas, "tds": tds, "tdn": sum(sum(t[k] for k in ("rush", "rec", "ret", "def")) for t in tds) if tdn is None else tdn, "recMore": more, "tot": tot}
+
+
+def _players():
+    away = _team_players("KC",
+        [_row(11, "Travis Kelce", rec=4, tgt=6, yds=62, td=1, lng=22), _row(12, "Xavier Worthy", rec=5, tgt=7, yds=40, td=0, lng=18), _row(13, "Rashee Rice", rec=2, tgt=2, yds=70, td=0, lng=45)],
+        [_row(14, "Isiah Pacheco", car=10, yds=44, td=0, lng=12), _row(15, "Patrick Mahomes", car=2, yds=9, td=1, lng=7)],
+        [_row(15, "Patrick Mahomes", cmp=11, att=18, yds=108, td=1, int=0)],
+        [{"id": "11", "name": "Travis Kelce", "no": "87", "rush": 0, "rec": 1, "ret": 0, "def": 0}, {"id": "15", "name": "Patrick Mahomes", "no": "15", "rush": 1, "rec": 0, "ret": 0, "def": 0}])
+    home = _team_players("ATL", [], [_row(21, "Bijan Robinson", car=3, yds=11, td=0, lng=6)], [_row(22, "Kirk Cousins", cmp=2, att=4, yds=19, td=0, int=1)], [])
+    return {"ready": True, "away": away, "home": home}
+
+
 def _hostile():
     d = _game()
     bad = '"><script>alert(1)</script><b onclick="x'
+    pl = _players()
+    for side in ("away", "home"):
+        for cat in ("rec", "rush", "pass", "tds"):
+            for r in pl[side][cat]:
+                r["name"] = bad
+                r["no"] = bad
+    pl["away"]["rec"].append(_row(99, bad, rec=1, tgt=1, yds=1, td=1, lng=1))
+    d["players"] = pl
     d["teams"]["away"].update(name=bad, abbr=bad, color='red" onmouseover="x')
     d["drives"][0]["id"] = '1" onclick="x'
     d["drives"][0]["team"] = bad
@@ -431,3 +462,97 @@ def test_sheet_render(check):
         check.true(f"hostile tab {i}: no raw script/img", "<script" not in h and "<img" not in h)
     ex = r["live_default"] + _node("(() => api.panelHtml({ id: '1', d: " + json.dumps(_game(drives=_game()["drives"])) + ", tab: 'drives' }))()")
     check.true("play text with markup is escaped", "&lt;img src=x onerror=alert(1)&gt;" in ex and "<img" not in ex)
+
+
+def test_sheet_box(check):
+    if not NODE or not JS.is_file():
+        return
+    import copy
+    live = _game()
+    nop = copy.deepcopy(live)
+    del nop["players"]
+    notready = copy.deepcopy(live)
+    notready["players"] = {"ready": False, "away": {}, "home": {}}
+    early = copy.deepcopy(live)
+    for side in ("away", "home"):
+        early["players"][side]["rec"] = []
+        early["players"][side]["tds"] = []
+        early["players"][side]["tdn"] = 0
+        early["players"][side]["tot"]["rec"] = 0
+    early["players"]["away"]["rush"] = []
+    # next poll: Worthy +1 catch for 12, Rice new catch, Cousins new TD pass scorer
+    nxt = copy.deepcopy(live)
+    nxt["players"]["away"]["rec"][1].update(rec=6, yds=52)
+    nxt["players"]["home"]["rec"] = [_row(31, "Drake London", rec=1, tgt=1, yds=9, td=1, lng=9)]
+    nxt["players"]["home"]["tds"] = [{"id": "31", "name": "Drake London", "no": "5", "rush": 0, "rec": 1, "ret": 0, "def": 0}]
+    nxt["players"]["home"]["tdn"] = 1
+    tdchg = copy.deepcopy(live)
+    tdchg["players"]["away"]["rec"][0].update(td=2)
+    tdchg["players"]["away"]["tds"][0]["rec"] = 2
+    expr = f"""(() => {{
+  const L = {json.dumps(live)}, N = {json.dumps(nxt)}, T = {json.dumps(tdchg)}, P = {json.dumps(nop)}, R = {json.dumps(notready)}, E = {json.dumps(early)}, H = {json.dumps(_hostile())};
+  const B = (d, ui) => api.boxTabHtml(d, ui || {{}});
+  const names = html => (html.split('<h3 class="ns-ph">Receiving</h3>')[1] || '').split('<h3 class="ns-ph">Rushing</h3>')[0];
+  const order = html => Array.from(names(html).matchAll(/class="ns-jn">#\\d+<\\/i><span>([^<]+)</g)).map(m => m[1]);
+  return {{
+    def: B(L), yds: B(L, {{ psort: "yds" }}), td: B(L, {{ psort: "td" }}), bad: B(L, {{ psort: "zzz", pteam: "zzz" }}),
+    away: B(L, {{ pteam: "away" }}), home: B(L, {{ pteam: "home" }}), nop: B(P), notready: B(R), early: B(E), closed: B(L, {{ boxOpen: true }}), forced: B(L, {{ boxOpen: false }}),
+    flash: B(N, {{ flash: api.playerDiff(L, N) }}), plain: B(N, {{ flash: null }}),
+    diffs: [api.playerDiff(null, L), api.playerDiff(L, L), api.playerDiff(L, N), api.playerDiff(L, T), api.playerDiff(L, P), api.playerDiff(R, L)],
+    sorts: [api.sortRec(L.players.away.rec, "rec"), api.sortRec(L.players.away.rec, "yds"), api.sortRec(L.players.away.rec, "td"), api.sortRec(L.players.away.rec, "x")].map(a => a.map(r => r.id)),
+    valid: [api.validPsort("yds"), api.validPsort("nope"), api.validPsort(null), api.validPteam("home"), api.validPteam("x"), api.validPteam(undefined)],
+    top: [api.topSet(L.players.away.rec, "rec"), api.topSet([], "rec"), api.topSet([{{ rec: 0 }}], "rec")],
+    short: ["Justin Herbert", "Amon-Ra St. Brown", "Cher", "", null, "Tre' Harris"].map(api.shortName),
+    hostile: ["drives", "plays", "wp", "scoring", "box", "leaders"].map(t => api.panelHtml({{ id: "1", d: H, tab: t, psort: "td", pteam: "both", flash: {{ keys: [], notes: ["<script>x</script>"] }} }})),
+    hostbox: B(H, {{ flash: {{ keys: [], notes: ['"><script>alert(1)</script>'] }} }}),
+    order: [order(B(L)), order(B(L, {{ psort: "yds" }})), order(B(L, {{ psort: "td" }}))],
+  }};
+}})()"""
+    r = _node(expr)
+    d = r["def"]
+    check.true("Box opens with Touchdowns for both teams before Receiving", d.count('class="ns-tdb"') == 2 and d.index("Touchdowns") < d.index('class="ns-pctl"') < d.index(">Receiving<") < d.index(">Rushing<") < d.index(">Passing<") < d.index("Team stats"))
+    check.true("TD strip names scorers with kind tags", "T. Kelce" in d.split('class="ns-pctl"')[0] and "P. Mahomes" in d.split('class="ns-pctl"')[0] and ">REC<" in d and ">RUSH<" in d)
+    check.true("TD strip block header carries the count", re.findall(r'<b class="ns-tdn[^"]*">(\d+)</b>', d) == ["2", "0"])
+    check.true("empty TD block says so", "No touchdowns yet" in d)
+    check.true("receiving table has labelled columns", 'aria-label="Receiving, KC"' in d and 'aria-label="Receiving, ATL"' in d and d.count('scope="col"') >= 4 * 5 and 'scope="row"' in d)
+    check.true("receivers also show catches per team and a Total row", ">REC<" in d and "ns-ptot" in d and "No catches yet" in d)
+    check.true("team stats closed when player stats are ready", re.search(r'<details class="ns-tstats" data-box>', d) is not None and "First downs" in d)
+    check.true("controls are pressed-state buttons", d.count("data-psort=") == 3 and d.count("data-pteam=") == 3 and 'aria-pressed="true"' in d)
+    check.true("default sort is rec and team is both", re.search(r'data-psort="rec" aria-pressed="true"', d) is not None and re.search(r'data-pteam="both" aria-pressed="true"', d) is not None)
+    check("receivers sort: rec, yds, td, bad key", r["sorts"], [["12", "11", "13"], ["13", "11", "12"], ["11", "13", "12"], ["12", "11", "13"]])
+    check("rendered receiver order follows psort", r["order"], [["X. Worthy", "T. Kelce", "R. Rice"], ["R. Rice", "T. Kelce", "X. Worthy"], ["T. Kelce", "R. Rice", "X. Worthy"]])
+    check("psort/pteam validation", r["valid"], ["yds", "rec", "rec", "home", "both", "both"])
+    check("column leader value", r["top"], [5, 0, 0])
+    check("short names", r["short"], ["J. Herbert", "A. St. Brown", "Cher", "", "", "T. Harris"])
+    check.true("invalid psort and pteam fall back", re.search(r'data-psort="rec" aria-pressed="true"', r["bad"]) is not None and r["bad"].count('aria-label="Receiving, ') == 2)
+    check.true("leaders are bold and TD cells green", 'class="ns-top"' in d and 'class="ns-td"' in d)
+    check.true("pteam=away hides home tables, keeps both TD blocks", 'aria-label="Receiving, ATL"' not in r["away"] and 'aria-label="Receiving, KC"' in r["away"] and r["away"].count('class="ns-tdb"') == 2 and 'aria-label="Rushing, ATL"' not in r["away"])
+    check.true("pteam=home hides away tables, keeps both TD blocks", 'aria-label="Receiving, KC"' not in r["home"] and 'aria-label="Receiving, ATL"' in r["home"] and r["home"].count('class="ns-tdb"') == 2)
+    check.true("passing line per team", "11/18" in d and "108 yds, 1 TD, 0 INT" in d and "2/4" in d and "19 yds, 0 TD, 1 INT" in d)
+    check.true("no players key: renders, team stats open, note", 'data-box open' in r["nop"] and "First downs" in r["nop"] and "Player stats appear once the game is under way" in r["nop"] and "ns-tdb" not in r["nop"])
+    check.true("players not ready behaves the same", 'data-box open' in r["notready"] and "Player stats appear" in r["notready"])
+    check.true("early live: no catches, no carries (away), no touchdowns", "No catches yet" in r["early"] and "No carries yet" in r["early"] and r["early"].count("No touchdowns yet") == 2 and "ns-ptot" in r["early"])
+    check.true("team stats toggle state is honoured", "data-box open" in r["closed"] and "data-box open" not in r["forced"])
+    dn, dl = r["diffs"][2], r["diffs"]
+    check("diff with no previous payload", dl[0], {"keys": [], "notes": []})
+    check("diff of identical payloads", dl[1], {"keys": [], "notes": []})
+    check("diff with a payload that has no players or is not ready", [dl[4], dl[5]], [{"keys": [], "notes": []}] * 2)
+    check("diff keys for changed rec/yds, new row, new scorer", sorted(dn["keys"]), sorted(["away:rec:12:rec", "away:rec:12:yds", "home:rec:31:row", "home:tds:31:row"]))
+    check("diff notes: touchdown first, then catches", dn["notes"], ["D. London TD", "X. Worthy +1 REC", "D. London +1 REC"])
+    check("diff of a second TD for the same scorer", dl[3]["keys"], ["away:rec:11:td", "away:tds:11:rec"])
+    check("diff note for a second TD", dl[3]["notes"], ["T. Kelce TD"])
+    fl = r["flash"]
+    check.true("changed cells and rows get ns-chg and the note shows", fl.count("ns-chg") >= 4 and 'class="ns-note ns-fnote" role="status">Updated: D. London TD · X. Worthy +1 REC · D. London +1 REC' in fl)
+    check.true("a render without flash has no highlight or note", "ns-chg" not in r["plain"] and "ns-fnote" not in r["plain"])
+    allowed_tags = {"div", "span", "button", "h2", "h3", "table", "thead", "tbody", "tr", "th", "td", "b", "i", "svg", "rect", "line", "path", "circle", "polygon", "details", "summary", "p"}
+    for name in ("def", "yds", "away", "nop", "early", "flash", "hostbox"):
+        p = _parse(r[name])
+        check(f"box {name}: only layout tags", sorted(p.tags - allowed_tags), [])
+        check(f"box {name}: no event-handler attributes", sorted(a for a in p.attrs if a.startswith("on")), [])
+    for i, h in enumerate(r["hostile"]):
+        check.true(f"hostile (with players) tab {i}: escaped", "<script" not in h and "<img" not in h and "onclick=" not in h.replace("&quot;", "").replace("&#39;", "").split("<")[0])
+    hb = r["hostbox"]
+    check.true("hostile player names, jerseys and notes are escaped in the Box tab", "<script" not in hb and "&lt;script&gt;" in hb and "&quot;&gt;&lt;script" in hb)
+    css = CSS.read_text()
+    check.true("css: narrow screens hide the long column; flash only without reduced motion",
+               "max-width: 519px" in css and ".ns-hs { display: none; }" in css and re.search(r"prefers-reduced-motion: no-preference\) \{ \.ns-chg", css) is not None)
