@@ -2,8 +2,8 @@
 """Rebuild the snapshot once when a run dropped kickoff forecasts, and keep the better result.
 
 A dropped forecast is not a visible gap: impact() runs on wx=None and reports
-"Clean outdoor conditions", so the board claims clean weather for a game it knows
-nothing about. The 2026-09-17 CI run lost 8 of 75 that way to Open-Meteo TLS
+"Forecast unavailable" (it read "Clean outdoor conditions" before 2026-11), so the
+board shows a game it knows nothing about. The 2026-09-17 CI run lost 8 of 75 that way to Open-Meteo TLS
 handshake timeouts on the runner, which is flakier than a local machine.
 
 forecast() already retries each call once. This is the whole-run safety net on top,
@@ -39,7 +39,7 @@ def main():
     if verify:
         if bad:
             print(f"::warning::snapshot committed with {bad} missing kickoff forecast(s); "
-                  f"those games render as 'Clean outdoor conditions'. Rebuild locally and push.")
+                  f"those games render as 'Forecast unavailable'. Rebuild locally and push.")
             return 1
         return 0
 

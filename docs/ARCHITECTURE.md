@@ -1,7 +1,9 @@
 # Architecture
 
 One folder, no build. Three moving parts, plus a hosted copy on Vercel that
-runs the same files with `api/live.py` in place of `server.py`:
+runs the same files with Python functions in place of `server.py`: `api/live.py`
+and `api/game.py` for the college board, `api/nfl/live.py` and `api/nfl/game.py`
+for the pro football board (`vercel.json` lists all four):
 
 1. A **snapshot** (`games.json` / `games.js`) built once per week by
    `scripts/refresh_week.py`.
@@ -64,6 +66,14 @@ https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboa
 Notes on that feed:
 
 - `groups=80` is FBS. FCS opponents still appear as competitors in FBS games.
+  It also returns the FCS Championship bracket (notes headline "FCS Championship -
+  First Round" and so on, 8 events on each of the first two Saturdays of December,
+  TBD teams and no venue until seeded). `drop_fcs_playoff()` removes those right
+  after the dates are gathered, before `week_label()` and the counts, so the labels,
+  the meta description and the promo text see only FBS games. It matches that
+  headline only (case-insensitive): regular-season FBS-vs-FCS games stay, and so does
+  the Celebration Bowl (a pending decision). The drop is recorded as
+  `counts.fcs_playoff_dropped`.
 - `dates=` is an Eastern-time calendar date. A 7:30 PM CT Saturday kick is a
   Saturday ESPN date; a 10:30 PM PT kick is still that same ESPN date.
 - `site.api.espn.com` returns 403 to some clients. The browser-like headers in
@@ -113,7 +123,7 @@ escapes every ESPN string with `esc()`.
 
 ### Hosted variant (Vercel)
 
-`api/live.py` is a stateless Python function that imports `pull_date`,
+`api/live.py` (and `api/game.py`, same pattern with `game_payload()`) is a stateless Python function that imports `pull_date`,
 `live_payload`, and `parse_dates` from `server.py`. It sets
 `Cache-Control: public, max-age=0, s-maxage=20, stale-while-revalidate=40`, so
 Vercel's CDN answers every viewer from one ESPN pull per 20 s per URL. There is
@@ -158,7 +168,7 @@ server that only started after a game ended serves the snapshot line for it.
   fallback: it computes Tue..Mon of the slate in progress rather than a
   frozen list, which had silently stayed on Week 1's dates. It deliberately
   duplicates `refresh_week.default_dates` instead of importing it — `vercel.json`
-  excludes `scripts/**` from the `api/live.py` bundle, so that import would 502
+  excludes `scripts/**` from the function bundles, so that import would 502
   on every cold start.
 - The `LineBook` is built lazily via `line_book()`. It used to be constructed at
   module import, which meant every Vercel cold start read a `lines.json` the
@@ -176,7 +186,14 @@ Done once per week by `scripts/refresh_week.py`, never live.
    `country` and no state (Aviva Stadium: Dublin, Ireland) and is matched against
    that country instead; matching it against US results put the Week 0 Dublin game
    on Dublin, Ohio's weather. A city with no match at all is counted as
-   `geocode_unmatched` and warned, since it leaves the game with no forecast too. The result supplies `lat`,
+   `geocode_unmatched` and warned, since it leaves the game with no forecast too.
+   US territories arrive like an overseas venue (`country` "Puerto Rico", no state) but
+   Open-Meteo returns `country` null and only `country_code` ("PR"), so the match also
+   accepts that code through the `TERRITORIES` map (Puerto Rico PR, Guam GU, U.S. Virgin
+   Islands VI, American Samoa AS). `geocode_unmatched` is deliberately not part of
+   `ci_heal.failures()`: a rebuild repeats an unmatched city, so counting it would
+   rebuild on every run and make `--verify` fail forever. It stays a `check.py`
+   warning. The result supplies `lat`,
    `lon`, `elev` (meters), `geo_name`, `admin1`, and the venue's IANA timezone.
    `elev_ft = round(elev * 3.28084)`. Cities are deduplicated per run, and any
    venue already present in the existing `games.json` reuses its stored `geo`
@@ -191,12 +208,15 @@ Done once per week by `scripts/refresh_week.py`, never live.
    A kickoff ESPN has not announced (`timeValid: false`) is parked at midnight
    Eastern; it gets no forecast (there is no kickoff hour), `wx_label` "Kickoff TBA",
    `kick_ct` like "Sat TBA", `time_tbd: true`, and an impact note saying the
-   forecast follows, never "Clean outdoor conditions".
+   forecast follows, never "Clean outdoor conditions". Any other outdoor game with no
+   forecast (no venue yet, an unmatched geocode, a forecast failure) reads
+   "Forecast unavailable"; the level stays CLEAR with `under_score` 0, so the filters
+   behave as before, but the card no longer claims clean weather.
    The call has a 10 s timeout and **one retry**, drawn from a whole-run budget
    of 20 so a bad Open-Meteo day cannot blow the Action's 20-minute cap. The
    retry exists because a dropped forecast is not a visible gap: `impact()` then
-   runs on `wx=None` and reports "Clean outdoor conditions", so a 98° game
-   silently loses its heat flag. A 2026-09-17 CI run lost 8 of 75 forecasts to
+   runs on `wx=None` and reports "Forecast unavailable" (it said "Clean outdoor
+   conditions" until 2026-11), so a 98° game silently loses its heat flag. A 2026-09-17 CI run lost 8 of 75 forecasts to
    TLS handshake timeouts exactly this way.
 3. **Derive** the display fields:
    - `wx_label` / `wx_emoji` from the WMO `weather_code` (0 Clear, 1 Mostly
@@ -238,7 +258,8 @@ Done once per week by `scripts/refresh_week.py`, never live.
      a total read"` at 90-92. Then wind (`"Wind 18 mph — check total"`), rain
      (`"75% rain — lean under if it arrives"`), cold, and elevation
      (`"Elevation 6,030 ft — kicking / conditioning note"`). If nothing scored
-     and there are no notes, `"Clean outdoor conditions"` is added first.
+     and there are no notes, `"Clean outdoor conditions"` is added first, or
+     `"Forecast unavailable"` when `wx` is None.
      Indoor: `"Indoor — weather off the board"`.
    - `kick_ct` is the kickoff in America/Chicago, e.g. `Sat 2:30 PM CT`.
    - `group`: `P4/P5` if either team is ACC / Big 12 / Big Ten / SEC / Pac-12,
@@ -284,7 +305,9 @@ Done once per week by `scripts/refresh_week.py`, never live.
    kicker div with `week_label` (or a neutral string, since `week_label()` can
    return None). `startDate` is venue-local with a real offset derived from
    `wx.utc_offset_seconds`, never the raw UTC; a TBA kickoff gets a date-only
-   `startDate`. A rivalry game carries its name as `alternateName` ("Iron Bowl" is
+   `startDate`. A placeholder (a team with a negative id or named TBD, or no venue
+   name) is skipped by `is_placeholder()`, since its Place name would be null. Each
+   event carries `image` (the og.png) and no `endDate`: a game has no fixed end. A rivalry game carries its name as `alternateName` ("Iron Bowl" is
    how it is searched). TV uses
    `publication` → `BroadcastEvent` → `publishedOn`. `sitemap.xml` gets
    `<lastmod>` from `generated_at`. Runs only when `--out` is the repo root;
@@ -350,8 +373,8 @@ python3 scripts/refresh_week.py --start 20260911 --end 20260914
   same commit — the refresh Action adds and diffs all four.
 - `warnings[]` used to hold only whole-date scoreboard failures, so an empty list
   was not evidence of a clean build: a geocode failure produced no forecast, and
-  `impact()` then reported "Clean outdoor conditions" for a game it knew nothing
-  about. It now records geocode, forecast, per-game skip and enrichment failures
+  `impact()` then reported a clean forecast for a game it knew nothing
+  about (now "Forecast unavailable"). It now records geocode, forecast, per-game skip and enrichment failures
   too (capped at 50), and `counts{}` carries `geocode_failed`, `forecast_failed`,
   `forecast_missing`, `geocode_unmatched`, `games_skipped`, `lines_carried`, `dates_failed`,
   `fallback_url_used`, `no_groups_fallback`, `enriched`, `enrich_failed`, plus
@@ -397,6 +420,12 @@ The refresh script imports `fetch_json`, `endpoints`, `events_from`, and
   conference selector, so "SEC conference games" and "P4 non-conference" stay
   expressible. `isConfGame()` falls back to deriving from `conferenceId` when the
   snapshot predates `conf_game`.
+- The `check.py` run-health gate (`test_run_health`, which fails the Action's commit
+  step) fails a snapshot when more than 25% of outdoor games have no forecast, with at
+  least 20 games and a start within 14 days. Games that legitimately have none are
+  excluded from both the count and the denominator: `time_tbd`, a TBD team, no venue.
+  Real failures (`forecast_failed`, `geocode_failed`) still count. Offline fixtures
+  cover a 40%-TBA slate (passes) and a 40%-failed slate (fails).
 - `python3 scripts/check.py` runs the offline smoke test; run it after touching
   `impact()`, `kick_ct()`, or `liveMath()`. It checks the impact table, the time
   helpers, `fallback_dates()`, five `app.js` functions extracted as source text
@@ -453,7 +482,8 @@ the claims. In the app, `Route(url:)` in `QuickActions.swift` maps
 
 `manifest.webmanifest` + `icons/` (SVG source, PNGs rendered with `qlmanage`
 and `sips`) + `sw.js`. The service worker precaches the shell (`/`,
-`index.html`, `app.js`, `games.js`, manifest, icons) and answers every
+`index.html`, `site.css`, `app.js`, `games.js`, manifest, `/privacy`, `/support`,
+three icons) and answers every
 same-origin GET network-first with cache fallback, so a fresh deploy is picked
 up on the next online load and the last snapshot still renders offline. It
 never intercepts `/api/*`: live data is network-only and the header shows the
@@ -462,11 +492,17 @@ to drop old caches. `app.js` registers the worker on any non-`file:` origin
 (localhost counts as secure) and shows a one-time Add-to-Home-Screen hint in
 iOS Safari when not already running standalone.
 
-## Hosting (not done)
+## Hosting
 
-The proxy binds `127.0.0.1` on purpose: it is an unauthenticated ESPN
-fetch-amplifier and must not sit on `0.0.0.0` without auth. Options, cost
-order, with the draft config files, are in `docs/DEPLOY.md` and `deploy/`.
+Production is Vercel (`cfbgameday.app`, deploys on push to `main`): static files
+plus the four functions above. See `docs/DEPLOY.md`.
+
+## Self-hosting (fallback only)
+
+`server.py` binds `127.0.0.1` on purpose: the proxy is an unauthenticated ESPN
+fetch-amplifier and must not sit on `0.0.0.0` without auth. Tunnel and
+always-on-box options, with the draft config files, are in `docs/DEPLOY.md` and
+`deploy/`.
 
 ## Pro football board (`/nfl`)
 
@@ -485,6 +521,24 @@ the domain, the Vercel project and the visual language with the college board, b
 | `nflcore/metrics.py`, `scripts/nfl/build_metrics.py` | `nfl/metrics.json` from nflverse play-by-play (CC BY 4.0): EPA/play, success rate and pass rate over expected, with ranks |
 | `api/nfl/live.py`, `api/nfl/game.py` | Vercel functions. Whitelisted params, a game-id gate, tiered CDN caching, stale-if-error. |
 | `nfl/` | Client (board, game sheet, field tracker) and `sw.js` scoped to `/nfl/` |
+
+The `/api/nfl/game` payload carries one additive top-level key, `players`, built by `_players()` from ESPN's `boxscore.players`:
+
+```
+players: { ready, away: S, home: S }
+S: { rec[] (cap 10): {id,name,no,rec,tgt,yds,td,lng},   recMore (qualifying rows cut by the cap),
+     rush[] (cap 6): {id,name,no,car,yds,td,lng},
+     pass[] (cap 2): {id,name,no,cmp,att,yds,td,int},
+     tds[] (cap 8): {id,name,no,rush,rec,ret,def},        tdn (all touchdowns, before the cap),
+     tot: {rec,recYds,recTd,car,rushYds,rushTd} }         (summed over every athlete, before filters and caps)
+```
+
+- **Always present,** with `ready:false` and empty lists for pregame (no `boxscore.players`), the Pro Bowl shells and any team that cannot be matched.
+- **Columns are read by label,** never by zipping `keys`: live `passing.keys` has 8 entries against 7 labels and stats.
+- **`rec`** keeps REC>0 or TD>0, sorted by yards, catches, name. Targets-only receivers are dropped.
+- **`tds` merges per athlete id** over rushing, receiving, kick and punt returns, and `max(defensive TD, interceptions TD)`: an interception-return TD is listed in both categories. Passing TDs are not scorers.
+- **`tdn` reconciles** with the count of `scoringPlays` of type touchdown on every captured final; live it may trail by one.
+- **No athlete links, headshots, uids or position:** ids, names (40 characters) and jersey numbers only.
 
 ESPN details that shape the code:
 - **The current drive appears twice** (`drives.previous[-1]` and `drives.current`). Plays are deduplicated by id.

@@ -54,7 +54,7 @@ To change a line: edit `ios/narration.txt`, re-render just that line
 (`--only N`, about 100 credits), then re-run the mux:
 
 ```
-cd "$ELEVENLABS_CLIENT_DIR" && npx tsx /Users/cv/projects/cfb-gameday/ios/narrate.mts 0.9 --only 9
+cd "$ELEVENLABS_CLIENT_DIR" && npx tsx <repo>/ios/narrate.mts 0.9 --only 9
 python3 scripts/review_mux.py ios/review/walkthrough-raw.mp4 ios/review/cues.txt
 ```
 

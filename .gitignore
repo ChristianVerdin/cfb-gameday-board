@@ -48,6 +48,15 @@ ios/.asc/
 CLAUDE.md
 AGENTS.md
 CONTEXT.md
+CONTEXT_ARCHIVE*.md
+
+# Claude Code local state and worktrees
+.claude/
+
+# `vercel build` (Python runtime) leaves these behind; run it only in a throwaway export
+uv.lock
+pyproject.toml
+.python-version
 
 # Pro Football Board app
 ios-pfb/*.xcodeproj/

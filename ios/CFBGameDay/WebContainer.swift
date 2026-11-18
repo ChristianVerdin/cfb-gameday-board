@@ -108,7 +108,9 @@ final class WebContainer: NSObject, ObservableObject {
     /// Native tabs drive the site's filters through the URL hash; app.js listens for hashchange.
     /// `reapply` re-runs the hash even when it is already set (the in-page pills don't change it).
     func show(fragment: String, reapply: Bool = false) {
-        guard webView.url != nil, failure == nil else { load(fragment: fragment); return }
+        guard let current = webView.url, failure == nil else { load(fragment: fragment); return }
+        // Only the board page understands the hash; from any other page, load the board itself.
+        guard isBoardPage(current) else { load(fragment: fragment); return }
         if webView.isLoading { load(fragment: fragment); return }   // hash set before app.js exists would be lost
         let js = reapply
             ? "if (location.hash === '#\(fragment)') window.dispatchEvent(new HashChangeEvent('hashchange')); else location.hash = '#\(fragment)';"
@@ -132,6 +134,12 @@ final class WebContainer: NSObject, ObservableObject {
         reload()
     }
 
+    /// The only pages that stay in the web view: the board at / or /index.html (any fragment).
+    private func isBoardPage(_ url: URL?) -> Bool {
+        guard isBoardHost(url), let path = url?.path else { return false }
+        return path == "" || path == "/" || path == "/index.html"
+    }
+
     private func isBoardHost(_ url: URL?) -> Bool {
         guard let host = url?.host?.lowercased() else { return false }
         return host == AppConfig.boardHost.lowercased()
@@ -143,6 +151,13 @@ extension WebContainer: WKNavigationDelegate {
         guard let url = navigationAction.request.url else { return .cancel }
         // Maps, ESPN gamecast, tickets, GitHub: leave the app instead of trapping the user in the web view.
         if navigationAction.navigationType == .linkActivated, !isBoardHost(url) {
+            await UIApplication.shared.open(url)
+            return .cancel
+        }
+        // Other pages on the board host (/privacy, /support, /nfl, ...) open in the system browser too.
+        // Main frame only, so the board's own subresources and frames are untouched.
+        if navigationAction.targetFrame?.isMainFrame ?? true, isBoardHost(url), !isBoardPage(url),
+           url.scheme?.lowercased() == "https" {
             await UIApplication.shared.open(url)
             return .cancel
         }

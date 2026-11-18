@@ -1,5 +1,8 @@
 """Vercel function: GET /api/live?dates=YYYYMMDD,... -> same payload as server.py.
 
+Only `dates` is accepted (once, sorted, unique, <= 7, inside the snapshot window +/- 2 days); anything
+else is a cached 400 before ESPN is touched, so a cache-busting query cannot fan out to ESPN.
+
 No in-process cache here; the CDN caches each URL for 20 s (s-maxage), so one
 ESPN pull serves every viewer in that window. Closing lines are kept by the
 client (localStorage), not on this stateless function.
@@ -13,7 +16,7 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from server import DATES, live_payload, parse_dates, pull_date  # noqa: E402
+from server import DATES, QueryError, live_payload, pull_date, strict_live_dates  # noqa: E402
 
 
 def build(dates: list[str]) -> dict:
@@ -45,13 +48,19 @@ def build(dates: list[str]) -> dict:
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         _, _, query = self.path.partition("?")
-        dates = parse_dates(query) or DATES
         try:
-            payload, code = build(dates), 200
-            cache = "public, max-age=0, s-maxage=20, stale-while-revalidate=40"
-        except Exception as exc:
-            payload, code = {"ok": False, "error": str(exc)}, 502
-            cache = "no-store"
+            dates = strict_live_dates(query) or DATES
+        except QueryError as exc:
+            payload, code = {"ok": False, "error": str(exc)}, 400
+            cache = f"public, max-age=0, s-maxage={exc.ttl}"
+        else:
+            try:
+                payload, code = build(dates), 200
+                cache = "public, max-age=0, s-maxage=20, stale-while-revalidate=40"
+            except Exception as exc:
+                print(f"[api/live] build failed: {exc}", file=sys.stderr)   # detail stays in the log
+                payload, code = {"ok": False, "error": "live scores unavailable"}, 502
+                cache = "public, max-age=0, s-maxage=10"
         body = json.dumps(payload).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json")

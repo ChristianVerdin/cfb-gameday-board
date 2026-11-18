@@ -63,7 +63,7 @@ def _team(c) -> dict:
     abbr = t.get("abbreviation") or ""
     return {"id": str(t.get("id") or c.get("id") or ""), "abbr": abbr,
             "name": t.get("name") or t.get("nickname") or t.get("shortDisplayName") or abbr,
-            "color": t.get("color") or None}
+            "color": t.get("color") or None, "alt": t.get("alternateColor") or None}
 
 
 def _competition(summary: dict) -> dict:
@@ -268,6 +268,110 @@ def _leaders(summary: dict, ids: dict[str, str]) -> dict:
     return out
 
 
+def _num(s) -> int:
+    try:
+        return int(float(str(s).strip()))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _col(cat: dict, label: str, stats: list) -> str | None:
+    try:
+        return stats[(cat.get("labels") or []).index(label)]
+    except (ValueError, IndexError, TypeError, AttributeError):
+        return None
+
+
+_P_CAPS = {"rec": 10, "rush": 6, "pass": 2, "tds": 8}
+_TD_KINDS = ("rush", "rec", "ret", "def")
+
+
+def _empty_side() -> dict:
+    return {"rec": [], "rush": [], "pass": [], "tds": [], "tdn": 0, "recMore": 0,
+            "tot": {"rec": 0, "recYds": 0, "recTd": 0, "car": 0, "rushYds": 0, "rushTd": 0}}
+
+
+def _player_side(team_players: dict) -> dict:
+    cats = {c.get("name"): c for c in team_players.get("statistics") or [] if isinstance(c, dict)}
+    out = _empty_side()
+    tot = out["tot"]
+
+    def rows(name):
+        cat = cats.get(name) or {}
+        ath_list = cat.get("athletes")
+        for a in ath_list if isinstance(ath_list, list) else []:
+            if not isinstance(a, dict):
+                continue
+            ath = a.get("athlete") if isinstance(a.get("athlete"), dict) else {}
+            stats = a.get("stats") if isinstance(a.get("stats"), list) else []
+            pname = clean_text(str(ath.get("displayName") or ""), 40)
+            pno = str(ath.get("jersey") or "")[:3]
+            # A scorer without an ESPN id still needs one key shared by every category it appears in.
+            pid = str(ath.get("id") or "") or ("~" + pname + "~" + pno if pname or pno else "")
+            ident = {"id": pid, "name": pname, "no": pno}
+            yield cat, ident, (lambda lab, cat=cat, stats=stats: _num(_col(cat, lab, stats))), stats
+
+    rec, rush, pas = [], [], []
+    for cat, ident, g, _ in rows("receiving"):
+        r = {**ident, "rec": g("REC"), "tgt": g("TGTS"), "yds": g("YDS"), "td": g("TD"), "lng": g("LONG")}
+        tot["rec"] += r["rec"]; tot["recYds"] += r["yds"]; tot["recTd"] += r["td"]
+        if r["rec"] > 0 or r["td"] > 0:
+            rec.append(r)
+    for cat, ident, g, _ in rows("rushing"):
+        r = {**ident, "car": g("CAR"), "yds": g("YDS"), "td": g("TD"), "lng": g("LONG")}
+        tot["car"] += r["car"]; tot["rushYds"] += r["yds"]; tot["rushTd"] += r["td"]
+        if r["car"] > 0:
+            rush.append(r)
+    for cat, ident, g, stats in rows("passing"):
+        ca = str(_col(cat, "C/ATT", stats) or "").split("/")
+        cmp_, att = (_num(ca[0]), _num(ca[1])) if len(ca) == 2 else (0, 0)
+        if att > 0 or cmp_ > 0:
+            pas.append({**ident, "cmp": cmp_, "att": att, "yds": g("YDS"), "td": g("TD"), "int": g("INT")})
+    rec.sort(key=lambda r: (-r["yds"], -r["rec"], r["name"]))
+    rush.sort(key=lambda r: (-r["yds"], -r["car"], r["name"]))
+    pas.sort(key=lambda r: (-r["att"], r["name"]))
+    out["recMore"] = max(0, len(rec) - _P_CAPS["rec"])
+    out["rec"], out["rush"], out["pass"] = rec[:_P_CAPS["rec"]], rush[:_P_CAPS["rush"]], pas[:_P_CAPS["pass"]]
+
+    scorers: dict[str, dict] = {}
+    order: list[str] = []
+
+    def add(ident, kind, n):
+        if not ident["id"]:
+            return
+        row = scorers.get(ident["id"])
+        if row is None:
+            row = scorers[ident["id"]] = {**ident, "rush": 0, "rec": 0, "ret": 0, "def": 0}
+            order.append(ident["id"])
+        row[kind] = max(row[kind], n) if kind == "def" else row[kind] + n
+
+    for name, kind in (("rushing", "rush"), ("receiving", "rec"), ("kickReturns", "ret"),
+                       ("puntReturns", "ret"), ("defensive", "def"), ("interceptions", "def")):
+        for cat, ident, g, _ in rows(name):
+            n = g("TD")
+            if n > 0:
+                add(ident, kind, n)
+    tds = [scorers[i] for i in order if sum(scorers[i][k] for k in _TD_KINDS) > 0]
+    out["tdn"] = sum(sum(r[k] for k in _TD_KINDS) for r in tds)
+    tds.sort(key=lambda r: (-sum(r[k] for k in _TD_KINDS), next(i for i, k in enumerate(_TD_KINDS) if r[k] > 0), r["name"]))
+    out["tds"] = tds[:_P_CAPS["tds"]]
+    return out
+
+
+def _players(summary: dict, ids: dict[str, str]) -> dict:
+    sides = {"away": _empty_side(), "home": _empty_side()}
+    bp = (summary.get("boxscore") or {}).get("players")
+    for t in bp if isinstance(bp, list) else []:
+        try:
+            side = ids.get(str(((t or {}).get("team") or {}).get("id")))
+            if side:
+                sides[side] = _player_side(t)
+        except Exception:
+            continue
+    ready = any(s[k] for s in sides.values() for k in ("rec", "rush", "pass", "tds"))
+    return {"ready": ready, "away": sides["away"], "home": sides["home"]}
+
+
 def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | None = None) -> dict:
     warnings: list[str] = []
     comp = _competition(summary)
@@ -421,5 +525,5 @@ def norm_summary(summary: dict, event: dict | None = None, fetched_at: str | Non
         "teams": teams, "linescores": lines, "ot_periods": max(0, n_ls - 4), "result": result,
         "scoring": scoring_out, "drives": drives_out, "current_drive_id": cur_id, "tracker": tracker,
         "winprob": _winprob(summary, play_info, keep), "box": _box(summary, ids), "leaders": _leaders(summary, ids),
-        "warnings": warnings,
+        "players": _players(summary, ids), "warnings": warnings,
     }

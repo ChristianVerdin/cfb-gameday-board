@@ -73,12 +73,32 @@
     return st.replace(/_/g, " ").toLowerCase().replace(/^./, c => c.toUpperCase());
   }
 
-  function chipStyle(hex) {
+  function hexLum(hex) {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ""));
-    if (!m) return "background:#22314d;color:#f4f7fb";
+    if (!m) return null;
     const n = parseInt(m[1], 16), ch = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
-    const lum = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-    return "background:#" + m[1].toLowerCase() + ";color:" + (lum > 0.4 ? "#0b1220" : "#ffffff");
+    return { hex: "#" + m[1].toLowerCase(), lum: 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2] };
+  }
+  function chipStyle(hex) {
+    const c = hexLum(hex);
+    if (!c) return "background:#22314d;color:#f4f7fb";
+    return "background:" + c.hex + ";color:" + (c.lum > 0.4 ? "#0b1220" : "#ffffff");
+  }
+  // Helmet glyph: one plain shape for every team, tinted with the team's two colours. It carries no team mark.
+  // The facemask falls back to light grey when the second colour would vanish on the dark sheet or match the shell.
+  function helmetColors(t) {
+    const a = hexLum(t && t.color), b = hexLum(t && t.alt);
+    const shell = a ? a.hex : "#22314d";
+    return { shell, mask: b && b.lum >= 0.12 && b.hex !== shell ? b.hex : "#d5dbe6" };
+  }
+  function helmetHtml(t, flip, box) {
+    const c = helmetColors(t);
+    const tfHtml = flip ? ` transform="translate(24 0) scale(-1 1)"` : "";
+    const boxHtml = box ? ` x="${f1(box.x)}" y="${f1(box.y)}" width="${f1(box.w)}" height="${f1(box.w * 20 / 24)}"` : ` class="ns-hel" aria-hidden="true"`;
+    return `<svg${boxHtml} viewBox="0 0 24 20"><path class="ns-hsh" fill="${esc(c.shell)}"${tfHtml} d="M2.6 11.6C2.6 5.9 7.1 1.8 12.8 1.8c5 0 8.6 3.3 9.2 7.9l-6.3.5c-1.5.1-2.4 1.3-2.1 2.8l.8 3.9c-2.3 1.4-5.3 1.7-7.9.7-2.4-.9-3.9-3-3.9-6z"/>
+      <path class="ns-hst" stroke="${esc(c.mask)}"${tfHtml} d="M4.6 7.6C6.4 4.6 9.4 3.1 12.8 3.1c2.9 0 5.3 1.1 6.9 3"/>
+      <circle class="ns-hear" cx="9.4" cy="11.8" r="1.3"${tfHtml}/>
+      <path class="ns-hmk" stroke="${esc(c.mask)}"${tfHtml} d="M22 9.7l1 4.3c.3 1.4-.4 2.5-1.8 2.6l-6.8.3M13.7 13.4l9.1-.2"/></svg>`;
   }
   function teamOf(d, abbr) {
     const t = (d && d.teams) || {};
@@ -87,7 +107,7 @@
   }
   function chipHtml(d, abbr) {
     const t = teamOf(d, abbr);
-    return `<span class="ns-chip" style="${esc(chipStyle(t && t.color))}">${esc(abbr)}</span>`;
+    return `<span class="ns-tm">${helmetHtml(t, false, null)}<span class="ns-chip" style="${esc(chipStyle(t && t.color))}">${esc(abbr)}</span></span>`;
   }
 
   // Win probability. Points carry the home side's chance, 0-1 (percent tolerated).
@@ -165,7 +185,13 @@
     const from = (dr.start && dr.start.yard_text) || "", at = lastPlay.yard_text || (dr.end && dr.end.yard_text) || "";
     const tip = g.x1 + g.dir * 7;
     const away = chipStyle(tm.away.color).split(";")[0].replace("background:", ""), home = chipStyle(tm.home.color).split(";")[0].replace("background:", "");
-    const capHtml = [esc(side === "away" ? tm.away.abbr : tm.home.abbr) + " ball", from ? "from " + esc(from) : "", at ? "now " + esc(at) : ""].filter(Boolean).join(" · ");
+    const off = side === "away" ? tm.away : tm.home;
+    // Keep the ball-carrier helmet inside the 120-wide field; when backed up against its own end zone it replaces that end-zone helmet.
+    const hx = Math.max(0.5, Math.min(120 - 11 - 0.5, g.x1 - g.dir * 6.4 - 5.5));
+    const offHtml = helmetHtml(off, g.dir < 0, { x: hx, y: 13.4, w: 11 });
+    const hideAway = side === "away" && hx < 8.8 + 0.5, hideHome = side === "home" && hx + 11 > 111.2 - 0.5;
+    const ezHtml = (hideAway ? "" : helmetHtml(tm.away, false, { x: 1.2, y: 14.8, w: 7.6 })) + (hideHome ? "" : helmetHtml(tm.home, true, { x: 111.2, y: 14.8, w: 7.6 }));
+    const capHtml = [helmetHtml(off, false, null) + esc(off.abbr) + " ball", from ? "from " + esc(from) : "", at ? "now " + esc(at) : ""].filter(Boolean).join(" · ");
     const metaHtml = [t.plays != null ? int(t.plays) + " plays" : "", t.yards != null ? int(t.yards) + " yds" : "", t.elapsed ? esc(t.elapsed) : ""].filter(Boolean).join(" · ");
     const linesHtml = [20, 30, 40, 50, 60, 70, 80, 90, 100].map(x => `<line x1="${int(x)}" x2="${int(x)}" y1="0" y2="36" class="ns-yl"/>`).join("");
     const rzHtml = `<rect x="${int(g.rzX)}" y="0" width="20" height="36" class="ns-rz${g.red ? " on" : ""}"/>`;
@@ -173,11 +199,12 @@
       <rect width="120" height="36" class="ns-turf"/>
       <rect width="10" height="36" fill="${esc(away)}" opacity=".7"/><rect x="110" width="10" height="36" fill="${esc(home)}" opacity=".7"/>
       ${linesHtml}${rzHtml}
+      <line x1="${f1(g.x1)}" x2="${f1(g.x1)}" y1="0" y2="36" class="ns-los"/>
       <line x1="${f1(g.x0)}" x2="${f1(g.x1)}" y1="18" y2="18" class="ns-path"/>
       <rect x="${f1(g.x0 - 1.5)}" y="12" width="3" height="12" class="ns-start"/>
       <polygon points="${f1(tip)},18 ${f1(g.x1 + g.dir * 1)},12.5 ${f1(g.x1 + g.dir * 1)},23.5" class="ns-arrow"/>
-      <circle cx="${f1(g.x1)}" cy="18" r="3.6" class="ns-now"/></svg>
-      <div class="ns-fcap"><span>${capHtml}</span>${g.red ? `<b class="ns-rzchip">Red zone</b>` : ""}</div>${metaHtml ? `<div class="ns-fmeta">${metaHtml}</div>` : ""}</div>`;
+      ${ezHtml}${offHtml}</svg>
+      <div class="ns-fcap"><span class="ns-fwho">${capHtml}</span>${g.red ? `<b class="ns-rzchip">Red zone</b>` : ""}</div>${metaHtml ? `<div class="ns-fmeta">${metaHtml}</div>` : ""}</div>`;
   }
 
   // Plays
@@ -260,11 +287,183 @@
       <div class="ns-psc">${esc(d.teams.away.abbr)} ${int(s.away)} – ${esc(d.teams.home.abbr)} ${int(s.home)}</div></div></div>`).join("");
     return rowsHtml || `<div class="ns-empty">No scoring yet.</div>`;
   }
-  function boxTabHtml(d) {
+  // Player stats. d.players is optional; every builder tolerates it being absent or not ready.
+  const PSORTS = [["rec", "REC"], ["yds", "YDS"], ["td", "TD"]];
+  const PSIDES = ["away", "home"];
+  const TD_KINDS = [["rush", "RUSH"], ["rec", "REC"], ["ret", "RET"], ["def", "DEF"]];
+  function validPsort(v) { return PSORTS.some(s => s[0] === v) ? v : "rec"; }
+  function validPteam(v) { return v === "away" || v === "home" ? v : "both"; }
+  // Rows from the payload: objects only, so one malformed entry never takes the whole sheet down.
+  function rowsOf(v) { return Array.isArray(v) ? v.filter(r => r && typeof r === "object") : []; }
+  function playersReady(d) { return Boolean(d && d.players && d.players.ready); }
+  function shortName(n) {
+    const parts = String(n == null ? "" : n).trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return parts[0] || "";
+    if (/^(?:[A-Za-z]\.){2,}$/.test(parts[0])) return parts.join(" ");
+    return parts[0].charAt(0).toUpperCase() + ". " + parts.slice(1).join(" ");
+  }
+  function sortRec(rows, key) {
+    const order = { rec: ["rec", "yds"], yds: ["yds", "rec"], td: ["td", "yds"] }[validPsort(key)];
+    return rowsOf(rows).slice().sort((a, b) => (int(b[order[0]]) - int(a[order[0]])) || (int(b[order[1]]) - int(a[order[1]])) || String(a.name).localeCompare(String(b.name)));
+  }
+  // Highest value in a column (0 when nobody is above zero); every row holding it is a leader.
+  function topSet(rows, field) {
+    return rowsOf(rows).reduce((m, r) => Math.max(m, int(r[field])), 0);
+  }
+  function flashSet(ui) { return new Set(Array.isArray(ui && ui.flash && ui.flash.keys) ? ui.flash.keys : []); }
+  function flashKey(side, cat, id, field) { return side + ":" + cat + ":" + id + ":" + field; }
+
+  function statCellHtml(v, o) {
+    const n = int(v), x = o || {};
+    const cls = ["ns-n", x.hs ? "ns-hs" : "", x.chg ? "ns-chg" : "", x.td && n <= 0 ? "ns-z" : "", x.k ? "ns-k" : ""].filter(Boolean).join(" ");
+    const innerHtml = x.td && n > 0 ? `<b class="ns-td">${int(n)}</b>` : x.top && n > 0 ? `<b class="ns-top">${int(n)}</b>` : `${int(n)}`;
+    return `<td class="${esc(cls)}">${innerHtml}</td>`;
+  }
+  function nameCellHtml(r, chg) {
+    const jerseyHtml = r.no ? `<i class="ns-jn">#${esc(r.no)}</i>` : "";
+    return `<th scope="row" class="ns-pn${chg ? " ns-chg" : ""}" title="${esc(r.name)}">${jerseyHtml}<span>${esc(shortName(r.name))}</span></th>`;
+  }
+  function teamBlockHtml(d, side, bodyHtml) {
+    return `<div class="ns-pblk"><div class="ns-pbh">${chipHtml(d, d.teams[side].abbr)}</div>${bodyHtml}</div>`;
+  }
+  function sidesOf(ui) {
+    const pt = validPteam(ui && ui.pteam);
+    return pt === "both" ? PSIDES : [pt];
+  }
+  function sectionHtml(title, d, ui, fn) {
+    const sides = sidesOf(ui);
+    const blocksHtml = sides.map(s => fn(s)).join("");
+    return `<h3 class="ns-ph">${esc(title)}</h3><div class="${esc(sides.length === 1 ? "ns-pgrid one" : "ns-pgrid")}">${blocksHtml}</div>`;
+  }
+
+  function tdStripHtml(d, p, ui, flash) {
+    const fl = flash || new Set();
+    const blocksHtml = PSIDES.map(side => {
+      const t = (p && p[side]) || {}, abbr = d.teams[side].abbr;
+      const scorers = rowsOf(t.tds);
+      const shown = scorers.reduce((n, r) => n + TD_KINDS.reduce((m, k) => m + int(r[k[0]]), 0), 0);
+      const rowsHtml = scorers.map(r => {
+        const tagsHtml = TD_KINDS.filter(k => int(r[k[0]]) > 0).map(k => `<b class="ns-tag sc">${esc(k[1] + (int(r[k[0]]) > 1 ? " x" + int(r[k[0]]) : ""))}</b>`).join("");
+        const chg = fl.has(flashKey(side, "tds", r.id, "row")) || TD_KINDS.some(k => fl.has(flashKey(side, "tds", r.id, k[0])));
+        return `<div class="ns-sc${chg ? " ns-chg" : ""}"><span class="ns-scn">${r.no ? `<i class="ns-jn">#${esc(r.no)}</i>` : ""}<span>${esc(shortName(r.name))}</span></span><span class="ns-sct">${tagsHtml}</span></div>`;
+      }).join("");
+      const more = int(t.tdn) - shown;
+      const moreHtml = more > 0 ? `<div class="ns-sc ns-more">+${int(more)} more</div>` : "";
+      return `<div class="ns-tdb"><div class="ns-pbh">${chipHtml(d, abbr)}<h3 class="ns-tdh">Touchdowns</h3><b class="ns-tdn${int(t.tdn) > 0 ? " on" : ""}">${int(t.tdn)}</b></div>${rowsHtml || `<div class="ns-empty ns-tdnone">No touchdowns yet</div>`}${moreHtml}</div>`;
+    }).join("");
+    return `<div class="ns-pgrid ns-tds">${blocksHtml}</div>`;
+  }
+
+  function playersControlsHtml(d, ui) {
+    const pt = validPteam(ui && ui.pteam), ps = validPsort(ui && ui.psort);
+    const teams = [["both", "Both"], ["away", d.teams.away.abbr], ["home", d.teams.home.abbr]];
+    const teamBtnHtml = teams.map(([id, label]) => `<button class="ns-fbtn${pt === id ? " active" : ""}" data-pteam="${esc(id)}" aria-pressed="${pt === id ? "true" : "false"}">${esc(label)}</button>`).join("");
+    const sortBtnHtml = PSORTS.map(([id, label]) => `<button class="ns-fbtn${ps === id ? " active" : ""}" data-psort="${esc(id)}" aria-pressed="${ps === id ? "true" : "false"}">${esc(label)}</button>`).join("");
+    return `<div class="ns-pctl"><div class="ns-pgrp" role="group" aria-label="Show team"><span class="ns-plab">Show</span>${teamBtnHtml}</div>
+      <div class="ns-pgrp" role="group" aria-label="Sort receivers"><span class="ns-plab">Sort receivers</span>${sortBtnHtml}</div></div>`;
+  }
+
+  function recTableHtml(d, side, t, ui, flash) {
+    const fl = flash || new Set(), rows = sortRec(t && t.rec, ui && ui.psort), tot = (t && t.tot) || {};
+    const topRec = topSet(rows, "rec"), topYds = topSet(rows, "yds");
+    const bodyRowsHtml = rows.map(r => {
+      const c = f => fl.has(flashKey(side, "rec", r.id, f));
+      const rowChg = c("row");
+      return `<tr class="${esc(rowChg ? "ns-chg" : "")}">${nameCellHtml(r, false)}${statCellHtml(r.rec, { top: int(r.rec) === topRec, chg: c("rec"), k: true })}${statCellHtml(r.tgt, {})}${statCellHtml(r.yds, { top: int(r.yds) === topYds, chg: c("yds") })}${statCellHtml(r.td, { td: true, chg: c("td") })}${statCellHtml(r.lng, { hs: true })}</tr>`;
+    }).join("");
+    const emptyHtml = `<tr class="ns-pe"><td colspan="5">No catches yet</td><td class="ns-n ns-hs"></td></tr>`;
+    const totalHtml = rows.length ? `<tr class="ns-ptot"><th scope="row">Total</th>${statCellHtml(tot.rec, { k: true })}<td class="ns-n"></td>${statCellHtml(tot.recYds, {})}${statCellHtml(tot.recTd, { td: true })}<td class="ns-n ns-hs"></td></tr>` : "";
+    const moreHtml = int(t && t.recMore) > 0 ? `<tr class="ns-pmore"><td colspan="5">+${int(t.recMore)} more</td><td class="ns-n ns-hs"></td></tr>` : "";
+    return `<div class="ns-pw"><table class="ns-pt" aria-label="${esc("Receiving, " + d.teams[side].abbr)}"><thead><tr><th scope="col" class="ns-pn">Player</th><th scope="col" class="ns-n ns-k">REC</th><th scope="col" class="ns-n">TGT</th><th scope="col" class="ns-n">YDS</th><th scope="col" class="ns-n">TD</th><th scope="col" class="ns-n ns-hs">LNG</th></tr></thead><tbody>${bodyRowsHtml || emptyHtml}${moreHtml}${totalHtml}</tbody></table></div>`;
+  }
+  function rushTableHtml(d, side, t, ui, flash) {
+    const fl = flash || new Set(), rows = rowsOf(t && t.rush), tot = (t && t.tot) || {};
+    const topCar = topSet(rows, "car"), topYds = topSet(rows, "yds");
+    const bodyRowsHtml = rows.map(r => {
+      const c = f => fl.has(flashKey(side, "rush", r.id, f));
+      return `<tr class="${esc(c("row") ? "ns-chg" : "")}">${nameCellHtml(r, false)}${statCellHtml(r.car, { top: int(r.car) === topCar, chg: c("car"), k: true })}${statCellHtml(r.yds, { top: int(r.yds) === topYds, chg: c("yds") })}${statCellHtml(r.td, { td: true, chg: c("td") })}${statCellHtml(r.lng, { hs: true })}</tr>`;
+    }).join("");
+    const emptyHtml = `<tr class="ns-pe"><td colspan="4">No carries yet</td><td class="ns-n ns-hs"></td></tr>`;
+    const totalHtml = rows.length ? `<tr class="ns-ptot"><th scope="row">Total</th>${statCellHtml(tot.car, { k: true })}${statCellHtml(tot.rushYds, {})}${statCellHtml(tot.rushTd, { td: true })}<td class="ns-n ns-hs"></td></tr>` : "";
+    return `<div class="ns-pw"><table class="ns-pt ns-rt" aria-label="${esc("Rushing, " + d.teams[side].abbr)}"><thead><tr><th scope="col" class="ns-pn">Player</th><th scope="col" class="ns-n ns-k">CAR</th><th scope="col" class="ns-n">YDS</th><th scope="col" class="ns-n">TD</th><th scope="col" class="ns-n ns-hs">LNG</th></tr></thead><tbody>${bodyRowsHtml || emptyHtml}${totalHtml}</tbody></table></div>`;
+  }
+  function passLineHtml(d, side, t, ui, flash) {
+    const fl = flash || new Set(), r = rowsOf(t && t.pass)[0];
+    if (!r) return `<div class="ns-pass ns-dimline">No attempts yet</div>`;
+    const chg = fl.has(flashKey(side, "pass", r.id, "td")) || fl.has(flashKey(side, "pass", r.id, "int"));
+    const lineHtml = `<b class="ns-pk">${int(r.cmp)}/${int(r.att)}</b>, ${int(r.yds)} yds, ${int(r.td)} TD, ${int(r.int)} INT`;
+    return `<div class="ns-pass${chg ? " ns-chg" : ""}"><span class="ns-pnm">${r.no ? `<i class="ns-jn">#${esc(r.no)}</i>` : ""}${esc(shortName(r.name))}</span><span class="ns-pln">${lineHtml}</span></div>`;
+  }
+
+  function teamStatsHtml(d, ui) {
     const box = d.box || [];
-    if (!box.length) return `<div class="ns-empty">Box score not available yet.</div>`;
+    const open = ui && ui.boxOpen != null ? Boolean(ui.boxOpen) : !playersReady(d);
     const rowsHtml = box.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("");
-    return `<table class="ns-box"><thead><tr><th></th><th>${esc(d.teams.away.abbr)}</th><th>${esc(d.teams.home.abbr)}</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    const tableHtml = box.length ? `<table class="ns-box"><thead><tr><th></th><th>${esc(d.teams.away.abbr)}</th><th>${esc(d.teams.home.abbr)}</th></tr></thead><tbody>${rowsHtml}</tbody></table>` : `<div class="ns-empty">Box score not available yet.</div>`;
+    return `<details class="ns-tstats" data-box${open ? " open" : ""}><summary>Team stats</summary>${tableHtml}</details>`;
+  }
+  function flashNote(flash) {
+    const notes = flash && Array.isArray(flash.notes) ? flash.notes.filter(n => typeof n === "string" && n) : [];
+    return notes.length ? "Updated: " + notes.join(" · ") : "";
+  }
+  function boxTabHtml(d, ui) {
+    const u = ui || {}, fl = flashSet(u), ready = playersReady(d);
+    const noteText = flashNote(u.flash);
+    // Live games keep this line in the layout (empty when idle) so a change note never shifts the tables; a persistent live region announces it.
+    const noteHtml = phase(d) === "live" && ready ? `<p class="ns-note ns-fnote" aria-hidden="true">${esc(noteText)}</p>` : "";
+    let playersHtml = `<p class="ns-note">${esc(phase(d) === "final" ? "Player stats are not available for this game." : "Player stats appear once the game is under way.")}</p>`;
+    if (ready) {
+      const p = d.players;
+      const recHtml = sectionHtml("Receiving", d, u, s => teamBlockHtml(d, s, recTableHtml(d, s, p[s], u, fl)));
+      const rushHtml = sectionHtml("Rushing", d, u, s => teamBlockHtml(d, s, rushTableHtml(d, s, p[s], u, fl)));
+      const passHtml = sectionHtml("Passing", d, u, s => teamBlockHtml(d, s, passLineHtml(d, s, p[s], u, fl)));
+      playersHtml = tdStripHtml(d, p, u, fl) + playersControlsHtml(d, u) + recHtml + rushHtml + passHtml;
+    }
+    return `${noteHtml}${playersHtml}${teamStatsHtml(d, u)}`;
+  }
+
+  // Changed player stats between two payloads: cell keys to highlight plus up to three plain-text notes.
+  function playerDiff(prevD, nextD) {
+    const out = { keys: [], notes: [] };
+    const a = prevD && prevD.players, b = nextD && nextD.players;
+    if (!a || !b || !a.ready || !b.ready) return out;
+    const tdNotes = [], recNotes = [];
+    for (const side of PSIDES) {
+      const pa = a[side] && typeof a[side] === "object" ? a[side] : {}, pb = b[side] && typeof b[side] === "object" ? b[side] : {};
+      const prior = (cat, id) => rowsOf(pa[cat]).find(r => String(r.id) === String(id));
+      for (const r of rowsOf(pb.rec)) {
+        const o = prior("rec", r.id), base = (f) => flashKey(side, "rec", r.id, f);
+        if (!o) out.keys.push(base("row"));
+        else for (const f of ["rec", "yds", "td"]) if (int(r[f]) !== int(o[f])) out.keys.push(base(f));
+        const gain = int(r.rec) - int(o && o.rec);
+        if (gain > 0) recNotes.push(shortName(r.name) + " +" + gain + " REC");
+      }
+      for (const r of rowsOf(pb.rush)) {
+        const o = prior("rush", r.id);
+        if (!o) out.keys.push(flashKey(side, "rush", r.id, "row"));
+        else for (const f of ["car", "yds", "td"]) if (int(r[f]) !== int(o[f])) out.keys.push(flashKey(side, "rush", r.id, f));
+      }
+      for (const r of rowsOf(pb.pass)) {
+        const o = prior("pass", r.id);
+        if (o) for (const f of ["td", "int"]) if (int(r[f]) !== int(o[f])) out.keys.push(flashKey(side, "pass", r.id, f));
+      }
+      for (const r of rowsOf(pb.tds)) {
+        const o = prior("tds", r.id);
+        if (!o) out.keys.push(flashKey(side, "tds", r.id, "row"));
+        let gain = 0;
+        for (const k of TD_KINDS) {
+          const g = int(r[k[0]]) - int(o && o[k[0]]);
+          if (g > 0) { gain += g; if (o) out.keys.push(flashKey(side, "tds", r.id, k[0])); }
+        }
+        if (gain > 0) tdNotes.push(shortName(r.name) + (gain > 1 ? " +" + gain + " TD" : " TD"));
+      }
+    }
+    out.notes = tdNotes.concat(recNotes).slice(0, 3);
+    return out;
+  }
+  // What the next render highlights: only a changed poll on a sheet that already showed data, never the first load or a retry after an error.
+  function flashFor(prevD, nextD, changed, hadError) {
+    return changed && prevD && !hadError ? playerDiff(prevD, nextD) : null;
   }
   function leadersTabHtml(d) {
     const L = d.leaders || {};
@@ -300,13 +499,13 @@
     if (tab === "plays") return playsTabHtml(d, ui);
     if (tab === "wp") return wpHtml(d);
     if (tab === "scoring") return scoringTabHtml(d);
-    if (tab === "box") return boxTabHtml(d);
+    if (tab === "box") return boxTabHtml(d, ui);
     if (tab === "leaders") return leadersTabHtml(d);
     return drivesTabHtml(d, ui);
   }
   function validTab(tab) { return TABS.some(t => t[0] === tab); }
 
-  // ui: { id, d, error, loading, tab, filter, drv }
+  // ui: { id, d, error, loading, tab, filter, drv, psort, pteam, boxOpen, flash }
   function panelHtml(ui) {
     const d = ui.d;
     const closeHtml = `<button class="ns-x" data-close aria-label="Close game detail">×</button>`;
@@ -331,8 +530,8 @@
   }
   // pure:end
 
-  let S = null;          // { id, d, error, tab, filter, drv, seq, sig, opener, fromBoard }
-  let timer = null, inflight = false, overlay = null, inerted = [];
+  let S = null;          // { id, d, error, tab, filter, drv, psort, pteam, boxOpen, flash, seq, sig, opener, fromBoard }
+  let timer = null, inflight = false, overlay = null, liveEl = null, inerted = [];
 
   function chicago(iso) {
     const t = Date.parse(iso);
@@ -345,6 +544,10 @@
     overlay.className = "ns-sheet";
     overlay.hidden = true;
     overlay.innerHTML = `<div class="ns-panel" role="dialog" aria-modal="true" aria-labelledby="ns-title" tabindex="-1"></div>`;
+    liveEl = document.createElement("div");
+    liveEl.className = "ns-sr";
+    liveEl.setAttribute("role", "status");
+    liveEl.setAttribute("aria-live", "polite");
     document.body.appendChild(overlay);
     overlay.addEventListener("click", onClick);
     overlay.addEventListener("keydown", onPanelKey);
@@ -359,10 +562,18 @@
     if (tab) { S.tab = tab.dataset.tab; render(); const b = overlay.querySelector(".ns-body"); if (b) b.scrollTop = 0; return; }
     const f = e.target.closest("[data-filter]");
     if (f) { S.filter = f.dataset.filter; render(); return; }
+    const ps = e.target.closest("[data-psort]");
+    if (ps) { S.psort = validPsort(ps.dataset.psort); render(); return; }
+    const pt = e.target.closest("[data-pteam]");
+    if (pt) { S.pteam = validPteam(pt.dataset.pteam); render(); return; }
     if (e.target.closest("[data-retry]")) load(true);
   }
   function onToggle(e) {
     const el = e.target;
+    if (S && S.d && el.hasAttribute && el.hasAttribute("data-box")) {
+      if (el.open !== !playersReady(S.d) || S.boxOpen != null) S.boxOpen = el.open;
+      return;
+    }
     if (!S || !S.d || !el.dataset || el.dataset.did == null) return;
     const dr = (S.d.drives || []).find(r => String(r.id) === el.dataset.did);
     if (!dr) return;
@@ -404,10 +615,17 @@
   function render() {
     if (!S || !overlay) return;
     const p = panel(), a = document.activeElement;
-    const keep = a && p.contains(a) ? (a.dataset.tab ? `[data-tab="${CSS.escape(a.dataset.tab)}"]` : a.dataset.filter ? `[data-filter="${CSS.escape(a.dataset.filter)}"]` : a.hasAttribute("data-close") ? "[data-close]" : "") : "";
+    const owner = a && a.tagName === "SUMMARY" ? a.parentElement : null;
+    const keep = a && p.contains(a) ? (a.dataset.tab ? `[data-tab="${CSS.escape(a.dataset.tab)}"]` : a.dataset.filter ? `[data-filter="${CSS.escape(a.dataset.filter)}"]` : a.dataset.psort ? `[data-psort="${CSS.escape(a.dataset.psort)}"]` : a.dataset.pteam ? `[data-pteam="${CSS.escape(a.dataset.pteam)}"]` : a.hasAttribute("data-close") ? "[data-close]" : owner && owner.hasAttribute("data-box") ? "details[data-box] > summary" : owner && owner.dataset.did != null ? `details[data-did="${CSS.escape(owner.dataset.did)}"] > summary` : "") : "";
     const body = p.querySelector(".ns-body"), top = body ? body.scrollTop : 0;
-    const fullHtml = panelHtml(S);
+    const fullHtml = panelHtml(S), said = flashNote(S.flash);
+    S.flash = null;
     p.innerHTML = fullHtml;
+    if (liveEl) {
+      p.appendChild(liveEl);
+      liveEl.textContent = "";
+      if (said) setTimeout(() => { if (liveEl.isConnected) liveEl.textContent = said; }, 60);
+    }
     const fresh = p.querySelector(".ns-body"); if (fresh) fresh.scrollTop = top;
     if (keep) { const el = p.querySelector(keep); if (el) el.focus(); }
     stamp();
@@ -434,6 +652,8 @@
       const { fetched_at, ...rest } = data;
       const sig = JSON.stringify(rest);
       const changed = sig !== mine.sig || mine.error;
+      const prevD = mine.d;
+      mine.flash = flashFor(prevD, data, changed, mine.error);
       mine.d = data; mine.error = null; mine.sig = sig; mine.fetchedAt = fetched_at;
       if (changed) render(); else stamp();
     } catch (err) {
@@ -452,7 +672,7 @@
     if (S && S.id === id) { refresh(); return; }
     if (S) teardown();
     ensureOverlay();
-    S = { id, d: null, error: null, tab: null, filter: "all", drv: {}, seq: 0, sig: "", fetchedAt: "", opener: document.activeElement, fromBoard: Boolean(opts && opts.fromBoard) };
+    S = { id, d: null, error: null, tab: null, filter: "all", drv: {}, psort: "rec", pteam: "both", boxOpen: null, flash: null, seq: 0, sig: "", fetchedAt: "", opener: document.activeElement, fromBoard: Boolean(opts && opts.fromBoard) };
     document.body.classList.add("ns-open");
     inerted = Array.from(document.body.children).filter(el => el !== overlay && !el.inert);
     inerted.forEach(el => { el.inert = true; });

@@ -7,14 +7,25 @@ generated alias. The tunnel and self-host sections below remain as fallbacks.
 
 ## Vercel (live)
 
-- `vercel.json`: `api/live.py` as a Python function (15 s max), HSTS and
-  nosniff headers, `cleanUrls` so `/privacy` and `/support` resolve.
+- `vercel.json`: four Python functions: `api/live.py` and `api/game.py` (the
+  college board, 15 s max) and `api/nfl/live.py` and `api/nfl/game.py` (the pro
+  football board, 30 s max). Each carries an `excludeFiles` list that keeps the
+  bundle small; the college functions also drop `nfl/**`, `nflcore/**` and
+  `api/nfl/**`, the NFL ones keep `nflcore/`. Also HSTS and nosniff headers,
+  `noindex` on `/api/nfl/*`, no-cache on both service workers, and `cleanUrls`
+  so `/privacy` and `/support` resolve.
 - `.well-known/apple-app-site-association` (universal links, from iOS 1.1) is
   served with `Content-Type: application/json` by a `vercel.json` header rule;
   Apple fetches it through its own CDN, so check
   `https://app-site-association.cdn-apple.com/a/v1/cfbgameday.app` after a change.
-- `.vercelignore` keeps `ios/`, `docs/`, `deploy/`, `scripts/`, `lines.json`
-  out of the upload.
+- `.vercelignore` (read it for the full list) keeps `ios/`, `ios-pfb/`,
+  `docs/`, `deploy/`, `scripts/`, `.github/`, `lines.json`, env files and keys,
+  the local notes (`CLAUDE.md`, `AGENTS.md`, `CONTEXT*.md`), `.claude/`,
+  `.worktrees/` and `captures/` out of the upload. The Vercel CLI uses it in
+  place of `.gitignore`, so a hand deploy relies on it; `scripts/check.py`
+  fails if a local-notes entry in `.gitignore` is missing from it. Run
+  `vercel build` only in a throwaway export (`git archive HEAD | tar -x -C <dir>`):
+  it leaves `uv.lock`, `pyproject.toml` and `.python-version` behind.
 - Local CLI link lives in `.vercel/project.json` (gitignored). Recreate with
   `vercel project inspect cfb-gameday-board --scope christian-verdins-projects`
   and write `{orgId, projectId, projectName}` by hand; `vercel link` refuses to
@@ -44,6 +55,23 @@ rebuilds the snapshot, heals a run that lost kickoff forecasts, runs
 `scripts/check.py`, and commits `games.json`, `games.js`, `index.html` and
 `sitemap.xml` when they changed. Details: `AGENTS.md` § 1. Vercel deploys the commit. Trigger
 by hand with `gh workflow run refresh.yml` (optional `start` / `end` inputs).
+
+### Pro football board (`/nfl`)
+
+Stats only. `.github/workflows/nfl-refresh.yml` rebuilds `nfl/games.json` on 15
+UTC crons (Tue 12:00 to Mon 12:00, including Thu and Fri 06:00 runs for
+daytime holiday games; the file has the exact list) and `nfl-metrics.yml` builds `nfl/metrics.json` on Tue
+and Wed 14:00 UTC. Both commit with a rebase-and-retry push and Vercel deploys
+the commit. Both crons are gated by the repo variable `NFL_REFRESH_ENABLED`
+(set it to `false` to stop them); manual `gh workflow run` always goes.
+`pr-check.yml` runs `scripts/check.py` and `scripts/check_nfl.py` on pull
+requests. A dispatch that sits queued with no jobs for several minutes is a
+GitHub ghost: dispatch again.
+
+## Self-hosting (fallback only)
+
+Vercel is the production host. Everything below is the fallback if it ever
+has to move: a tunnel for a single gameday, or an always-on box.
 
 ## Rule that does not change
 

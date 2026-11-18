@@ -33,6 +33,14 @@ HEADERS = {
 }
 
 
+class UpstreamError(RuntimeError):
+    """An HTTP error from an upstream feed. .status lets callers tell a 4xx (unknown thing) from a 5xx."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
+
+
 def fetch_json(url: str, timeout: int = 20) -> dict:
     req = urllib.request.Request(url, headers=HEADERS)
     try:
@@ -41,7 +49,7 @@ def fetch_json(url: str, timeout: int = 20) -> dict:
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "ignore")[:300]
         host = urllib.parse.urlsplit(url).hostname or "ESPN"   # Open-Meteo errors pass through here too
-        raise RuntimeError(f"{host} {exc.code} {exc.reason} :: {body}") from exc
+        raise UpstreamError(f"{host} {exc.code} {exc.reason} :: {body}", exc.code) from exc
 
 
 def fallback_dates(today: datetime | None = None) -> list[str]:
@@ -75,6 +83,20 @@ def load_dates() -> list[str]:
 
 
 DATES = load_dates()
+
+
+def load_game_ids() -> "frozenset[str] | None":
+    """Event ids in the committed snapshot: the only ids /api/game on the hosted function will look up.
+    None (gate off) only when games.json is unreadable, so a broken bundle degrades instead of 404ing every game."""
+    try:
+        data = json.loads((ROOT / "games.json").read_text("utf-8"))
+        ids = frozenset(str(g["id"]) for g in data.get("games") or [] if g.get("id"))
+    except Exception:
+        return None
+    return ids or None
+
+
+GAME_IDS = load_game_ids()
 
 
 def endpoints(date: str) -> list[str]:
@@ -278,6 +300,77 @@ def parse_dates(query: str) -> list[str] | None:
     return found[:7] or None
 
 
+class QueryError(ValueError):
+    """A hosted-API request the function refuses before any ESPN call. .ttl is the CDN s-maxage for the 400."""
+
+    def __init__(self, message: str, ttl: int):
+        super().__init__(message)
+        self.ttl = ttl
+
+
+DATE_DIGITS = re.compile(r"[0-9]{8}")
+MAX_DATES = 7
+DATE_SLACK_DAYS = 2   # either side of the snapshot's dates: stale clients, late Monday games, the Monday roll-forward
+PARAM_TTL = 3600      # unknown / repeated params: the URL itself is wrong, so the CDN can hold it a long time
+VALUE_TTL = 300       # right params, wrong value: shorter, in case the snapshot rolls over
+
+
+def _single_params(query: str, allowed: str) -> dict:
+    """Query -> {name: value}; only `allowed`, each at most once. Blank values are kept, not dropped."""
+    out: dict = {}
+    for k, v in urllib.parse.parse_qsl(query, keep_blank_values=True):
+        if k != allowed:
+            raise QueryError("unknown parameter", PARAM_TTL)
+        if k in out:
+            raise QueryError(f"{k} must appear once", PARAM_TTL)
+        out[k] = v
+    return out
+
+
+def date_window(dates: list[str] | None = None) -> tuple[str, str]:
+    base = sorted(dates or DATES)
+    lo = datetime.strptime(base[0], "%Y%m%d") - timedelta(days=DATE_SLACK_DAYS)
+    hi = datetime.strptime(base[-1], "%Y%m%d") + timedelta(days=DATE_SLACK_DAYS)
+    return lo.strftime("%Y%m%d"), hi.strftime("%Y%m%d")
+
+
+def strict_live_dates(query: str) -> list[str] | None:
+    """Hosted /api/live: only ?dates=, once, 8-digit real dates, strictly ascending, at most 7, inside the
+    snapshot window +/- 2 days. None when there is no query at all (caller uses DATES). app.js and the widget
+    both send sorted unique ET dates from the snapshot, so nothing legitimate is rejected."""
+    params = _single_params(query, "dates")
+    if not params:
+        return None
+    parts = params["dates"].split(",")
+    if not (1 <= len(parts) <= MAX_DATES):
+        raise QueryError("dates: 1 to 7 dates", VALUE_TTL)
+    lo, hi = date_window()
+    for d in parts:
+        try:
+            if not DATE_DIGITS.fullmatch(d):
+                raise ValueError
+            datetime.strptime(d, "%Y%m%d")
+        except ValueError:
+            raise QueryError("dates: YYYYMMDD", VALUE_TTL) from None
+        if not lo <= d <= hi:
+            raise QueryError("dates: outside this slate", VALUE_TTL)
+    if parts != sorted(set(parts)):
+        raise QueryError("dates: sorted and unique", VALUE_TTL)
+    return parts
+
+
+def strict_game_id(query: str) -> str:
+    """Hosted /api/game: only ?id=, once, shaped like an ESPN event id."""
+    gid = _single_params(query, "id").get("id")
+    if not valid_game_id(gid):
+        raise QueryError("bad id", PARAM_TTL)
+    return gid
+
+
+def known_game(game_id: str) -> bool:
+    return GAME_IDS is None or game_id in GAME_IDS
+
+
 def live_payload(events: list, lines: "LineBook | None" = None) -> list:
     """Flatten ESPN events into the /api/live game shape."""
     live = []
@@ -335,13 +428,16 @@ def valid_game_id(value) -> bool:
 
 
 def pull_summary(game_id: str) -> dict:
-    last = None
+    last, statuses = None, []
     for host in ("site.api.espn.com", "site.web.api.espn.com"):
         try:
             return fetch_json(f"https://{host}/apis/site/v2/sports/football/college-football/summary?event={game_id}")
         except Exception as exc:
             last = exc
-    raise RuntimeError(f"summary unavailable: {last}")
+            statuses.append(getattr(exc, "status", None))
+    # status is set only when every host answered with a 4xx: ESPN does not know this game
+    all_4xx = all(isinstance(c, int) and 400 <= c < 500 for c in statuses)
+    raise UpstreamError(f"summary unavailable: {last}", statuses[-1] if all_4xx else None)
 
 
 def game_payload(summary: dict) -> dict:

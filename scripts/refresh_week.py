@@ -198,7 +198,10 @@ class Geocoder:
                 self.run.bump("geocode_failed")
                 break
             if abroad:
-                pick = next((r for r in rows if (r.get("country") or "").lower() == (country or "").lower()), None)
+                # Open-Meteo returns country null with only country_code for US territories.
+                code = TERRITORIES.get((country or "").lower())
+                pick = next((r for r in rows if (r.get("country") or "").lower() == (country or "").lower()
+                             or (code and r.get("country_code") == code)), None)
             else:
                 us = [r for r in rows if r.get("country_code") == "US"]
                 want = STATES.get((state or "").upper())
@@ -217,6 +220,12 @@ class Geocoder:
         time.sleep(self.sleep)
         self.cache[key] = geo
         return geo
+
+
+# ESPN gives a territory venue a country and no state ("Bayamon, Puerto Rico"); Open-Meteo has
+# only the ISO code for it.
+TERRITORIES = {"puerto rico": "PR", "guam": "GU", "u.s. virgin islands": "VI",
+               "us virgin islands": "VI", "american samoa": "AS"}
 
 
 def forecast(geo: dict, kick: datetime, sleep: float, run: Run) -> dict | None:
@@ -305,6 +314,7 @@ def impact(indoor: bool, wx: dict | None, elev_ft: int | None, label: str) -> di
     if indoor:
         return {"flags": ["INDOOR"], "impact_score": 0, "under_score": 0,
                 "impact_level": "NONE", "impact_notes": ["Indoor — weather off the board"]}
+    no_forecast = wx is None
     wx = wx or {}
     flags, notes, score, under = [], [], 0, 0
     temp, wind, pop = wx.get("temp"), wx.get("wind"), wx.get("pop")
@@ -354,7 +364,8 @@ def impact(indoor: bool, wx: dict | None, elev_ft: int | None, label: str) -> di
             under += 1
             notes.append(f"{pop}% shower chance — watch radar at kick")
     if not notes and score == 0:
-        notes.append("Clean outdoor conditions")
+        # No forecast is not a clean forecast. Level stays CLEAR so the filters behave as before.
+        notes.append("Forecast unavailable" if no_forecast else "Clean outdoor conditions")
     if elev_ft is not None and elev_ft >= 4000:
         flags.append("ALTITUDE")
         notes.append(f"Elevation {elev_ft:,} ft — kicking / conditioning note")
@@ -694,6 +705,16 @@ def page_description(payload: dict) -> str:
             "state. Free, no ads, no account.")
 
 
+def is_placeholder(game: dict) -> bool:
+    """A card ESPN has not filled in: a TBD team (id -1/-2, name "TBD") or no venue name."""
+    for side in ("home", "away"):
+        t = game.get(side) or {}
+        if str(t.get("id") or "").startswith("-") or (t.get("full") or "").strip().upper() in ("", "TBD") \
+                or (t.get("abbr") or "").upper() == "TBD":
+            return True
+    return not (game.get("venue") or "").strip()
+
+
 def event_ld(game: dict) -> dict | None:
     """One schema.org SportsEvent.
 
@@ -703,6 +724,8 @@ def event_ld(game: dict) -> dict | None:
     """
     if game.get("gameState") == "post":
         return None                      # do not assert "scheduled" about a played game
+    if is_placeholder(game):
+        return None                      # "TBD at TBD" or no venue: a null Place name fails rich-result validation
     wx = game.get("wx") or {}
     local, offset = wx.get("kick_local"), wx.get("utc_offset_seconds")
     if game.get("time_tbd"):
@@ -723,6 +746,7 @@ def event_ld(game: dict) -> dict | None:
         "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
         "sport": "American Football",
         "url": "https://cfbgameday.app/",
+        "image": ["https://cfbgameday.app/icons/og.png"],
         "location": {
             "@type": "Place",
             "name": game.get("venue"),
@@ -800,6 +824,13 @@ def _event_type(event: dict):
 def _headline(event: dict) -> str:
     notes = (event.get("competitions") or [{}])[0].get("notes") or []
     return " ".join(n.get("headline") or "" for n in notes).lower()
+
+
+def drop_fcs_playoff(events: list) -> list:
+    """ESPN's groups=80 scoreboard also returns the FCS Championship bracket (TBD teams, no
+    venue, 8 cards on each of the first two Saturdays of December). This is an FBS board.
+    Regular-season FBS-vs-FCS games are untouched: only the bracket's own headline matches."""
+    return [e for e in events if "fcs championship" not in _headline(e)]
 
 
 def thanksgiving(year: int):
@@ -910,6 +941,11 @@ def main() -> int:
             if event.get("id") and event["id"] not in seen:
                 seen.add(event["id"])
                 events.append(event)
+    kept = drop_fcs_playoff(events)
+    if len(kept) != len(events):
+        run.bump("fcs_playoff_dropped", len(events) - len(kept))
+        print(f"dropped {len(events) - len(kept)} FCS Championship game(s)")
+    events = kept
     if not events:
         print("no games found; nothing written")
         return 1
