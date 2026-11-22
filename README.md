@@ -131,7 +131,6 @@ needs the server because the browser cannot call ESPN directly.
 | `.github/workflows/pr-check.yml` | Runs `scripts/check.py` and `scripts/check_nfl.py` on pull requests |
 | `nfl/`, `nflcore/`, `api/nfl/`, `scripts/nfl/` | Pro football board at `/nfl` (stats only): client and its service worker, ESPN / weather / metrics code, the two Vercel functions, and the snapshot and metrics builders |
 | `scripts/check_nfl.py` | Offline checks for the pro football board and the repo guards (`scripts/nfl/checks/`) |
-| `ios-pfb/` | SwiftUI app for the pro football board (XcodeGen `project.yml`, widget, tests, listing copy in `APP_STORE.md`) |
 | `scripts/release_ios_pfb.sh` | Pro football app: regenerate, archive, export, upload to TestFlight (never submits) |
 | `scripts/store_shots.py` | Captioned App Store screenshots from raw simulator captures |
 | `scripts/app_video.py`, `scripts/render_text.swift` | Narrated walkthrough and promo video recorded in the simulator; the Swift helper draws caption and end-card frames |

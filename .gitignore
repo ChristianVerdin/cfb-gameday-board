@@ -57,10 +57,3 @@ CONTEXT_ARCHIVE*.md
 uv.lock
 pyproject.toml
 .python-version
-
-# Pro Football Board app
-ios-pfb/*.xcodeproj/
-ios-pfb/build/
-ios-pfb/DerivedData/
-ios-pfb/screenshots/
-ios-pfb/.asc-app-id

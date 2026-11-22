@@ -17,7 +17,7 @@ PROTECTED = (
 )
 PROTECTED_PREFIXES = (".well-known/", "ios/", "icons/")
 NFL_PATHS = ("nflcore/", "nfl/", "api/nfl/", "scripts/nfl/", "scripts/check_nfl.py", "scripts/fixtures/nfl/",
-             ".github/workflows/nfl-", ".github/workflows/pr-check", "ios-pfb/")
+             ".github/workflows/nfl-", ".github/workflows/pr-check")
 SCAN_SUFFIXES = (".html", ".js", ".css", ".json", ".md", ".swift", ".yml", ".strings", ".txt")
 # The support address is already public on the CFB support page.
 PUBLIC_CONTACT = "hoynelabs" + "@" + "gm" + "ail.com"
@@ -79,7 +79,7 @@ def test_cfb_untouched(check):
     if not base:
         return
     changed = changed_vs_base(base)
-    if not any(p.startswith(NFL_PATHS + ("ios-pfb/",)) for p in changed):
+    if not any(p.startswith(NFL_PATHS) for p in changed):
         return  # a college-board-only change: this guard covers NFL work, not the board it protects
     hit = sorted(p for p in changed if (p in PROTECTED or p.startswith(PROTECTED_PREFIXES)) and not approved_launch_edit(p, base))
     check("protected CFB files changed vs merge-base", hit, [])
@@ -128,16 +128,7 @@ def test_stats_only_files(check):
     for path in nfl_files():
         rel = str(path.relative_to(ROOT))
         tool = path.parent.name == "nfl" and path.parent.parent.name == "scripts" and path.suffix == ".py"
-        if not (tool or (rel.startswith(("nfl/", "scripts/fixtures/nfl/", "ios-pfb/")) and path.suffix in SCAN_SUFFIXES)):
+        if not (tool or (rel.startswith(("nfl/", "scripts/fixtures/nfl/")) and path.suffix in SCAN_SUFFIXES)):
             continue
         m = BETTING.search(path.read_text(errors="replace"))
         check.true(f"no betting words in {rel}", m is None, m.group(0) if m else "")
-
-
-def test_ios_pfb_privacy_manifests(check):
-    for target in ("ProFootballBoard", "ProFootballBoardWidget"):
-        f = ROOT / "ios-pfb" / target / "PrivacyInfo.xcprivacy"
-        check.true(f"{target} privacy manifest exists", f.is_file())
-        if f.is_file():
-            text = f.read_text()
-            check.true(f"{target} manifest declares UserDefaults CA92.1", "NSPrivacyAccessedAPICategoryUserDefaults" in text and "CA92.1" in text)
