@@ -1,13 +1,13 @@
 {
  "v": 1,
- "generated_at": "2026-11-24T17:23:37-06:00",
+ "generated_at": "2026-11-25T16:45:48-06:00",
  "season": 2026,
  "through_week": 11,
  "source": {
   "name": "nflverse",
   "file": "play_by_play_2026.csv.gz",
-  "last_modified": "Tue, 24 Nov 2026 20:08:26 GMT",
-  "etag": "\"0x8DF4A66B30F18C0\"",
+  "last_modified": "Wed, 25 Nov 2026 19:09:19 GMT",
+  "etag": "\"0x8DF4B279B5AE491\"",
   "rows": 21012,
   "games": 163,
   "license": "CC-BY-4.0"
