@@ -24,6 +24,7 @@ Nothing in the listing promises wagering, picks, or "locks". Keep it that way th
 | 1.0.4 (7) | 10-14 | 10-15 | Home Screen quick actions |
 | 1.0.5 (8) | 10-20, with six in-app events | 10-20 | Rivalry Games quick action, `cfbgameday://` deep links |
 | 1.1.0 (9) | 10-21 | 10-22 | Today's Games widget, universal links, sixth screenshot |
+| 1.1.1 (10) | 11-27 | pending review | Privacy manifests for the app and widget; site pages other than the board open in Safari |
 
 All dates 2026, Central. From 1.0.1 every version has used release type `AFTER_APPROVAL`, so approval
 is the release; Apple's lookup API and store page can lag ASC's `READY_FOR_SALE` by up to a day.
@@ -35,6 +36,8 @@ Every version so far, in order. Submitting, and anything else Apple sees, happen
 1. **Test.** `python3 scripts/check.py`; the unit tests
    (`cd ios && xcodebuild -project CFBGameDay.xcodeproj -scheme CFBGameDay -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build/DerivedData test`);
    `scripts/ios_tab_check.sh` (every tab renders on revisit). Exercise the new feature on the simulator.
+   With several simulator runtimes installed, `name=iPhone 17 Pro` no longer resolves ("Unable to find a device"):
+   use `id=<UDID>` from `xcrun simctl list devices available`, and pass the same UDID to the tab check.
 2. **Copy.** Copy the previous `metadata/version/<v>/en-US.json` to the new version and edit description,
    What's New and keywords. Leave `promotionalText` out (a release would otherwise revert the weekly line).
    `asc metadata validate --dir ios/metadata` (it catches keywords over 100 characters).
@@ -98,6 +101,11 @@ wagers. The rating comes from the override, `ageRatingOverrideV2: EIGHTEEN_PLUS`
 is per version. On 2026-10-07 the store showed 4+ because no override had been saved, so check it on every
 new version and set it if missing:
 `asc age-rating edit --id <DECLARATION_ID> --age-rating-override-v2 EIGHTEEN_PLUS`.
+
+Apple added two yes/no questions in November 2026: `sharedLocation` (people share their real-world location
+with others) and `datingAndRelationships`. Both are No here and were set on 1.1.1. A declaration can only be
+edited while a version is open, and asc 6.6.1 has no flags for these two, so use the raw request:
+`asc api PATCH /v1/ageRatingDeclarations/<DECLARATION_ID> --confirm --body '{"data":{"type":"ageRatingDeclarations","id":"<DECLARATION_ID>","attributes":{"sharedLocation":false,"datingAndRelationships":false}}}'`.
 
 ### App Privacy (nutrition label)
 
@@ -288,9 +296,9 @@ The notes live on each version's review detail and carry over to the next versio
 is and is not (an information display, not a sportsbook, why it is 18+); SETUP (none, no login); EXTERNAL
 SERVICES (our backend on Vercel, ESPN's public scoreboard, Open-Meteo, Apple Maps; no auth, payment,
 analytics, ad or AI services); REGIONS; REGULATED / PROTECTED MATERIAL; then one paragraph per feature version
-(IPAD AND MAC, NEW IN 1.0.4, NEW IN 1.0.5, NEW IN 1.1), each saying what changed, how to see it, and "No new data,
-accounts, or services". At 1.1.0 they run 3,483 of Apple's 4,000 characters, so the next version has room for
-about one more paragraph; fold the oldest NEW IN paragraphs into one line before going over.
+(IPAD AND MAC, NEW IN 1.0.4, NEW IN 1.0.5, NEW IN 1.1, NEW IN 1.1.1), each saying what changed, how to see it, and
+"No new data, accounts, or services". At 1.1.1 they run 3,896 of Apple's 4,000 characters, so the next version
+must first fold the oldest NEW IN paragraphs into one line.
 
 ```
 asc review details-for-version --version-id <VERSION_ID>          # detail id and current notes
