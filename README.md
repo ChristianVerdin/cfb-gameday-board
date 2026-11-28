@@ -11,7 +11,7 @@ Dark, mobile-first, ESPN-style cards. No build step, no framework, no accounts.
 
 How it works and why it is built this way, in a five-minute read: [case study](docs/CASE_STUDY.md).
 
-_Last updated 2026-11-27 12:59 CT. The live board holds Rivalry Week (69 games, Tue 11/24 to Sat 11/28), from the snapshot generated 2026-11-27 12:55 CT. The pro football board has been live at /nfl since 2026-11-15. iOS 1.1.0 has been live since 2026-10-22 08:00 CT._
+_Last updated 2026-11-27 19:15 CT. The live board holds Rivalry Week (69 games, Tue 11/24 to Sat 11/28), from the snapshot generated 2026-11-27 14:30 CT. The pro football board has been live at /nfl since 2026-11-15. iOS 1.1.0 has been live since 2026-10-22 08:00 CT; 1.1.1 (privacy manifests, and site pages other than the board open in Safari) was submitted for App Review on 2026-11-27._
 
 - **Web:** https://cfbgameday.app. Deploys from `main` on every push. The
   snapshot rebuilds itself seven times a week via GitHub Actions (two on Tuesday, Wed,
